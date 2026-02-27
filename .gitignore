@@ -1,0 +1,34 @@
+# Backend
+Backend/bin/
+Backend/.env
+Backend/.env.local
+Backend/vendor/
+
+# Frontend
+ticpindemo/node_modules/
+ticpindemo/.next/
+ticpindemo/.env.local
+ticpindemo/out/
+ticpindemo/build/
+ticpindemo/.env*.local
+ticpindemo/dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependencies
+go.sum
