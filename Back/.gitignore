@@ -1,0 +1,65 @@
+# ========================
+# Go (Backend)
+# ========================
+Backend/*.exe
+Backend/*.exe~
+Backend/*.dll
+Backend/*.so
+Backend/*.dylib
+Backend/tmp/
+Backend/vendor/
+
+# Go test binary
+Backend/*.test
+
+# Go output
+Backend/*.out
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Environment variables
+Backend/.env
+
+# ========================
+# Node.js / Next.js (Frontend)
+# ========================
+ticpindemo/node_modules/
+ticpindemo/.next/
+ticpindemo/out/
+ticpindemo/build/
+ticpindemo/dist/
+
+# Environment variables
+ticpindemo/.env
+ticpindemo/.env.local
+ticpindemo/.env.development.local
+ticpindemo/.env.test.local
+ticpindemo/.env.production.local
+
+# Logs
+ticpindemo/npm-debug.log*
+ticpindemo/yarn-debug.log*
+ticpindemo/yarn-error.log*
+ticpindemo/.pnpm-debug.log*
+
+# Vercel
+ticpindemo/.vercel
+
+# TypeScript
+ticpindemo/*.tsbuildinfo
+ticpindemo/next-env.d.ts
+
+# ========================
+# General
+# ========================
+.DS_Store
+Thumbs.db
+*.log
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.orig
