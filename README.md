@@ -443,3 +443,4 @@ pnpm install
 pnpm dev               # runs on :3000
 # next.config.ts rewrites /backend/* → http://localhost:8080/*
 ```
+# ReDesgining
