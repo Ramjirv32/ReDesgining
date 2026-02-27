@@ -117,6 +117,7 @@ function MultiSelect<T extends { id: string; label: string }>({
 export default function CreateCouponPage({ onBack }: { onBack: () => void }) {
     const [code, setCode] = useState('');
     const [description, setDescription] = useState('');
+    const [category, setCategory] = useState<'event' | 'play' | 'dining'>('event');
     const [discountType, setDiscountType] = useState<'percent' | 'flat'>('percent');
     const [discount, setDiscount] = useState('');
     const [maxUses, setMaxUses] = useState('');
@@ -154,6 +155,7 @@ export default function CreateCouponPage({ onBack }: { onBack: () => void }) {
             await adminApi.createCoupon({
                 code: code.trim().toUpperCase(),
                 description: description.trim() || undefined,
+                category: category,
                 discount_type: discountType,
                 discount_value: Number(discount),
                 valid_from: new Date(validFrom).toISOString(),
@@ -189,6 +191,24 @@ export default function CreateCouponPage({ onBack }: { onBack: () => void }) {
                             className="w-full h-[52px] border border-[#D9D9D9] rounded-2xl px-5 text-[#2a2a2a] placeholder:text-gray-300 text-[16px] font-bold uppercase focus:border-purple-300 outline-none transition-all"
                             style={{ fontFamily: 'Anek Latin' }}
                         />
+                    </div>
+
+                    {/* Category */}
+                    <div className="space-y-1.5">
+                        <label className="text-gray-600 text-[16px] font-medium block" style={{ fontFamily: 'Anek Latin' }}>Category</label>
+                        <div className="relative">
+                            <select
+                                value={category}
+                                onChange={(e) => setCategory(e.target.value as 'event' | 'play' | 'dining')}
+                                className="w-full h-[52px] border border-[#D9D9D9] rounded-2xl px-5 appearance-none bg-white text-[#2a2a2a] text-[16px] font-medium focus:border-purple-300 outline-none transition-all"
+                                style={{ fontFamily: 'Anek Latin' }}
+                            >
+                                <option value="event">Events</option>
+                                <option value="play">Play</option>
+                                <option value="dining">Dining</option>
+                            </select>
+                            <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
+                        </div>
                     </div>
 
                     {/* Discount */}

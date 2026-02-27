@@ -13,16 +13,6 @@ import { useUserSession, clearUserSession } from '@/lib/auth/user';
 export default function Navbar() {
     const pathname = usePathname();
     const router = useRouter();
-    if (pathname === '/contact') return null;
-    if (pathname === '/terms') return null;
-    if (pathname === '/privacy') return null;
-    if (pathname === '/refund') return null;
-    if (pathname.endsWith('/book')) return null;
-    if (pathname.endsWith('/book/tickets')) return null;
-    if (pathname.endsWith('/book/review')) return null;
-    if (pathname.endsWith('/admin/ChatSupportPage')) return null;
-    if (pathname.endsWith('/admin/ChatSupportPage/reply')) return null;
-
     const [isAuthOpen, setIsAuthOpen] = useState(false);
     const [isLocationOpen, setIsLocationOpen] = useState(false);
     const [currentLocation, setCurrentLocation] = useState('Location Name');
@@ -40,15 +30,27 @@ export default function Navbar() {
         pathname.startsWith('/list-your-play');
     const isOrganizerDashboard = pathname === '/organizer/dashboard';
 
+    const hideNavbar =
+        pathname === '/contact' ||
+        pathname === '/terms' ||
+        pathname === '/privacy' ||
+        pathname === '/refund' ||
+        pathname.endsWith('/book') ||
+        pathname.endsWith('/book/tickets') ||
+        pathname.endsWith('/book/review') ||
+        pathname.endsWith('/admin/ChatSupportPage') ||
+        pathname.endsWith('/admin/ChatSupportPage/reply');
+
     useEffect(() => {
+        if (hideNavbar) return;
         const load = () => setSession(getOrganizerSession());
         load();
         window.addEventListener('organizer-auth-change', load);
         return () => window.removeEventListener('organizer-auth-change', load);
-    }, []);
+    }, [hideNavbar]);
 
-    // Close profile menu on outside click
     useEffect(() => {
+        if (hideNavbar) return;
         const handler = (e: MouseEvent) => {
             if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
                 setIsProfileMenuOpen(false);
@@ -56,7 +58,9 @@ export default function Navbar() {
         };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
-    }, []);
+    }, [hideNavbar]);
+
+    if (hideNavbar) return null;
 
     const handleLogout = () => {
         clearOrganizerSession();

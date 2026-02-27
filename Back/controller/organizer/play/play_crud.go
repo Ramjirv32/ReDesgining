@@ -24,7 +24,6 @@ func CreateOrganizerPlay(c *fiber.Ctx) error {
 			"error": "invalid request body: " + err.Error(),
 		})
 	}
-	// Always set from JWT — never trust client-supplied organizer_id
 	play.OrganizerID = orgObjID
 
 	if play.Name == "" {
@@ -37,7 +36,6 @@ func CreateOrganizerPlay(c *fiber.Ctx) error {
 			"error": "category is required",
 		})
 	}
-	// sub_category is optional — not all sports have specific court types
 	if play.City == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "city is required",
@@ -93,7 +91,6 @@ func UpdateOrganizerPlay(c *fiber.Ctx) error {
 			"error": "invalid request body: " + err.Error(),
 		})
 	}
-	// Always use JWT value — strip any client-supplied organizer_id
 	body.OrganizerID = primitive.NilObjectID
 
 	if err := playservice.Update(playID, authOrgID, &body); err != nil {

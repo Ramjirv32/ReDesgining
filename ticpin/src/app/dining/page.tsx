@@ -10,6 +10,7 @@ import FilterButton from '@/components/dining/FilterButton';
 import BottomBanner from '@/components/layout/BottomBanner';
 import Footer from '@/components/layout/Footer';
 import FilterModal from '@/components/modals/FilterModal';
+import { adminApi, OfferRecord } from '@/lib/api/admin';
 
 interface RealDining {
     id: string;
@@ -25,28 +26,31 @@ interface RealDining {
     discount?: number;
 }
 
-const offers = [
-    { discount: '50%', code: 'DETAILS' },
-    { discount: '30%', code: 'WELCOME' },
-    { discount: '20%', code: 'OFFER20' },
-    { discount: '50%', code: 'DETAILS' },
-];
+// Fallback offers removed, using state instead
 
 export default function DiningPage() {
     const [activeFilter, setActiveFilter] = useState('All');
     const [venues, setVenues] = useState<RealDining[]>([]);
+    const [offers, setOffers] = useState<OfferRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
     const [modalFilters, setModalFilters] = useState<Record<string, string[]>>({});
 
     useEffect(() => {
+        // Fetch restaurants
         fetch('/backend/api/dining', { credentials: 'include' })
             .then(r => r.json())
             .then((data: RealDining[]) => {
                 setVenues(Array.isArray(data) ? data : []);
-                setLoading(false);
             })
-            .catch(() => setLoading(false));
+            .catch(() => { });
+
+        // Fetch exclusive dining offers
+        adminApi.getOffersByCategory('dining')
+            .then(data => setOffers(data))
+            .catch(() => { });
+
+        setLoading(false);
     }, []);
 
     const selectedCategories = modalFilters.dining_category ?? [];
@@ -287,16 +291,41 @@ export default function DiningPage() {
                     </div>
                 </section>
 
-                <section>
-                    <h2 className="font-[family-name:var(--font-anek-latin)] font-semibold tracking-normal mb-6 md:mb-8 uppercase text-black text-[24px] md:text-[30px]" style={{ fontWeight: 600 }}>Exclusive Offers</h2>
-                    <div className="flex gap-4 md:gap-6 overflow-x-auto scrollbar-hide pb-4">
-                        {offers.map((offer, i) => (
-                            <div key={i} className="flex-shrink-0">
-                                <CouponCard discount={offer.discount} code={offer.code} />
-                            </div>
-                        ))}
-                    </div>
-                </section>
+                {offers.length > 0 && (
+                    <section>
+                        <h2 className="font-[family-name:var(--font-anek-latin)] font-semibold tracking-normal mb-6 md:mb-8 uppercase text-black text-[24px] md:text-[30px]" style={{ fontWeight: 600 }}>Exclusive Offers</h2>
+                        <div className="flex gap-4 md:gap-6 overflow-x-auto scrollbar-hide pb-4">
+                            {offers.map((offer) => {
+                                // Find where to navigate (take first entity if available)
+                                const targetId = offer.entity_ids?.[0];
+                                const href = targetId ? `/dining/venue/${targetId}` : '#';
+
+                                return (
+                                    <Link key={offer.id} href={href} className="flex-shrink-0 group block overflow-hidden rounded-[8px]">
+                                        <div className="relative w-[340px] h-[155.4px] rounded-[8px] overflow-hidden transition-transform duration-300 group-hover:scale-[1.02]">
+                                            {offer.image ? (
+                                                <>
+                                                    <img
+                                                        src={offer.image}
+                                                        alt={offer.title}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                    <div className="absolute top-3 left-3 bg-[#AC9BF7] text-white px-3 py-1 rounded-[4px] text-[12px] font-bold uppercase">
+                                                        {offer.discount_type === 'flat' ? `₹${offer.discount_value} OFF` : `${offer.discount_value}% OFF`}
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div className="w-full h-full bg-[#AC9BF7] flex items-center justify-center">
+                                                    <span className="text-white font-bold text-xl">{offer.title}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    </section>
+                )}
 
                 <section className="space-y-6 md:space-y-8">
                     <h2 className="font-[family-name:var(--font-anek-latin)] font-semibold tracking-normal uppercase text-black text-[24px] md:text-[30px]" style={{ fontWeight: 600 }}>All Restaurants</h2>

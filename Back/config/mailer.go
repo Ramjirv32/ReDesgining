@@ -67,3 +67,30 @@ func SendStatusEmail(toEmail, vertical, status, reason string) error {
 
 	return sendOTP(from, pass, toEmail, subject, body)
 }
+
+func SendSaleNotification(toEmail, eventName, customerEmail string, grandTotal float64, bookingID string) error {
+	from := os.Getenv("EVENTS_EMAIL")
+	if from == "" {
+		from = os.Getenv("ADMIN_EMAIL")
+	}
+	pass := os.Getenv("EVENTS_APP_PASSWORD")
+	if pass == "" {
+		pass = os.Getenv("ADMIN_APP_PASSWORD")
+	}
+	if from == "" || pass == "" {
+		return nil // silently skip if not configured
+	}
+	subject := fmt.Sprintf("[Ticpin] New Sale: %s", eventName)
+	body := fmt.Sprintf(`
+<html><body style="font-family:sans-serif;color:#222;">
+  <h2 style="color:#5331EA;">🎟 New Booking Received</h2>
+  <table style="border-collapse:collapse;width:100%%;max-width:480px;">
+    <tr><td style="padding:8px 0;color:#686868;">Event</td><td style="padding:8px 0;font-weight:600;">%s</td></tr>
+    <tr><td style="padding:8px 0;color:#686868;">Customer Email</td><td style="padding:8px 0;">%s</td></tr>
+    <tr><td style="padding:8px 0;color:#686868;">Amount Paid</td><td style="padding:8px 0;font-weight:600;">₹%.2f</td></tr>
+    <tr><td style="padding:8px 0;color:#686868;">Booking ID</td><td style="padding:8px 0;font-family:monospace;">#%s</td></tr>
+  </table>
+  <p style="color:#AEAEAE;font-size:12px;margin-top:24px;">This is an automated sale notification from Ticpin.</p>
+</body></html>`, eventName, customerEmail, grandTotal, bookingID)
+	return sendOTP(from, pass, toEmail, subject, body)
+}

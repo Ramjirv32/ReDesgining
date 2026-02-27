@@ -10,22 +10,76 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func CreateCoupon(c *fiber.Ctx) error {
-	var coupon models.Coupon
-	if err := c.BodyParser(&coupon); err != nil {
+	var input struct {
+		Code          string   `json:"code"`
+		Description   string   `json:"description"`
+		Category      string   `json:"category"`
+		DiscountType  string   `json:"discount_type"`
+		DiscountValue float64  `json:"discount_value"`
+		UserIDs       []string `json:"user_ids"`
+		ValidFrom     string   `json:"valid_from"`
+		ValidUntil    string   `json:"valid_until"`
+		MaxUses       int      `json:"max_uses"`
+	}
+	if err := c.BodyParser(&input); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request body: " + err.Error()})
 	}
-	if coupon.Code == "" {
+	if input.Code == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "code is required"})
 	}
-	if coupon.DiscountType != "percent" && coupon.DiscountType != "flat" {
+	if input.Category != "event" && input.Category != "play" && input.Category != "dining" {
+		return c.Status(400).JSON(fiber.Map{"error": "category must be 'event', 'play', or 'dining'"})
+	}
+	if input.DiscountType != "percent" && input.DiscountType != "flat" {
 		return c.Status(400).JSON(fiber.Map{"error": "discount_type must be 'percent' or 'flat'"})
 	}
-	if coupon.DiscountValue <= 0 {
+	if input.DiscountValue <= 0 {
 		return c.Status(400).JSON(fiber.Map{"error": "discount_value must be > 0"})
 	}
+
+	var userObjIDs []primitive.ObjectID
+	for _, sid := range input.UserIDs {
+		if sid == "" {
+			continue
+		}
+		oid, err := primitive.ObjectIDFromHex(sid)
+		if err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": "invalid user_id: " + sid})
+		}
+		userObjIDs = append(userObjIDs, oid)
+	}
+
+	var validFrom, validUntil time.Time
+	var err error
+	if input.ValidFrom != "" {
+		validFrom, err = time.Parse(time.RFC3339, input.ValidFrom)
+		if err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": "invalid valid_from date: " + err.Error()})
+		}
+	}
+	if input.ValidUntil != "" {
+		validUntil, err = time.Parse(time.RFC3339, input.ValidUntil)
+		if err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": "invalid valid_until date: " + err.Error()})
+		}
+	}
+
+	coupon := models.Coupon{
+		Code:          input.Code,
+		Category:      input.Category,
+		DiscountType:  input.DiscountType,
+		DiscountValue: input.DiscountValue,
+		UserIDs:       userObjIDs,
+		ValidFrom:     validFrom,
+		ValidUntil:    validUntil,
+		MaxUses:       input.MaxUses,
+		IsActive:      true,
+	}
+
 	if err := couponsvc.Create(&coupon); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -40,7 +94,19 @@ func ListCoupons(c *fiber.Ctx) error {
 	return c.JSON(coupons)
 }
 
-// ListUsers returns all users for the admin coupon user-selector dropdown.
+func GetCouponsByCategory(c *fiber.Ctx) error {
+	category := c.Params("category")
+	if category != "event" && category != "play" && category != "dining" {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid category"})
+	}
+	userID := c.Query("user_id")
+	coupons, err := couponsvc.GetByCategory(category, userID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(coupons)
+}
+
 func ListUsers(c *fiber.Ctx) error {
 	col := config.GetDB().Collection("users")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -62,11 +128,12 @@ func ValidateCoupon(c *fiber.Ctx) error {
 		Code        string  `json:"code"`
 		EventID     string  `json:"event_id"`
 		OrderAmount float64 `json:"order_amount"`
+		UserID      string  `json:"user_id"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
 	}
-	result, err := couponsvc.Validate(req.Code, req.EventID, req.OrderAmount)
+	result, err := couponsvc.Validate(req.Code, req.EventID, req.OrderAmount, req.UserID)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}

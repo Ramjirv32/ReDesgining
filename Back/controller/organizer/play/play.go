@@ -153,7 +153,7 @@ func PlaySetup(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "setup saved", "status": "pending"})
 }
 
-// ResendOTP re-sends an OTP without requiring the password.
+
 func ResendOTP(c *fiber.Ctx) error {
 	var req struct {
 		Email string `json:"email"`

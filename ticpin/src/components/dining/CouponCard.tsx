@@ -3,9 +3,10 @@
 interface CouponCardProps {
     discount: string;
     code: string;
+    image?: string;
 }
 
-export default function CouponCard({ discount, code }: CouponCardProps) {
+export default function CouponCard({ discount, code, image }: CouponCardProps) {
     return (
         <div className="relative w-[340px] h-[155.4px] flex-shrink-0 cursor-pointer group">
             {/* SVG Background */}
@@ -22,22 +23,33 @@ export default function CouponCard({ discount, code }: CouponCardProps) {
             </div>
 
             {/* Content Container */}
-            <div className="relative z-10 w-full h-full flex">
+            <div className="relative z-10 w-full h-full flex overflow-hidden rounded-[20px]">
                 {/* Left Part */}
                 <div className="w-[34%] flex flex-col items-center justify-center p-2">
-                    <span className="text-[16px] font-black text-white leading-tight text-center uppercase tracking-tighter">
+                    <span className="text-[14px] md:text-[16px] font-black text-white leading-tight text-center uppercase tracking-tighter">
                         FLAT<br />{discount} OFF
                     </span>
                 </div>
 
                 {/* Divider Line */}
                 <div className="flex items-center justify-center">
-                    <div className="w-[1.2px] h-[80px] bg-white opacity-80"></div>
+                    <div className="w-[1.2px] h-[80px] bg-white opacity-40"></div>
                 </div>
 
                 {/* Right Part */}
-                <div className="w-[66%] flex flex-col justify-center p-4 pl-6">
-                    <span className="text-[24px] font-bold text-white tracking-wide uppercase truncate">{code}</span>
+                <div className="w-[66%] relative flex flex-col justify-center p-4 pl-6 overflow-hidden">
+                    {image ? (
+                        <div className="absolute inset-0 w-full h-full p-2">
+                            <div className="relative w-full h-full rounded-[15px] overflow-hidden">
+                                <img src={image} alt={code} className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/20 flex flex-col justify-end p-2">
+                                    <span className="text-[18px] font-bold text-white truncate drop-shadow-lg">{code}</span>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <span className="text-[20px] md:text-[24px] font-bold text-white tracking-wide uppercase truncate">{code}</span>
+                    )}
                 </div>
             </div>
         </div>

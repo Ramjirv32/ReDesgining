@@ -5,6 +5,7 @@ import { ChevronRight, Trash2, X, Tag, CheckCircle2, ChevronDown } from 'lucide-
 import { useState, useEffect } from 'react';
 import { bookingApi, OfferItem } from '@/lib/api/booking';
 import Link from 'next/link';
+import { useUserSession } from '@/lib/auth/user';
 
 interface CartData {
     eventId: string;
@@ -24,10 +25,11 @@ export default function ReviewBookingPage() {
     const router = useRouter();
     const params = useParams();
     const id = params?.id as string;
+    const session = useUserSession();
 
     const [cart, setCart] = useState<CartData | null>(null);
 
-    // Offers
+
     const [offers, setOffers] = useState<OfferItem[]>([]);
     const [appliedOffer, setAppliedOffer] = useState<OfferItem | null>(null);
     const [offerDiscount, setOfferDiscount] = useState(0);
@@ -39,6 +41,7 @@ export default function ReviewBookingPage() {
     const [appliedCoupon, setAppliedCoupon] = useState('');
     const [couponDiscount, setCouponDiscount] = useState(0);
     const [couponLoading, setCouponLoading] = useState(false);
+    const [availableCoupons, setAvailableCoupons] = useState<any[]>([]);
 
     // Inline UI state
     const [expandedSection, setExpandedSection] = useState<'none' | 'offers' | 'coupons'>('none');
@@ -47,8 +50,29 @@ export default function ReviewBookingPage() {
     const [email, setEmail] = useState('');
     const [acceptedTerms, setAcceptedTerms] = useState(false);
 
+    // Billing details
+    const [billing, setBilling] = useState({
+        name: '',
+        phone: '',
+        nationality: 'Indian',
+        address: '',
+        city: '',
+        state: '',
+        pincode: '',
+    });
+
+    // All required billing fields completed
+    const billingComplete =
+        billing.name.trim() !== '' &&
+        billing.phone.trim().length >= 10 &&
+        billing.nationality.trim() !== '' &&
+        billing.address.trim() !== '' &&
+        billing.city.trim() !== '' &&
+        billing.pincode.trim().length >= 6 &&
+        acceptedTerms;
+
     // Flow state
-    const [step, setStep] = useState<'review' | 'confirm' | 'success'>('review');
+    const [step, setStep] = useState<'review' | 'billing' | 'success'>('review');
     const [bookingLoading, setBookingLoading] = useState(false);
     const [bookingError, setBookingError] = useState('');
     const [bookingId, setBookingId] = useState('');
@@ -75,8 +99,15 @@ export default function ReviewBookingPage() {
             }).catch(() => {
                 setOffers([]);
             });
+
+            // Fetch Coupons — pass user ID so user-specific coupons are included
+            bookingApi.getCouponsByCategory(cart.type, session?.id ?? undefined).then(res => {
+                setAvailableCoupons(res || []);
+            }).catch(() => {
+                setAvailableCoupons([]);
+            });
         }
-    }, [id, cart?.type]);
+    }, [id, cart?.type, session?.id]);
 
     const orderAmount = cart?.totalPrice ?? 0;
     const bookingFee = Math.round(orderAmount * 0.1);
@@ -86,6 +117,18 @@ export default function ReviewBookingPage() {
     const removeTicket = (i: number) => {
         if (!cart) return;
         const newTickets = cart.tickets.filter((_, idx) => idx !== i);
+        const newTotal = newTickets.reduce((s, t) => s + t.price * t.quantity, 0);
+        const newCart = { ...cart, tickets: newTickets, totalPrice: newTotal };
+        setCart(newCart);
+        localStorage.setItem('ticpin_cart', JSON.stringify(newCart));
+        if (appliedOffer) applyOffer(appliedOffer, newTotal);
+        if (appliedCoupon) validateCoupon(couponInput, newTotal);
+    };
+
+    const updateTicketQuantity = (i: number, newQuantity: number) => {
+        if (!cart || newQuantity < 1) return;
+        const newTickets = [...cart.tickets];
+        newTickets[i] = { ...newTickets[i], quantity: newQuantity };
         const newTotal = newTickets.reduce((s, t) => s + t.price * t.quantity, 0);
         const newCart = { ...cart, tickets: newTickets, totalPrice: newTotal };
         setCart(newCart);
@@ -117,7 +160,7 @@ export default function ReviewBookingPage() {
         setCouponError('');
         setCouponSuccess('');
         try {
-            const result = await bookingApi.validateCoupon(c, id, amount);
+            const result = await bookingApi.validateCoupon(c, id, amount, session?.id);
             setCouponDiscount(Math.round(result.discount_amount));
             setAppliedCoupon(c.toUpperCase());
             setCouponSuccess(`✓ Coupon applied! You save ₹${Math.round(result.discount_amount)}`);
@@ -145,11 +188,17 @@ export default function ReviewBookingPage() {
             return;
         }
         setBookingError('');
-        setStep('confirm');
+        setStep('billing');
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handlePayNow = async () => {
+        if (!billing.name.trim()) { setBookingError('Please enter your full name'); return; }
+        if (!billing.phone.trim() || billing.phone.length < 10) { setBookingError('Please enter a valid phone number'); return; }
+        if (!billing.nationality.trim()) { setBookingError('Please select your nationality'); return; }
+        if (!billing.address.trim()) { setBookingError('Please enter your address'); return; }
+        if (!billing.city.trim()) { setBookingError('Please enter your city'); return; }
+        if (!billing.pincode.trim() || billing.pincode.length < 6) { setBookingError('Please enter a valid PIN code'); return; }
         if (!acceptedTerms) {
             setBookingError('Please accept the terms and conditions');
             return;
@@ -171,6 +220,7 @@ export default function ReviewBookingPage() {
                     booking_fee: bookingFee,
                     coupon_code: appliedCoupon || undefined,
                     offer_id: appliedOffer?.id || undefined,
+                    user_id: session?.id || undefined,
                 });
             } else if (cart.type === 'play') {
                 result = await bookingApi.createPlayBooking({
@@ -188,6 +238,7 @@ export default function ReviewBookingPage() {
                     booking_fee: bookingFee,
                     coupon_code: appliedCoupon || undefined,
                     offer_id: appliedOffer?.id || undefined,
+                    user_id: session?.id || undefined,
                 });
             } else {
                 result = await bookingApi.createEventBooking({
@@ -203,6 +254,7 @@ export default function ReviewBookingPage() {
                     booking_fee: bookingFee,
                     coupon_code: appliedCoupon || undefined,
                     offer_id: appliedOffer?.id || undefined,
+                    user_id: session?.id || undefined,
                 });
             }
             setBookingId(result.booking_id);
@@ -258,7 +310,7 @@ export default function ReviewBookingPage() {
                     <img src="/ticpin-logo-black.png" alt="TICPIN" className="h-[20px] md:h-[25px] w-auto" />
                 </div>
                 <h1 className="text-[18px] md:text-[24px] font-semibold text-black" style={{ fontFamily: 'var(--font-anek-latin)' }}>
-                    {step === 'confirm' ? 'Confirm your booking' : 'Review your booking'}
+                    {step === 'billing' ? 'Billing Details' : 'Review your booking'}
                 </h1>
                 <div className="w-6 h-6 md:w-[25px]" />
             </header>
@@ -271,9 +323,7 @@ export default function ReviewBookingPage() {
                             <h2 style={{ color: 'black', fontSize: '30px', fontFamily: 'var(--font-anek-latin)', fontWeight: 600 }}>
                                 Order Summary
                             </h2>
-                            <div className="w-7 h-7 rounded-full border-4 border-[#1DB954] flex items-center justify-center">
-                                <div className="w-3 h-3 rounded-full bg-[#ffffff]" />
-                            </div>
+                            <div style={{ width: 47, height: 47, borderRadius: '50%', border: '4px solid #1DB954', flexShrink: 0 }} />
                         </div>
 
                         <div className="border-t border-[#AEAEAE] pt-6 space-y-6 mx-[-24px] md:mx-[-32px] px-6 md:px-8">
@@ -306,9 +356,30 @@ export default function ReviewBookingPage() {
                                             )}
 
                                             <div className="flex items-center gap-3 mt-2">
-                                                <p className="text-[14px] text-black font-semibold">
-                                                    {ticket.quantity} <span className="text-[12px] uppercase font-normal">{cart.type === 'dining' ? 'reservation' : 'ticket'}{ticket.quantity > 1 ? 's' : ''}</span>
-                                                </p>
+                                                {step === 'review' ? (
+                                                    <div className="flex items-center gap-2 border border-[#AEAEAE] rounded-[6px] px-2 py-1">
+                                                        <button
+                                                            onClick={() => updateTicketQuantity(i, ticket.quantity - 1)}
+                                                            disabled={ticket.quantity <= 1}
+                                                            className="w-[24px] h-[24px] flex items-center justify-center text-[16px] font-bold text-black hover:text-[#5331EA] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                                        >
+                                                            −
+                                                        </button>
+                                                        <span className="w-[30px] text-center text-[14px] font-semibold text-black">
+                                                            {ticket.quantity}
+                                                        </span>
+                                                        <button
+                                                            onClick={() => updateTicketQuantity(i, ticket.quantity + 1)}
+                                                            className="w-[24px] h-[24px] flex items-center justify-center text-[16px] font-bold text-black hover:text-[#5331EA] transition-colors"
+                                                        >
+                                                            +
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-[14px] text-black font-semibold">
+                                                        {ticket.quantity} <span className="text-[12px] uppercase font-normal">{cart.type === 'dining' ? 'reservation' : 'ticket'}{ticket.quantity > 1 ? 's' : ''}</span>
+                                                    </p>
+                                                )}
                                                 <span className="text-[#AEAEAE]">×</span>
                                                 <p className="text-[14px] text-[#686868]">₹{ticket.price.toLocaleString('en-IN')}</p>
                                             </div>
@@ -424,7 +495,10 @@ export default function ReviewBookingPage() {
                                                     <img src="/events/cupon.svg" alt="Coupons" className="w-[40px] h-auto" />
                                                 </div>
                                                 <span style={{ color: 'black', fontSize: '20px', fontFamily: 'var(--font-anek-latin)', fontWeight: 500 }}>
-                                                    {appliedCoupon ? `Code applied: ${appliedCoupon}` : 'View all coupon codes'}
+                                                    {appliedCoupon ? `Code applied: ${appliedCoupon}` : 'View coupon codes'}
+                                                    {availableCoupons.length > 0 && !appliedCoupon && (
+                                                        <span className="ml-2 text-[13px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-semibold">{availableCoupons.length} available</span>
+                                                    )}
                                                 </span>
                                             </div>
                                             {expandedSection === 'coupons' ? <ChevronDown size={18} className="text-black" /> : <ChevronRight size={18} className="text-black" />}
@@ -444,16 +518,58 @@ export default function ReviewBookingPage() {
                                                     <button
                                                         onClick={() => validateCoupon()}
                                                         disabled={couponLoading || !couponInput.trim()}
-                                                        className="px-6 h-[45px] bg-black text-white rounded-[8px] text-[13px] font-bold uppercase disabled:opacity-40 transition-all active:scale-[0.98]"
+                                                        className="px-6 h-[45px] bg-[#AC9BF7] text-white rounded-[8px] text-[13px] font-bold uppercase disabled:opacity-40 transition-all active:scale-[0.98]"
                                                     >
-                                                        {couponLoading ? '...' : 'Apply'}
+                                                        {couponLoading ? '...' : 'APPLY'}
                                                     </button>
                                                 </div>
                                                 {couponError && <p className="text-red-500 text-[12px] font-medium">{couponError}</p>}
                                                 {couponSuccess && <p className="text-green-600 text-[12px] font-bold">{couponSuccess}</p>}
+
+                                                {/* Available Coupons List — backend already filtered for this user */}
+                                                {availableCoupons.length > 0 && !appliedCoupon && (
+                                                    <div className="space-y-2 mt-4">
+                                                        {availableCoupons.map((c, i) => {
+                                                            const expiry = new Date(c.valid_until);
+                                                            const now = new Date();
+                                                            const hoursLeft = (expiry.getTime() - now.getTime()) / 36e5;
+                                                            const isExpiringSoon = hoursLeft <= 24;
+                                                            const expiryLabel = expiry.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                                                            const usesLeft = c.max_uses > 0 ? c.max_uses - (c.used_count ?? 0) : null;
+                                                            return (
+                                                                <div key={i} className={`flex items-center justify-between p-3 border rounded-[10px] bg-white ${isExpiringSoon ? 'border-orange-300' : 'border-[#F0F0F0]'}`}>
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+                                                                            <Tag size={14} className={isExpiringSoon ? 'text-orange-400' : 'text-[#AEAEAE]'} />
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-[14px] font-bold text-black uppercase">{c.code}</p>
+                                                                            <p className="text-[11px] text-[#686868] uppercase font-medium">
+                                                                                {c.discount_type === 'percent' ? `${c.discount_value}% OFF` : `₹${c.discount_value} OFF`}
+                                                                            </p>
+                                                                            <p className={`text-[10px] font-medium mt-0.5 ${isExpiringSoon ? 'text-orange-500' : 'text-[#AEAEAE]'}`}>
+                                                                                {isExpiringSoon ? `⚠ Expires today (${expiryLabel})` : `Valid till ${expiryLabel}`}
+                                                                                {usesLeft !== null && ` · ${usesLeft} use${usesLeft !== 1 ? 's' : ''} left`}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <button
+                                                                        onClick={() => validateCoupon(c.code)}
+                                                                        className="px-4 py-1.5 bg-[#AC9BF7] text-white rounded-[8px] text-[11px] font-bold uppercase transition-all"
+                                                                    >
+                                                                        Apply
+                                                                    </button>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+
                                                 <div className="bg-[#f9f9f9] p-3 rounded-[8px]">
                                                     <p className="text-[12px] text-[#686868] font-medium leading-tight">
-                                                        Note: Coupon codes are generic and provided by event partners. Only one coupon can be applied per order.
+                                                        {session?.id
+                                                            ? 'Showing coupons available for your account. Only one coupon can be applied per order.'
+                                                            : 'Login to see personalised coupon codes. Only one coupon can be applied per order.'}
                                                     </p>
                                                 </div>
                                             </div>
@@ -526,75 +642,183 @@ export default function ReviewBookingPage() {
                     </div>
                 </div>
 
-                {/* ── CONFIRM CARD ───────────────────── */}
-                {step === 'confirm' && (
+                {/* ── BILLING FORM ───────────────────── */}
+                {step === 'billing' && (
                     <div className="w-full bg-white border border-white rounded-[20px] shadow-sm overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
                         <div className="p-6 md:p-8">
+
+                            {/* Mini order summary */}
                             <div className="flex justify-between items-center mb-6 mt-[-10px]">
-                                <h2 style={{ color: 'black', fontSize: '30px', fontFamily: 'var(--font-anek-latin)', fontWeight: 600 }}>
-                                    Billing Details
-                                </h2>
-                                <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
-                                    <div className="w-4 h-2 border-white border-l-2 border-b-2 -rotate-45 mb-1" />
+                                <div>
+                                    <h2 style={{ color: 'black', fontSize: '30px', fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)', fontWeight: 600 }}>Billing Details</h2>
+                                    <p style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }} className="text-[14px] text-[#686868] mt-1">{cart?.eventName} &nbsp;·&nbsp; ₹{grandTotal.toLocaleString('en-IN')} total</p>
+                                </div>
+                                {/* Check-circle: purple outline → solid green #0AC655 with white tick when all fields done */}
+                                <div
+                                    style={{
+                                        width: 47,
+                                        height: 47,
+                                        borderRadius: '50%',
+                                        flexShrink: 0,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        transition: 'background 0.25s, border-color 0.25s',
+                                        background: billingComplete ? '#0AC655' : 'transparent',
+                                        border: billingComplete ? 'none' : '4px solid #5331EA',
+                                    }}
+                                >
+                                    {billingComplete ? (
+                                        <svg
+                                            style={{ width: '83.33%', height: '83.33%' }}
+                                            viewBox="0 0 39 39"
+                                            fill="none"
+                                        >
+                                            <path
+                                                d="M7 20l9 9 16-16"
+                                                stroke="white"
+                                                strokeWidth="3.5"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            />
+                                        </svg>
+                                    ) : (
+                                        <div className="w-3 h-3 rounded-full bg-white" />
+                                    )}
                                 </div>
                             </div>
 
-                            <div className="border-t border-[#AEAEAE] pt-6 space-y-5 mx-[-24px] md:mx-[-32px] px-6 md:px-8 mt-[-15px]">
-                                <p className="text-[13px] md:text-[15px] font-medium text-[#686868]">
-                                    Please confirm your details below:
-                                </p>
+                            <div className="border-t border-[#AEAEAE] pt-6 space-y-6 mx-[-24px] md:mx-[-32px] px-6 md:px-8 mt-[-15px]">
 
-                                <div className="bg-[#f8f8f8] rounded-[12px] p-6 space-y-4">
-                                    <div className="flex justify-between pb-2 border-b border-[#eee]">
-                                        <span className="text-[15px] text-[#686868] font-medium">Type</span>
-                                        <span className="text-[15px] text-black font-semibold capitalize">{cart?.type}</span>
+                                {/* Name + Phone */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div className="space-y-2">
+                                        <label className="text-[15px] font-medium text-[#686868]" style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}>Full Name <span className="text-red-500">*</span></label>
+                                        <input
+                                            type="text"
+                                            value={billing.name}
+                                            onChange={e => { setBilling(b => ({ ...b, name: e.target.value })); setBookingError(''); }}
+                                            placeholder="Enter your full name"
+                                            className="w-full h-[55px] border border-[#AEAEAE] rounded-[10px] px-5 focus:outline-none focus:border-black text-black font-medium text-[16px] placeholder:text-[#AEAEAE]"
+                                            style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}
+                                        />
                                     </div>
-                                    <div className="flex justify-between pb-2 border-b border-[#eee]">
-                                        <span className="text-[15px] text-[#686868] font-medium">Venue</span>
-                                        <span className="text-[15px] text-black font-semibold">{cart?.eventName}</span>
-                                    </div>
-                                    <div className="flex justify-between pb-2 border-b border-[#eee]">
-                                        <span className="text-[15px] text-[#686868] font-medium">Email</span>
-                                        <span className="text-[15px] text-black font-semibold">{email}</span>
-                                    </div>
-                                    {cart?.date && (
-                                        <div className="flex justify-between pb-2 border-b border-[#eee]">
-                                            <span className="text-[15px] text-[#686868] font-medium">Date</span>
-                                            <span className="text-[15px] text-black font-semibold">{cart.date} Feb</span>
-                                        </div>
-                                    )}
-                                    {(cart?.timeSlot || cart?.slot) && (
-                                        <div className="flex justify-between pb-2 border-b border-[#eee]">
-                                            <span className="text-[15px] text-[#686868] font-medium">Time</span>
-                                            <span className="text-[15px] text-black font-semibold">{cart.timeSlot || cart.slot}</span>
-                                        </div>
-                                    )}
-                                    {appliedOffer && (
-                                        <div className="flex justify-between pb-2 border-b border-[#eee]">
-                                            <span className="text-[15px] text-[#686868] font-medium">Offer</span>
-                                            <span className="text-[15px] text-green-600 font-semibold">{appliedOffer.title} (-₹{offerDiscount})</span>
-                                        </div>
-                                    )}
-                                    <div className="pt-2 flex justify-between items-center">
-                                        <span className="text-[20px] text-black font-bold uppercase tracking-tight" style={{ fontFamily: 'Anek Tamil Condensed' }}>Grand Total</span>
-                                        <span className="text-[24px] text-black font-bold">₹{grandTotal.toLocaleString('en-IN')}</span>
+                                    <div className="space-y-2">
+                                        <label className="text-[15px] font-medium text-[#686868]" style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}>Phone Number <span className="text-red-500">*</span></label>
+                                        <input
+                                            type="tel"
+                                            value={billing.phone}
+                                            onChange={e => { setBilling(b => ({ ...b, phone: e.target.value.replace(/\D/g, '') })); setBookingError(''); }}
+                                            placeholder="10-digit mobile number"
+                                            maxLength={10}
+                                            className="w-full h-[55px] border border-[#AEAEAE] rounded-[10px] px-5 focus:outline-none focus:border-black text-black font-medium text-[16px] placeholder:text-[#AEAEAE]"
+                                            style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}
+                                        />
                                     </div>
                                 </div>
 
-                                <div className="flex items-start gap-3">
+                                {/* Email (read-only) + Nationality */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div className="space-y-2">
+                                        <label className="text-[15px] font-medium text-[#686868]" style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}>Email</label>
+                                        <div className="w-full h-[55px] border border-[#AEAEAE] rounded-[10px] px-5 flex items-center bg-[#f8f8f8]">
+                                            <span className="text-[16px] font-medium text-black" style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}>{email}</span>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[15px] font-medium text-[#686868]" style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}>Nationality <span className="text-red-500">*</span></label>
+                                        <select
+                                            value={billing.nationality}
+                                            onChange={e => { setBilling(b => ({ ...b, nationality: e.target.value })); setBookingError(''); }}
+                                            className="w-full h-[55px] border border-[#AEAEAE] rounded-[10px] px-5 focus:outline-none focus:border-black text-black font-medium text-[16px] bg-white appearance-none"
+                                            style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}
+                                        >
+                                            <option value="">Select nationality</option>
+                                            <option value="Indian">Indian</option>
+                                            <option value="American">American</option>
+                                            <option value="British">British</option>
+                                            <option value="Australian">Australian</option>
+                                            <option value="Canadian">Canadian</option>
+                                            <option value="Chinese">Chinese</option>
+                                            <option value="French">French</option>
+                                            <option value="German">German</option>
+                                            <option value="Japanese">Japanese</option>
+                                            <option value="Korean">Korean</option>
+                                            <option value="Russian">Russian</option>
+                                            <option value="Singaporean">Singaporean</option>
+                                            <option value="South African">South African</option>
+                                            <option value="UAE">UAE</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* Address */}
+                                <div className="space-y-2">
+                                    <label className="text-[15px] font-medium text-[#686868]" style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}>Address <span className="text-red-500">*</span></label>
+                                    <input
+                                        type="text"
+                                        value={billing.address}
+                                        onChange={e => { setBilling(b => ({ ...b, address: e.target.value })); setBookingError(''); }}
+                                        placeholder="House / Flat no., Street, Area"
+                                        className="w-full h-[55px] border border-[#AEAEAE] rounded-[10px] px-5 focus:outline-none focus:border-black text-black font-medium text-[16px] placeholder:text-[#AEAEAE]"
+                                        style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}
+                                    />
+                                </div>
+
+                                {/* City + State + PIN */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                    <div className="space-y-2">
+                                        <label className="text-[15px] font-medium text-[#686868]" style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}>City <span className="text-red-500">*</span></label>
+                                        <input
+                                            type="text"
+                                            value={billing.city}
+                                            onChange={e => { setBilling(b => ({ ...b, city: e.target.value })); setBookingError(''); }}
+                                            placeholder="City"
+                                            className="w-full h-[55px] border border-[#AEAEAE] rounded-[10px] px-5 focus:outline-none focus:border-black text-black font-medium text-[16px] placeholder:text-[#AEAEAE]"
+                                            style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[15px] font-medium text-[#686868]" style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}>State</label>
+                                        <input
+                                            type="text"
+                                            value={billing.state}
+                                            onChange={e => setBilling(b => ({ ...b, state: e.target.value }))}
+                                            placeholder="State"
+                                            className="w-full h-[55px] border border-[#AEAEAE] rounded-[10px] px-5 focus:outline-none focus:border-black text-black font-medium text-[16px] placeholder:text-[#AEAEAE]"
+                                            style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[15px] font-medium text-[#686868]" style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}>PIN Code <span className="text-red-500">*</span></label>
+                                        <input
+                                            type="text"
+                                            value={billing.pincode}
+                                            onChange={e => { setBilling(b => ({ ...b, pincode: e.target.value.replace(/\D/g, '') })); setBookingError(''); }}
+                                            placeholder="6-digit PIN"
+                                            maxLength={6}
+                                            className="w-full h-[55px] border border-[#AEAEAE] rounded-[10px] px-5 focus:outline-none focus:border-black text-black font-medium text-[16px] placeholder:text-[#AEAEAE]"
+                                            style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Terms */}
+                                <div className="flex items-start gap-3 pt-2">
                                     <div
                                         onClick={() => setAcceptedTerms(!acceptedTerms)}
                                         className={`flex-shrink-0 w-5 h-5 mt-0.5 rounded-[4px] border flex items-center justify-center cursor-pointer transition-colors ${acceptedTerms ? 'bg-black border-black' : 'border-[#AEAEAE]'}`}
                                     >
                                         {acceptedTerms && <div className="w-2 h-1 border-white border-b-2 border-r-2 rotate-45 mb-1" />}
                                     </div>
-                                    <span className="text-[13px] md:text-[14px] font-medium text-[#686868]">
-                                        I have read and accepted the <Link href="/terms-and-conditions" className="text-[#5331EA] hover:underline font-semibold cursor-pointer">terms and conditions</Link>
+                                    <span className="text-[13px] md:text-[14px] font-medium text-[#686868]" style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}>
+                                        I have read and accepted the <Link href="/terms" className="text-[#5331EA] hover:underline font-semibold">Terms &amp; Conditions</Link> and <Link href="/refund" className="text-[#5331EA] hover:underline font-semibold">Refund Policy</Link>
                                     </span>
                                 </div>
 
                                 {bookingError && (
-                                    <p className="text-red-500 text-[14px] font-medium">{bookingError}</p>
+                                    <p className="text-red-500 text-[14px] font-medium" style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}>{bookingError}</p>
                                 )}
 
                                 <div className="grid grid-cols-3 gap-4">
@@ -603,7 +827,7 @@ export default function ReviewBookingPage() {
                                         className="col-span-1 h-[55px] border border-[#AEAEAE] text-black rounded-[10px] font-bold text-[16px] hover:bg-[#f5f5f5] transition-colors uppercase"
                                         style={{ fontFamily: 'Anek Tamil Condensed' }}
                                     >
-                                        Edit
+                                        Back
                                     </button>
                                     <button
                                         onClick={handlePayNow}
@@ -611,9 +835,10 @@ export default function ReviewBookingPage() {
                                         className="col-span-2 h-[55px] bg-black text-white rounded-[10px] font-bold text-[22px] uppercase hover:bg-zinc-800 transition-colors disabled:opacity-50 tracking-wider shadow-lg shadow-black/10"
                                         style={{ fontFamily: 'Anek Tamil Condensed' }}
                                     >
-                                        {bookingLoading ? 'Processing...' : 'CONFIRM'}
+                                        {bookingLoading ? 'Processing...' : 'PAY NOW'}
                                     </button>
                                 </div>
+
                             </div>
                         </div>
                     </div>

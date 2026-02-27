@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"ticpin-backend/config"
+	"ticpin-backend/models"
 	diningservice "ticpin-backend/services/dining"
 	eventservice "ticpin-backend/services/event"
 	playservice "ticpin-backend/services/play"
@@ -13,8 +14,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
-
-// ── helper ────────────────────────────────────────────────────────────────
 
 func deleteDoc(collection string, id string) error {
 	objID, err := primitive.ObjectIDFromHex(id)
@@ -27,8 +26,6 @@ func deleteDoc(collection string, id string) error {
 	_, err = col.DeleteOne(ctx, bson.M{"_id": objID})
 	return err
 }
-
-// ── Events ────────────────────────────────────────────────────────────────
 
 func ListAllEvents(c *fiber.Ctx) error {
 	events, err := eventservice.GetAll("", "")
@@ -63,7 +60,28 @@ func UpdateEventStatus(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "event status updated", "status": body.Status})
 }
 
-// ── Dining ────────────────────────────────────────────────────────────────
+func UpdateEvent(c *fiber.Ctx) error {
+	id := c.Params("id")
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid id"})
+	}
+	var update models.Event
+	if err := c.BodyParser(&update); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid body"})
+	}
+	update.UpdatedAt = time.Now()
+	// Prevent overwriting ID or OrganizerID if they are zero/empty in the update body
+	// Usually admin won't send them, but we should be careful.
+	col := config.GetDB().Collection("events")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_, err = col.UpdateOne(ctx, bson.M{"_id": objID}, bson.M{"$set": update})
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"message": "event updated"})
+}
 
 func ListAllDining(c *fiber.Ctx) error {
 	dinings, err := diningservice.GetAll()
@@ -98,7 +116,26 @@ func UpdateDiningStatus(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "dining status updated", "status": body.Status})
 }
 
-// ── Play ──────────────────────────────────────────────────────────────────
+func UpdateDining(c *fiber.Ctx) error {
+	id := c.Params("id")
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid id"})
+	}
+	var update models.Dining
+	if err := c.BodyParser(&update); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid body"})
+	}
+	update.UpdatedAt = time.Now()
+	col := config.GetDB().Collection("dinings")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_, err = col.UpdateOne(ctx, bson.M{"_id": objID}, bson.M{"$set": update})
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"message": "dining updated"})
+}
 
 func ListAllPlay(c *fiber.Ctx) error {
 	plays, err := playservice.GetAll("")
@@ -131,6 +168,27 @@ func UpdatePlayStatus(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.JSON(fiber.Map{"message": "play status updated", "status": body.Status})
+}
+
+func UpdatePlay(c *fiber.Ctx) error {
+	id := c.Params("id")
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid id"})
+	}
+	var update models.Play
+	if err := c.BodyParser(&update); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid body"})
+	}
+	update.UpdatedAt = time.Now()
+	col := config.GetDB().Collection("plays")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_, err = col.UpdateOne(ctx, bson.M{"_id": objID}, bson.M{"$set": update})
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"message": "play updated"})
 }
 
 func DeleteEvent(c *fiber.Ctx) error {

@@ -32,6 +32,7 @@ export default function TicketSelectionPage() {
     const [loading, setLoading] = useState(true);
     const [counts, setCounts] = useState<Record<number, number>>({});
     const [bookedMap, setBookedMap] = useState<Record<string, number>>({});
+    const [coupons, setCoupons] = useState<any[]>([]);
 
     useEffect(() => {
         if (!id) return;
@@ -44,6 +45,13 @@ export default function TicketSelectionPage() {
             setLoading(false);
         }).catch(() => setLoading(false));
     }, [id]);
+
+    useEffect(() => {
+        fetch(`/backend/api/coupons/event`)
+            .then(r => r.json())
+            .then(data => setCoupons(Array.isArray(data) ? data : []))
+            .catch(() => setCoupons([]));
+    }, []);
 
     const categories: TicketCategory[] = event?.ticket_categories && event.ticket_categories.length > 0
         ? event.ticket_categories
@@ -100,7 +108,6 @@ export default function TicketSelectionPage() {
                 <div className="w-6 h-6" /> {/* spacer */}
             </header>
 
-            {/* Main Content */}
             <main className="w-full max-w-[1400px] mx-auto px-6 md:px-12 py-8 space-y-6 flex-grow">
                 <h2 className="text-black" style={{ fontSize: '32px', fontFamily: "'Anek Tamil Condensed', sans-serif", fontWeight: 400, lineHeight: '50px' }}>
                     CHOOSE TICKETS

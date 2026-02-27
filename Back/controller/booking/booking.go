@@ -1,11 +1,15 @@
 package bookingctrl
 
 import (
+	"context"
+	"ticpin-backend/config"
 	"ticpin-backend/models"
 	bookingsvc "ticpin-backend/services/booking"
 	couponsvc "ticpin-backend/services/coupon"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -20,6 +24,7 @@ func CreateEventBooking(c *fiber.Ctx) error {
 		BookingFee  float64                `json:"booking_fee"`
 		CouponCode  string                 `json:"coupon_code"`
 		OfferID     string                 `json:"offer_id"`
+		UserID      string                 `json:"user_id"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request: " + err.Error()})
@@ -42,15 +47,16 @@ func CreateEventBooking(c *fiber.Ctx) error {
 	// Apply coupon discount if provided
 	var discountAmount float64
 	var appliedCouponCode string
+	var couponIDToIncrement primitive.ObjectID
+	var couponMaxUses int
 	if req.CouponCode != "" {
-		result, err := couponsvc.Validate(req.CouponCode, req.EventID, req.OrderAmount)
+		result, err := couponsvc.Validate(req.CouponCode, req.EventID, req.OrderAmount, req.UserID)
 		if err == nil {
 			discountAmount = result.DiscountAmount
 			appliedCouponCode = result.Coupon.Code
-			// Increment usage after booking succeeds (done below)
-			defer couponsvc.IncrementUsage(result.Coupon.ID)
+			couponIDToIncrement = result.Coupon.ID
+			couponMaxUses = result.Coupon.MaxUses
 		}
-		// If coupon is invalid, we don't fail the booking — just skip discount
 	}
 
 	// Parse optional offer ID
@@ -82,9 +88,32 @@ func CreateEventBooking(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
+	// Increment coupon usage only after the booking is confirmed in the DB
+	if !couponIDToIncrement.IsZero() {
+		_ = couponsvc.IncrementUsage(couponIDToIncrement, couponMaxUses)
+	}
+
+	// Send sale notification emails to organizer's sales_notifications (non-blocking)
+	bookingID := booking.ID.Hex()
+	bookingEventObjID := eventObjID
+	bookingUserEmail := req.UserEmail
+	bookingGrandTotal := grandTotal
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		var ev models.Event
+		if err := config.GetDB().Collection("events").FindOne(ctx, bson.M{"_id": bookingEventObjID}).Decode(&ev); err == nil {
+			for _, sc := range ev.SalesNotifications {
+				if sc.Email != "" {
+					_ = config.SendSaleNotification(sc.Email, booking.EventName, bookingUserEmail, bookingGrandTotal, bookingID)
+				}
+			}
+		}
+	}()
+
 	return c.Status(201).JSON(fiber.Map{
 		"message":         "booking confirmed",
-		"booking_id":      booking.ID.Hex(),
+		"booking_id":      bookingID,
 		"grand_total":     grandTotal,
 		"discount_amount": discountAmount,
 		"status":          "booked",
@@ -104,6 +133,7 @@ func CreateDiningBooking(c *fiber.Ctx) error {
 		BookingFee  float64 `json:"booking_fee"`
 		CouponCode  string  `json:"coupon_code"`
 		OfferID     string  `json:"offer_id"`
+		UserID      string  `json:"user_id"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request: " + err.Error()})
@@ -128,12 +158,15 @@ func CreateDiningBooking(c *fiber.Ctx) error {
 
 	var discountAmount float64
 	var appliedCouponCode string
+	var couponIDToIncrement primitive.ObjectID
+	var couponMaxUses int
 	if req.CouponCode != "" {
-		result, err := couponsvc.Validate(req.CouponCode, req.DiningID, req.OrderAmount)
+		result, err := couponsvc.Validate(req.CouponCode, req.DiningID, req.OrderAmount, req.UserID)
 		if err == nil {
 			discountAmount = result.DiscountAmount
 			appliedCouponCode = result.Coupon.Code
-			defer couponsvc.IncrementUsage(result.Coupon.ID)
+			couponIDToIncrement = result.Coupon.ID
+			couponMaxUses = result.Coupon.MaxUses
 		}
 	}
 
@@ -167,6 +200,11 @@ func CreateDiningBooking(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
+	// Increment coupon usage only after the booking is confirmed in the DB
+	if !couponIDToIncrement.IsZero() {
+		_ = couponsvc.IncrementUsage(couponIDToIncrement, couponMaxUses)
+	}
+
 	return c.Status(201).JSON(fiber.Map{
 		"message":         "dining booking confirmed",
 		"booking_id":      booking.ID.Hex(),
@@ -188,6 +226,7 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 		BookingFee  float64                `json:"booking_fee"`
 		CouponCode  string                 `json:"coupon_code"`
 		OfferID     string                 `json:"offer_id"`
+		UserID      string                 `json:"user_id"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request: " + err.Error()})
@@ -212,12 +251,15 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 
 	var discountAmount float64
 	var appliedCouponCode string
+	var couponIDToIncrement primitive.ObjectID
+	var couponMaxUses int
 	if req.CouponCode != "" {
-		result, err := couponsvc.Validate(req.CouponCode, req.PlayID, req.OrderAmount)
+		result, err := couponsvc.Validate(req.CouponCode, req.PlayID, req.OrderAmount, req.UserID)
 		if err == nil {
 			discountAmount = result.DiscountAmount
 			appliedCouponCode = result.Coupon.Code
-			defer couponsvc.IncrementUsage(result.Coupon.ID)
+			couponIDToIncrement = result.Coupon.ID
+			couponMaxUses = result.Coupon.MaxUses
 		}
 	}
 
@@ -249,6 +291,11 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 
 	if err := bookingsvc.CreatePlay(booking); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	// Increment coupon usage only after the booking is confirmed in the DB
+	if !couponIDToIncrement.IsZero() {
+		_ = couponsvc.IncrementUsage(couponIDToIncrement, couponMaxUses)
 	}
 
 	return c.Status(201).JSON(fiber.Map{

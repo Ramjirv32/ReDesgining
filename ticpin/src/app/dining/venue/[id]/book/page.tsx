@@ -24,6 +24,7 @@ const DiningBooking: React.FC = () => {
     const [selectedOffer, setSelectedOffer] = useState<'offers' | 'regular' | null>('offers');
     const [selectedDate, setSelectedDate] = useState<string>('27');
     const [guests, setGuests] = useState(2);
+    const [coupons, setCoupons] = useState<any[]>([]);
 
     useEffect(() => {
         if (!id) return;
@@ -35,6 +36,13 @@ const DiningBooking: React.FC = () => {
             })
             .catch(() => setLoading(false));
     }, [id]);
+
+    useEffect(() => {
+        fetch('/backend/api/coupons/dining')
+            .then(r => r.json())
+            .then(data => setCoupons(Array.isArray(data) ? data : []))
+            .catch(() => setCoupons([]));
+    }, []);
 
     const handleBooking = () => {
         if (!venue || !selectedSlot) {
@@ -252,6 +260,49 @@ const DiningBooking: React.FC = () => {
                     <span className="font-anek-condensed font-medium text-[40px] text-white uppercase transform scale-y-125">BOOK SLOTS</span>
                 </button>
             </div>
+
+            {/* Available Coupons Section */}
+            {coupons.length > 0 && (
+                <div className="w-full max-w-[1278px] mt-8 bg-white rounded-[20px] p-8 space-y-4 shadow-[0px_4px_24px_rgba(0,0,0,0.05)]">
+                    <h2 className="text-[24px] font-semibold text-black uppercase" style={{ fontFamily: 'var(--font-anek-latin)' }}>
+                        Available Coupons
+                    </h2>
+                    <div className="grid gap-4">
+                        {coupons.map((coupon: any, idx: number) => {
+                            const validUntil = new Date(coupon.valid_until);
+                            const month = validUntil.toLocaleString('en-US', { month: 'short' });
+                            const day = validUntil.getDate();
+                            
+                            return (
+                                <div key={idx} className="flex items-center gap-4 p-4 bg-gradient-to-r from-[#FFF8E7] to-white border border-[#FFD700] rounded-[10px]">
+                                    <div className="flex-grow">
+                                        <p className="text-[16px] font-semibold text-black uppercase" style={{ fontFamily: 'var(--font-anek-latin)' }}>
+                                            {coupon.code}
+                                        </p>
+                                        <p className="text-[13px] text-[#686868] font-medium">
+                                            {coupon.discount_type === 'percent' 
+                                                ? `${coupon.discount_value}% OFF` 
+                                                : `₹${coupon.discount_value} OFF`}
+                                        </p>
+                                        <p className="text-[12px] text-[#888] font-medium mt-1">
+                                            Valid until {month} {day}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            // TODO: Apply coupon logic
+                                            alert(`Coupon ${coupon.code} will be applied at checkout`);
+                                        }}
+                                        className="px-6 py-2 bg-[#FFD700] hover:bg-[#FFC700] text-black font-semibold text-[14px] rounded-[7px] transition-colors uppercase whitespace-nowrap"
+                                    >
+                                        APPLY
+                                    </button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

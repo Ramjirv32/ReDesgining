@@ -9,6 +9,7 @@ import (
 type Coupon struct {
 	ID            primitive.ObjectID   `bson:"_id,omitempty" json:"id"`
 	Code          string               `bson:"code" json:"code"`
+	Category      string               `bson:"category" json:"category"`
 	DiscountType  string               `bson:"discount_type" json:"discount_type"`
 	DiscountValue float64              `bson:"discount_value" json:"discount_value"`
 	UserIDs       []primitive.ObjectID `bson:"user_ids,omitempty" json:"user_ids,omitempty"`

@@ -6,6 +6,7 @@ import { adminApi, AdminListing, ListingStatus } from '@/lib/api/admin';
 import {
   CheckCircle, XCircle, Clock, ArrowLeft, MapPin, Calendar, Tag,
   X, User, Ticket, Image as ImageIcon, ExternalLink, RefreshCw, Trash2, Edit2,
+  ChevronRight, ChevronLeft
 } from 'lucide-react';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -22,226 +23,184 @@ const STATUS_ICONS: Record<string, React.ReactNode> = {
   draft: <Clock size={13} />,
 };
 
-type Tab = 'all' | ListingStatus;
+type Tab = 'pending' | 'approved' | 'rejected' | 'all';
 
-function PreviewPanel({ ev, onClose, onStatus, updating, onDelete }: {
+function DetailViewPanel({ ev, onClose, onStatus, updating, onUpdate, onNext, currentIndex, totalCount }: {
   ev: AdminListing;
   onClose: () => void;
   onStatus: (id: string, status: ListingStatus) => void;
   updating: string | null;
   onDelete: (id: string) => void;
+  onUpdate: (id: string, payload: Partial<AdminListing>) => Promise<void>;
+  onNext: () => void;
+  currentIndex: number;
+  totalCount: number;
 }) {
   const router = useRouter();
   const id = ev.id || ev._id || '';
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editedEv, setEditedEv] = useState<AdminListing>({ ...ev });
+  const [isSaving, setIsSaving] = useState(false);
+
+  const thumb = editedEv.portrait_image_url || editedEv.landscape_image_url || (editedEv.images && editedEv.images[0]) || null;
+
+  const handleChange = (field: string, value: any) => {
+    setEditedEv(prev => {
+      const keys = field.split('.');
+      if (keys.length === 1) return { ...prev, [field]: value };
+
+      // Handle nested fields like guide.min_age
+      const newObj = { ...prev } as any;
+      let current = newObj;
+      for (let i = 0; i < keys.length - 1; i++) {
+        current[keys[i]] = { ...current[keys[i]] };
+        current = current[keys[i]];
+      }
+      current[keys[keys.length - 1]] = value;
+      return newObj;
+    });
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await onUpdate(id, editedEv);
+      alert('Changes saved successfully');
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to save changes');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const detailRows = [
+    { label: 'Event Name', field: 'name', value: editedEv.name || editedEv.title || '' },
+    { label: 'Artist', field: 'artist_name', value: editedEv.artist_name || '' },
+    { label: 'Category', field: 'category', value: editedEv.category || '' },
+    { label: 'Event ID', value: id.slice(-8).toUpperCase(), readOnly: true },
+    { label: 'Age Restriction', field: 'guide.min_age', value: editedEv.guide?.min_age || 0, type: 'number' },
+    { label: 'Ticket Age Requirement', field: 'guide.ticket_age_limit', value: editedEv.guide?.ticket_age_limit || 0, type: 'number' },
+    { label: 'Languages', field: 'guide.languages', value: editedEv.guide?.languages?.join(', ') || '', type: 'languages' },
+    { label: 'Venue Type', field: 'guide.venue_type', value: editedEv.guide?.venue_type || '' },
+    { label: 'Venue', field: 'venue_name', value: editedEv.venue_name || '' },
+    { label: 'Venue Link', field: 'google_map_link', value: editedEv.google_map_link || '', isLink: true },
+    { label: 'Organiser', field: 'organizer_name', value: editedEv.organizer_name || '', readOnly: true },
+    { label: 'Created at', value: editedEv.created_at ? new Date(editedEv.created_at).toLocaleString() : 'N/A', readOnly: true },
+    { label: 'Tickets', value: editedEv.ticket_categories?.length ? `${editedEv.ticket_categories.length} Tiers` : 'N/A', readOnly: true },
+    { label: 'Legal', field: 'legal_info', value: editedEv.legal_info || '' },
+  ];
 
   return (
-    <div className="fixed inset-0 z-50 flex">
-      <div className="flex-1 bg-black/40" onClick={onClose} />
-      <div className="w-[520px] h-full bg-white shadow-2xl overflow-y-auto flex flex-col">
-        {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-zinc-100 px-6 py-4 flex items-center justify-between z-10">
-          <div>
-            <h2 className="text-lg font-bold text-black truncate max-w-[360px]">{ev.name || 'Event Preview'}</h2>
-            <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full mt-1 ${STATUS_COLORS[ev.status] ?? STATUS_COLORS.draft}`}>
-              {STATUS_ICONS[ev.status]}
-              {ev.status.charAt(0).toUpperCase() + ev.status.slice(1)}
-            </span>
-          </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-zinc-100 text-zinc-400 hover:text-black transition-all">
-            <X size={18} />
-          </button>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-10 bg-black/30 backdrop-blur-sm">
+      <div className="bg-white rounded-[40px] w-full max-w-[1600px] h-full flex flex-col shadow-2xl relative overflow-hidden">
+        {/* Header Area */}
+        <div className="pt-12 px-16 pb-6">
+          <h1 className="text-[48px] font-semibold text-black" style={{ fontFamily: 'var(--font-anek-latin)' }}>Admin Panel</h1>
+          <div className="w-16 h-1 bg-black mt-2 mb-6"></div>
+          <h2 className="text-[32px] font-medium text-black mt-4" style={{ fontFamily: 'var(--font-anek-latin)' }}>Event Details</h2>
         </div>
 
-        <div className="p-6 space-y-6 flex-1">
-          {/* Hero image */}
-          {(ev.portrait_image_url || ev.landscape_image_url) && (
-            <div className="rounded-[12px] overflow-hidden">
-              <img src={ev.portrait_image_url || ev.landscape_image_url} alt={ev.name} className="w-full h-[220px] object-cover" />
+        {/* Content Area */}
+        <div className="flex-1 px-16 pb-16 flex gap-12 overflow-hidden">
+          {/* Left: Poster */}
+          <div className="w-1/3 flex flex-col">
+            <div className="bg-[#EEEDFC] rounded-[30px] flex-1 flex items-center justify-center p-12 overflow-hidden shadow-inner relative group">
+              {thumb ? (
+                <>
+                  <img src={thumb} alt={editedEv.name} className="w-full h-full object-contain drop-shadow-2xl rounded-[15px]" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <button className="bg-white text-black px-6 py-2 rounded-full font-bold">Change Image</button>
+                  </div>
+                </>
+              ) : (
+                <div className="text-zinc-300 text-center">
+                  <p className="text-[28px] font-bold leading-tight uppercase mb-4">{"{EVENT POSTER}"}</p>
+                  <p className="text-[18px]">3:4 aspect ratio</p>
+                </div>
+              )}
             </div>
-          )}
-
-          {/* Meta grid */}
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            {ev.category && <div className="bg-zinc-50 rounded-[10px] p-3"><p className="text-zinc-400 text-xs mb-0.5">Category</p><p className="font-semibold text-black">{ev.category}{ev.sub_category ? ` · ${ev.sub_category}` : ''}</p></div>}
-            {ev.city && <div className="bg-zinc-50 rounded-[10px] p-3"><p className="text-zinc-400 text-xs mb-0.5">City</p><p className="font-semibold text-black">{ev.city}</p></div>}
-            {ev.date && <div className="bg-zinc-50 rounded-[10px] p-3"><p className="text-zinc-400 text-xs mb-0.5">Date</p><p className="font-semibold text-black">{new Date(ev.date).toLocaleDateString()}</p></div>}
-            {ev.time && <div className="bg-zinc-50 rounded-[10px] p-3"><p className="text-zinc-400 text-xs mb-0.5">Time</p><p className="font-semibold text-black">{ev.time}</p></div>}
-            {ev.duration && <div className="bg-zinc-50 rounded-[10px] p-3"><p className="text-zinc-400 text-xs mb-0.5">Duration</p><p className="font-semibold text-black">{ev.duration}</p></div>}
-            {ev.price_starts_from != null && ev.price_starts_from > 0 && <div className="bg-zinc-50 rounded-[10px] p-3"><p className="text-zinc-400 text-xs mb-0.5">Price from</p><p className="font-semibold text-black">₹{ev.price_starts_from}</p></div>}
           </div>
 
-          {/* Venue */}
-          {(ev.venue_name || ev.venue_address) && (
-            <div className="bg-zinc-50 rounded-[10px] p-4">
-              <div className="flex items-center gap-2 mb-1 text-zinc-400"><MapPin size={14} /><span className="text-xs font-semibold uppercase tracking-wide">Venue</span></div>
-              {ev.venue_name && <p className="font-semibold text-black text-sm">{ev.venue_name}</p>}
-              {ev.venue_address && <p className="text-zinc-500 text-xs mt-0.5">{ev.venue_address}</p>}
-              {ev.google_map_link && <a href={ev.google_map_link} target="_blank" rel="noopener noreferrer" className="text-[#5331EA] text-xs flex items-center gap-1 mt-1.5 hover:underline"><ExternalLink size={12} /> View on Maps</a>}
-            </div>
-          )}
-
-          {/* Description */}
-          {ev.description && (
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400 mb-2">Description</p>
-              <div className="text-sm text-zinc-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: ev.description }} />
-            </div>
-          )}
-
-          {/* Artists */}
-          {ev.artists && ev.artists.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-3 text-zinc-400"><User size={14} /><span className="text-xs font-semibold uppercase tracking-wide">Artists ({ev.artists.length})</span></div>
-              <div className="space-y-3">
-                {ev.artists.map((artist, i) => (
-                  <div key={i} className="bg-zinc-50 rounded-[10px] p-4 flex gap-4">
-                    {artist.image_url ? (
-                      <img src={artist.image_url} alt={artist.name} className="w-14 h-14 rounded-full object-cover border border-zinc-200 flex-shrink-0" />
+          {/* Right: Grid */}
+          <div className="w-2/3 flex flex-col relative">
+            <div className="grid grid-cols-2 gap-x-16 gap-y-4 pr-4 overflow-y-auto max-h-[500px] scrollbar-hide">
+              {detailRows.map((row, i) => (
+                <div key={i} className="flex flex-col">
+                  <div className="flex items-end justify-between border-b-[1.5px] border-[#AEAEAE] pb-1">
+                    <span className="text-[20px] font-medium text-[#686868] whitespace-nowrap mr-4" style={{ fontFamily: 'var(--font-anek-latin)' }}>{row.label}</span>
+                    {row.readOnly ? (
+                      <span className="text-[20px] font-medium text-black truncate">{"{"}{row.value || 'None'}{"}"}</span>
                     ) : (
-                      <div className="w-14 h-14 rounded-full bg-[#AC9BF7]/20 flex items-center justify-center flex-shrink-0">
-                        <User size={22} className="text-[#5331EA]" />
-                      </div>
+                      <input
+                        type={row.type === 'number' ? 'number' : 'text'}
+                        value={row.value}
+                        onChange={(e) => {
+                          const val = row.type === 'number' ? Number(e.target.value) : (row.type === 'languages' ? e.target.value.split(',').map(s => s.trim()) : e.target.value);
+                          handleChange(row.field!, val);
+                        }}
+                        className="text-[20px] font-medium text-black bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-purple-200 rounded px-2 w-full text-right"
+                        placeholder={`{${row.label}}`}
+                        style={{ fontFamily: 'var(--font-anek-latin)' }}
+                      />
                     )}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-black text-sm">{artist.name}</p>
-                      {artist.description && <p className="text-zinc-500 text-xs mt-1 leading-relaxed">{artist.description}</p>}
-                    </div>
                   </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Actions */}
+            <div className="mt-auto pt-10 flex items-center justify-between">
+              {/* Pagination Dots */}
+              <div className="flex gap-4">
+                {Array.from({ length: Math.min(totalCount, 3) }).map((_, i) => (
+                  <div key={i} className={`w-3 h-3 rounded-full ${i === (currentIndex % 3) ? 'bg-black' : 'bg-[#AEAEAE]'}`}></div>
                 ))}
               </div>
-            </div>
-          )}
 
-          {/* Ticket Categories */}
-          {ev.ticket_categories && ev.ticket_categories.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-3 text-zinc-400"><Ticket size={14} /><span className="text-xs font-semibold uppercase tracking-wide">Ticket Categories ({ev.ticket_categories.length})</span></div>
-              <div className="space-y-3">
-                {ev.ticket_categories.map((cat, i) => (
-                  <div key={i} className="bg-zinc-50 rounded-[10px] p-4 flex gap-4 items-start">
-                    {cat.has_image && cat.image_url ? (
-                      <img src={cat.image_url} alt={cat.name} className="w-14 h-14 rounded-[8px] object-cover border border-zinc-200 flex-shrink-0" />
-                    ) : (
-                      <div className="w-14 h-14 rounded-[8px] bg-[#AC9BF7]/20 flex items-center justify-center flex-shrink-0">
-                        <Ticket size={22} className="text-[#5331EA]" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-black text-sm">{cat.name}</p>
-                      <div className="flex items-center gap-4 mt-1">
-                        {cat.price != null && <span className="text-xs text-zinc-500">₹{cat.price}</span>}
-                        {cat.capacity != null && <span className="text-xs text-zinc-500">{cat.capacity} tickets</span>}
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cat.has_image ? 'bg-purple-100 text-purple-700' : 'bg-zinc-200 text-zinc-600'}`}>
-                          {cat.has_image ? 'With Image' : 'Basic'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              {/* Status Actions */}
+              <div className="flex gap-6">
+                <button
+                  onClick={() => onStatus(id, 'approved')}
+                  disabled={ev.status === 'approved' || updating === id}
+                  className="px-8 py-3 rounded-[15px] bg-[#D1FAE5] text-[#065F46] text-[20px] font-bold transition-all hover:scale-105 disabled:opacity-50"
+                  style={{ fontFamily: 'var(--font-anek-latin)' }}
+                >
+                  {updating === id ? '...' : 'Approve'}
+                </button>
+                <button
+                  onClick={() => onStatus(id, 'rejected')}
+                  disabled={ev.status === 'rejected' || updating === id}
+                  className="px-8 py-3 rounded-[15px] bg-red-100 text-red-700 text-[20px] font-bold transition-all hover:scale-105 disabled:opacity-50"
+                  style={{ fontFamily: 'var(--font-anek-latin)' }}
+                >
+                  Reject
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="px-8 py-3 rounded-[15px] bg-[#5331EA] text-white text-[20px] font-bold transition-all hover:scale-105 disabled:opacity-50 shadow-lg shadow-purple-200"
+                  style={{ fontFamily: 'var(--font-anek-latin)' }}
+                >
+                  {isSaving ? 'Saving...' : 'Save Changes'}
+                </button>
               </div>
-            </div>
-          )}
 
-          {/* Gallery */}
-          {ev.gallery_urls && ev.gallery_urls.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-3 text-zinc-400"><ImageIcon size={14} /><span className="text-xs font-semibold uppercase tracking-wide">Gallery ({ev.gallery_urls.length})</span></div>
-              <div className="flex flex-wrap gap-2">
-                {ev.gallery_urls.map((url, i) => <img key={i} src={url} alt="" className="w-[70px] h-[70px] object-cover rounded-[8px] border border-zinc-200" />)}
-              </div>
-            </div>
-          )}
-
-          {/* Event Guide */}
-          {ev.guide && (
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400 mb-2">Event Guide</p>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                {ev.guide.venue_type && <div className="bg-zinc-50 rounded-[8px] p-2.5"><span className="text-zinc-400">Venue type: </span><span className="font-medium text-black">{ev.guide.venue_type}</span></div>}
-                {ev.guide.audience_type && <div className="bg-zinc-50 rounded-[8px] p-2.5"><span className="text-zinc-400">Audience: </span><span className="font-medium text-black">{ev.guide.audience_type}</span></div>}
-                {ev.guide.min_age != null && <div className="bg-zinc-50 rounded-[8px] p-2.5"><span className="text-zinc-400">Min age: </span><span className="font-medium text-black">{ev.guide.min_age}+</span></div>}
-                {ev.guide.languages && ev.guide.languages.length > 0 && <div className="bg-zinc-50 rounded-[8px] p-2.5"><span className="text-zinc-400">Language: </span><span className="font-medium text-black">{ev.guide.languages.join(', ')}</span></div>}
-                <div className="bg-zinc-50 rounded-[8px] p-2.5"><span className="text-zinc-400">Kid-friendly: </span><span className={`font-medium ${ev.guide.is_kid_friendly ? 'text-green-600' : 'text-red-500'}`}>{ev.guide.is_kid_friendly ? 'Yes' : 'No'}</span></div>
-                <div className="bg-zinc-50 rounded-[8px] p-2.5"><span className="text-zinc-400">Pet-friendly: </span><span className={`font-medium ${ev.guide.is_pet_friendly ? 'text-green-600' : 'text-red-500'}`}>{ev.guide.is_pet_friendly ? 'Yes' : 'No'}</span></div>
-              </div>
-            </div>
-          )}
-
-          {/* FAQs */}
-          {ev.faqs && ev.faqs.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400 mb-2">FAQs</p>
-              <div className="space-y-2">
-                {ev.faqs.map((faq, i) => (
-                  <div key={i} className="bg-zinc-50 rounded-[8px] p-3 text-xs">
-                    <p className="font-semibold text-black">Q: {faq.question}</p>
-                    <p className="text-zinc-600 mt-0.5">A: {faq.answer}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Links */}
-          <div className="flex flex-wrap gap-2">
-            {ev.instagram_link && <a href={ev.instagram_link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs bg-pink-50 text-pink-600 border border-pink-200 px-3 py-1.5 rounded-full hover:bg-pink-100 transition-all"><ExternalLink size={11} /> Instagram</a>}
-            {ev.youtube_video_url && <a href={ev.youtube_video_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded-full hover:bg-red-100 transition-all"><ExternalLink size={11} /> YouTube</a>}
-          </div>
-
-          {/* Payment */}
-          {ev.payment && ev.payment.organizer_name && (
-            <div className="bg-zinc-50 rounded-[10px] p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400 mb-2">Payment</p>
-              <div className="text-xs space-y-1 text-zinc-700">
-                <p><span className="text-zinc-400">Organizer: </span>{ev.payment.organizer_name}</p>
-                {ev.payment.gstin && <p><span className="text-zinc-400">GSTIN: </span>{ev.payment.gstin}</p>}
-                {ev.payment.account_number && <p><span className="text-zinc-400">Acc No: </span>{'*'.repeat(Math.max(0, ev.payment.account_number.length - 4)) + ev.payment.account_number.slice(-4)}</p>}
-                {ev.payment.ifsc && <p><span className="text-zinc-400">IFSC: </span>{ev.payment.ifsc}</p>}
-                {ev.payment.account_type && <p><span className="text-zinc-400">Account type: </span>{ev.payment.account_type}</p>}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Sticky footer */}
-        <div className="sticky bottom-0 bg-white border-t border-zinc-100 px-6 py-4 space-y-3">
-          {/* Edit Details */}
-          <button
-            onClick={() => { onClose(); router.push(`/events/edit/${id}`); }}
-            className="w-full py-2 rounded-[10px] text-sm font-semibold bg-[#5331EA] text-white hover:bg-[#7B2FF7] transition-all flex items-center justify-center gap-2"
-          >
-            <Edit2 size={14} /> Edit Details
-          </button>
-          <div className="flex gap-2">
-            <button disabled={ev.status === 'approved' || updating === id} onClick={() => onStatus(id, 'approved')}
-              className="flex-1 py-2 rounded-[10px] text-sm font-semibold bg-green-500 text-white hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
-              {updating === id ? '…' : 'Approve'}
-            </button>
-            <button disabled={ev.status === 'rejected' || updating === id} onClick={() => onStatus(id, 'rejected')}
-              className="flex-1 py-2 rounded-[10px] text-sm font-semibold bg-red-500 text-white hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
-              {updating === id ? '…' : 'Reject'}
-            </button>
-            {ev.status !== 'pending' && (
-              <button disabled={updating === id} onClick={() => onStatus(id, 'pending')}
-                className="flex-1 py-2 rounded-[10px] text-sm font-semibold bg-orange-400 text-white hover:bg-orange-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
-                Pending
+              <button
+                onClick={onNext}
+                className="bg-black text-white rounded-full w-[100px] h-[45px] flex items-center justify-center text-[20px] font-medium shadow-lg transition-transform hover:scale-105"
+                style={{ fontFamily: 'var(--font-anek-latin)' }}
+              >
+                Next
               </button>
-            )}
-          </div>
-          {!confirmDelete ? (
-            <button onClick={() => setConfirmDelete(true)} className="w-full py-2 rounded-[10px] text-sm font-semibold border border-red-300 text-red-500 hover:bg-red-50 transition-all flex items-center justify-center gap-2">
-              <Trash2 size={14} /> Delete Event
-            </button>
-          ) : (
-            <div className="flex gap-2">
-              <button onClick={() => onDelete(id)} className="flex-1 py-2 rounded-[10px] text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition-all">Confirm Delete</button>
-              <button onClick={() => setConfirmDelete(false)} className="flex-1 py-2 rounded-[10px] text-sm font-semibold border border-zinc-200 text-zinc-600 hover:bg-zinc-50 transition-all">Cancel</button>
             </div>
-          )}
+          </div>
         </div>
+
+        {/* Close Icon - Back functionality */}
+        <button onClick={onClose} className="absolute top-12 right-12 text-black opacity-30 hover:opacity-100 transition-opacity">
+          <X size={40} />
+        </button>
       </div>
-    </div>
+    </div >
   );
 }
 
@@ -250,7 +209,7 @@ export default function AdminEventsPage() {
   const [events, setEvents] = useState<AdminListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<Tab>('all');
+  const [activeTab, setActiveTab] = useState<Tab>('pending');
   const [updating, setUpdating] = useState<string | null>(null);
   const [preview, setPreview] = useState<AdminListing | null>(null);
 
@@ -282,6 +241,16 @@ export default function AdminEventsPage() {
     }
   };
 
+  const handleUpdate = async (id: string, payload: Partial<AdminListing>) => {
+    try {
+      await adminApi.updateEvent(id, payload);
+      setEvents(prev => prev.map(ev => (getId(ev) === id ? { ...ev, ...payload } : ev)));
+      setPreview(prev => prev && getId(prev) === id ? { ...prev, ...payload } : prev);
+    } catch (e) {
+      throw e;
+    }
+  };
+
   const handleDelete = async (id: string) => {
     try {
       await adminApi.deleteEvent(id);
@@ -294,143 +263,160 @@ export default function AdminEventsPage() {
 
   const getId = (item: AdminListing) => item.id || item._id || '';
 
-  const counts = {
-    all: events.length,
-    pending: events.filter(e => e.status === 'pending').length,
-    approved: events.filter(e => e.status === 'approved').length,
-    rejected: events.filter(e => e.status === 'rejected').length,
-  };
-
   const filtered = activeTab === 'all' ? events : events.filter(e => e.status === activeTab);
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'all', label: 'All' },
-    { key: 'pending', label: 'Pending' },
+    { key: 'pending', label: 'Needs Approval' },
     { key: 'approved', label: 'Approved' },
-    { key: 'rejected', label: 'Rejected' },
   ];
 
+  const handleSetAllPending = async () => {
+    if (!filtered.length) return;
+    if (!confirm(`Are you sure you want to set all ${filtered.length} currently visible events to Pending?`)) return;
+
+    setLoading(true);
+    try {
+      await Promise.all(filtered.map(ev => adminApi.updateEventStatus(getId(ev), 'pending')));
+      await load();
+      alert('All items set to pending successfully');
+    } catch (e) {
+      alert('Failed to update some items');
+      load();
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen px-8 py-10" style={{ background: 'linear-gradient(180deg, #ECE8FD 0%, #FFFFFF 100%)', zoom: 0.85 }}>
-      <div className="max-w-[1200px] mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <button onClick={() => router.back()} className="flex items-center gap-2 text-zinc-500 hover:text-black transition-colors">
-              <ArrowLeft size={20} />
-              <span className="text-sm font-medium">Back</span>
-            </button>
-            <div>
-              <h1 className="text-[28px] font-bold text-black">Events Management</h1>
-              <p className="text-sm text-zinc-500 mt-0.5">{counts.all} total events</p>
-            </div>
+    <div className="min-h-screen bg-[#F3F0FF] p-10">
+      <div className="max-w-[1920px] mx-auto" style={{ zoom: 0.85 }}>
+        {/* Header Area */}
+        <div className="mb-10 flex justify-between items-start">
+          <div className="flex flex-col">
+            <h1 className="text-[48px] font-semibold text-black leading-tight" style={{ fontFamily: 'var(--font-anek-latin)' }}>Admin Panel</h1>
+            <div className="w-16 h-1 bg-black mt-2 mb-6"></div>
+            <h2 className="text-[32px] font-medium text-black mt-4" style={{ fontFamily: 'var(--font-anek-latin)' }}>Event Details</h2>
           </div>
-          <button onClick={load} className="flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-black border border-zinc-200 px-3 py-2 rounded-[10px] hover:border-zinc-400 transition-all">
-            <RefreshCw size={14} /> Refresh
+          <button onClick={load} className="mt-8 flex items-center gap-2 text-[18px] font-medium text-[#686868] hover:text-black">
+            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} /> Refresh
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 mb-6">
-          {tabs.map(tab => (
-            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-              className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${activeTab === tab.key ? 'bg-[#7B2FF7] text-white shadow-md' : 'bg-white text-zinc-600 border border-zinc-200 hover:border-[#7B2FF7] hover:text-[#7B2FF7]'}`}>
-              {tab.label}
-              {tab.key !== 'all' && (
-                <span className={`ml-1.5 text-xs font-bold px-1.5 py-0.5 rounded-full ${activeTab === tab.key ? 'bg-white/20' : 'bg-zinc-100'}`}>
-                  {counts[tab.key as keyof typeof counts]}
-                </span>
+        {/* List Content */}
+        <div className="bg-white rounded-[40px] shadow-sm p-16 min-h-[700px]">
+          {/* Tabs & Bulk Actions */}
+          <div className="flex justify-between items-center mb-16">
+            <div className="flex-1"></div>
+            <div className="bg-[#E7E2FA] rounded-[15px] flex w-[600px] h-[55px] overflow-hidden">
+              {tabs.map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`flex-1 text-[24px] font-medium transition-all ${activeTab === tab.key ? 'bg-[#D3CBF5] text-black shadow-inner' : 'text-[#686868] hover:text-black'}`}
+                  style={{ fontFamily: 'var(--font-anek-latin)' }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex-1 flex justify-end">
+              {activeTab === 'approved' && (
+                <button
+                  onClick={handleSetAllPending}
+                  className="flex items-center gap-2 text-[18px] font-semibold text-orange-600 bg-orange-50 px-6 py-2 rounded-[12px] border border-orange-200 hover:bg-orange-100 transition-all"
+                >
+                  <RefreshCw size={18} /> Set All Pending
+                </button>
               )}
-            </button>
-          ))}
-        </div>
+            </div>
+          </div>
 
-        {/* Content */}
-        {loading ? (
-          <div className="text-center py-20 text-zinc-400 text-lg">Loading events…</div>
-        ) : error ? (
-          <div className="text-center py-20 text-red-500">{error}</div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-20 text-zinc-400">No events found</div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {filtered.map(ev => {
-              const id = getId(ev);
-              const thumb = ev.portrait_image_url || ev.landscape_image_url || ev.images?.[0] || ev.image || null;
-              return (
-                <div key={id} className="bg-white rounded-[18px] shadow-sm border border-zinc-100 p-5 flex items-center gap-5">
-                  <div className="w-20 h-20 rounded-[12px] overflow-hidden flex-shrink-0 bg-zinc-100">
-                    {thumb ? (
-                      <img src={thumb} alt={ev.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-zinc-300 text-3xl">🎭</div>
-                    )}
-                  </div>
+          {loading ? (
+            <div className="flex justify-center py-32 opacity-30"><RefreshCw size={48} className="animate-spin" /></div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-32 text-[#686868] text-[24px] font-medium italic">
+              No events {activeTab === 'pending' ? 'awaiting approval' : 'currently approved'}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-12 px-16">
+              {filtered.map(ev => {
+                const id = getId(ev);
+                const thumb = ev.portrait_image_url || ev.landscape_image_url || (ev.images && ev.images[0]) || null;
+                const statusBadgeColor = ev.status === 'pending' ? 'bg-[#FFD9B7] text-[#8B4D1A]' : 'bg-[#D1FAE5] text-[#065F46]';
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <h3 className="font-bold text-black text-[16px] truncate">{ev.name || 'Untitled Event'}</h3>
-                        <div className="flex flex-wrap items-center gap-3 mt-1.5">
-                          {ev.category && <span className="flex items-center gap-1 text-xs text-zinc-500"><Tag size={11} /> {ev.category}</span>}
-                          {ev.city && <span className="flex items-center gap-1 text-xs text-zinc-500"><MapPin size={11} /> {ev.city}</span>}
-                          {ev.date && <span className="flex items-center gap-1 text-xs text-zinc-500"><Calendar size={11} /> {new Date(ev.date).toLocaleDateString()}</span>}
-                          {ev.artists && ev.artists.length > 0 && (
-                            <span className="flex items-center gap-1 text-xs text-[#5331EA] font-medium">
-                              <User size={11} /> {ev.artists.length} artist{ev.artists.length > 1 ? 's' : ''}
-                            </span>
-                          )}
-                          {ev.ticket_categories && ev.ticket_categories.length > 0 && (
-                            <span className="flex items-center gap-1 text-xs text-[#5331EA] font-medium">
-                              <Ticket size={11} /> {ev.ticket_categories.length} tier{ev.ticket_categories.length > 1 ? 's' : ''}
-                            </span>
+                return (
+                  <div key={id} className="relative">
+                    <div
+                      onClick={() => setPreview(ev)}
+                      className="bg-[#EEEDFC] rounded-[24px] p-10 flex items-center gap-12 cursor-pointer transition-all hover:bg-[#E7E5FB] hover:shadow-md"
+                    >
+                      {/* Poster */}
+                      <div className="w-[180px] h-[240px] rounded-[15px] bg-white overflow-hidden flex-shrink-0 flex flex-col items-center justify-center p-4">
+                        {thumb ? (
+                          <img src={thumb} alt={ev.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="text-center text-zinc-300">
+                            <p className="text-[16px] font-bold uppercase mb-1 leading-tight">{"{EVENT POSTER}"}</p>
+                            <p className="text-[11px]">3:4 aspect ratio</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 flex flex-col h-[200px]">
+                        <div className="pl-12 border-l-[2px] border-[#AC9BF7] flex-1 flex flex-col justify-center">
+                          <h3 className="text-[36px] font-semibold text-black uppercase truncate leading-tight" style={{ fontFamily: 'var(--font-anek-latin)' }}>
+                            {"{"}{ev.name || 'EVENT NAME'}{"}"}
+                          </h3>
+                          <p className="text-[28px] font-medium text-[#686868] mt-2" style={{ fontFamily: 'var(--font-anek-latin)' }}>
+                            {"{"}{ev.organizer_name || 'ORGANIZER NAME'}{"}"}
+                          </p>
+                        </div>
+
+                        {/* Status & Quick Actions */}
+                        <div className="flex justify-between items-center">
+                          <span className={`${statusBadgeColor} px-10 py-2.5 rounded-[12px] text-[22px] font-semibold shadow-sm`} style={{ fontFamily: 'var(--font-anek-latin)' }}>
+                            {ev.status.charAt(0).toUpperCase() + ev.status.slice(1)}
+                          </span>
+
+                          {ev.status === 'pending' && (
+                            <div className="flex gap-4">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleStatus(id, 'approved'); }}
+                                disabled={updating === id}
+                                className="bg-[#1DB954] text-white px-6 py-2 rounded-[10px] text-[18px] font-bold transition-all hover:scale-105 disabled:opacity-50"
+                                style={{ fontFamily: 'var(--font-anek-latin)' }}
+                              >
+                                {updating === id ? '...' : 'Approve'}
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleStatus(id, 'rejected'); }}
+                                disabled={updating === id}
+                                className="bg-white text-red-600 border border-red-200 px-6 py-2 rounded-[10px] text-[18px] font-bold transition-all hover:scale-105 disabled:opacity-50"
+                                style={{ fontFamily: 'var(--font-anek-latin)' }}
+                              >
+                                Reject
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
-                      <span className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${STATUS_COLORS[ev.status] ?? STATUS_COLORS.draft}`}>
-                        {STATUS_ICONS[ev.status]}
-                        {ev.status.charAt(0).toUpperCase() + ev.status.slice(1)}
-                      </span>
                     </div>
 
-                    <div className="flex items-center gap-2 mt-3">
-                      <button onClick={() => setPreview(ev)}
-                        className="px-4 py-1.5 rounded-full text-xs font-semibold bg-[#5331EA] text-white hover:bg-[#7B2FF7] transition-all">
-                        Preview
-                      </button>
-                      <button disabled={ev.status === 'approved' || updating === id} onClick={() => handleStatus(id, 'approved')}
-                        className="px-4 py-1.5 rounded-full text-xs font-semibold bg-green-500 text-white hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
-                        {updating === id ? '…' : 'Approve'}
-                      </button>
-                      <button disabled={ev.status === 'rejected' || updating === id} onClick={() => handleStatus(id, 'rejected')}
-                        className="px-4 py-1.5 rounded-full text-xs font-semibold bg-red-500 text-white hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
-                        {updating === id ? '…' : 'Reject'}
-                      </button>
-                      {ev.status !== 'pending' && (
-                        <button disabled={updating === id} onClick={() => handleStatus(id, 'pending')}
-                          className="px-4 py-1.5 rounded-full text-xs font-semibold bg-orange-400 text-white hover:bg-orange-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
-                          Set Pending
-                        </button>
-                      )}
-                    </div>
+                    {/* Chevron Edge Button */}
+                    <button
+                      onClick={() => setPreview(ev)}
+                      className="absolute -right-7 top-1/2 -translate-y-1/2 w-[65px] h-[65px] bg-black rounded-full flex items-center justify-center text-white shadow-xl hover:scale-110 transition-transform active:scale-95 z-10"
+                    >
+                      <ChevronRight size={36} />
+                    </button>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
-
-      {/* Preview slide-in panel */}
-      {preview && (
-        <PreviewPanel
-          ev={preview}
-          onClose={() => setPreview(null)}
-          onStatus={handleStatus}
-          updating={updating}
-          onDelete={handleDelete}
-        />
-      )}
     </div>
   );
 }

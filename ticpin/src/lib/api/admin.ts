@@ -78,15 +78,57 @@ export interface AdminListing {
     name?: string;
     title?: string;
     category?: string;
+    sub_category?: string;
     city?: string;
     status: ListingStatus;
     organizer_id?: string;
+    organizer_name?: string;
     created_at?: string;
     updated_at?: string;
+    // Images
+    image?: string;
+    images?: string[];
+    portrait_image_url?: string;
+    landscape_image_url?: string;
+    gallery_urls?: string[];
     // event-specific
     date?: string;
+    time?: string;
     venue?: string;
-    ticket_categories?: Array<{ name: string; price: number; capacity: number }>;
+    venue_name?: string;
+    venue_address?: string;
+    google_map_link?: string;
+    price_starts_from?: number;
+    duration?: string;
+    artist_name?: string;
+    artists?: Array<{ name: string; description?: string; image_url?: string }>;
+    ticket_categories?: Array<{
+        name: string;
+        price: number;
+        capacity: number;
+        has_image?: boolean;
+        image_url?: string
+    }>;
+    faqs?: Array<{ question: string; answer: string }>;
+    guide?: {
+        venue_type?: string;
+        audience_type?: string;
+        min_age?: number;
+        ticket_age_limit?: number;
+        languages?: string[];
+        is_kid_friendly?: boolean;
+        is_pet_friendly?: boolean;
+    };
+    instagram_link?: string;
+    youtube_video_url?: string;
+    legal_info?: string;
+    payment?: {
+        organizer_name?: string;
+        gstin?: string;
+        account_number?: string;
+        ifsc?: string;
+        account_type?: string;
+    };
     // dining-specific
     cuisine?: string;
     address?: string;
@@ -100,6 +142,7 @@ export interface AdminListing {
 export interface CreateOfferPayload {
     title: string;
     description: string;
+    image?: File;  // optional image file
     discount_type: 'percent' | 'flat';
     discount_value: number;
     applies_to: 'event' | 'play' | 'dining';
@@ -110,6 +153,7 @@ export interface CreateOfferPayload {
 export interface CreateCouponPayload {
     code: string;
     description?: string;
+    category: 'event' | 'play' | 'dining';
     discount_type: 'percent' | 'flat';
     discount_value: number;
     valid_from: string;
@@ -122,10 +166,11 @@ export interface OfferRecord {
     id: string;
     title: string;
     description: string;
+    image?: string;  // Cloudinary URL
     discount_type: 'percent' | 'flat';
     discount_value: number;
     applies_to: string;
-    entity_id?: string;
+    entity_ids?: string[];
     valid_until: string;
     is_active: boolean;
     created_at: string;
@@ -134,6 +179,7 @@ export interface OfferRecord {
 export interface CouponRecord {
     id: string;
     code: string;
+    category: string;
     discount_type: string;
     discount_value: number;
     valid_from: string;
@@ -218,6 +264,13 @@ export const adminApi = {
             body: JSON.stringify({ status }),
         }),
 
+    /** PUT /api/admin/events/:id */
+    updateEvent: (id: string, payload: Partial<AdminListing>) =>
+        adminRequest<{ message: string }>(`/events/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+        }),
+
     /** DELETE /api/admin/events/:id */
     deleteEvent: (id: string) =>
         adminRequest<{ message: string }>(`/events/${id}`, { method: 'DELETE' }),
@@ -232,6 +285,13 @@ export const adminApi = {
         adminRequest<{ message: string; status: string }>(`/dining/${id}/status`, {
             method: 'PUT',
             body: JSON.stringify({ status }),
+        }),
+
+    /** PUT /api/admin/dining/:id */
+    updateDining: (id: string, payload: Partial<AdminListing>) =>
+        adminRequest<{ message: string }>(`/dining/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload),
         }),
 
     /** DELETE /api/admin/dining/:id */
@@ -250,6 +310,13 @@ export const adminApi = {
             body: JSON.stringify({ status }),
         }),
 
+    /** PUT /api/admin/play/:id */
+    updatePlay: (id: string, payload: Partial<AdminListing>) =>
+        adminRequest<{ message: string }>(`/play/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+        }),
+
     /** DELETE /api/admin/play/:id */
     deletePlay: (id: string) =>
         adminRequest<{ message: string }>(`/play/${id}`, { method: 'DELETE' }),
@@ -258,11 +325,30 @@ export const adminApi = {
 
     /** POST /api/admin/offers */
     createOffer: async (payload: CreateOfferPayload): Promise<OfferRecord> => {
-        const res = await adminRequest<{ message: string; offer: OfferRecord }>('/offers', {
+        const formData = new FormData();
+        formData.append('title', payload.title);
+        formData.append('description', payload.description);
+        formData.append('discount_type', payload.discount_type);
+        formData.append('discount_value', String(payload.discount_value));
+        formData.append('applies_to', payload.applies_to);
+        formData.append('valid_until', payload.valid_until);
+
+        if (payload.entity_ids) {
+            payload.entity_ids.forEach(id => formData.append('entity_ids', id));
+        }
+
+        if (payload.image) {
+            formData.append('image', payload.image);
+        }
+
+        const res = await fetch(`${ADMIN_BASE}/offers`, {
             method: 'POST',
-            body: JSON.stringify(payload),
+            credentials: 'include',
+            body: formData,
         });
-        return res.offer;
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? 'Failed to create offer');
+        return data.offer;
     },
 
     /** GET /api/admin/offers */
@@ -281,6 +367,20 @@ export const adminApi = {
 
     /** GET /api/admin/coupons */
     listCoupons: () => adminRequest<CouponRecord[]>('/coupons'),
+
+    /** GET /api/coupons/:category — get active coupons for a category (public) */
+    getCouponsByCategory: (category: string) =>
+        fetch(`/backend/api/coupons/${category}`)
+            .then(res => res.json())
+            .then(data => data as CouponRecord[])
+            .catch(() => []),
+
+    /** GET /api/offers/:category — get active offers for a category (public) */
+    getOffersByCategory: (category: string) =>
+        fetch(`/backend/api/offers/${category}`)
+            .then(res => res.json())
+            .then(data => data as OfferRecord[])
+            .catch(() => []),
 
     /** GET /api/admin/users — for coupon user-selector */
     listUsers: () => adminRequest<UserRecord[]>('/users'),

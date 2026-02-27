@@ -85,9 +85,8 @@ function MultiSelect<T extends { id: string; label: string }>({
                                 return (
                                     <label key={item.id}
                                         className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-[#F5F3FF] transition-colors ${checked ? 'bg-[#F5F3FF]' : ''}`}>
-                                        <div className={`w-5 h-5 rounded-[6px] border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-                                            checked ? 'bg-[#5331EA] border-[#5331EA]' : 'border-[#D9D9D9] bg-white'
-                                        }`}>
+                                        <div className={`w-5 h-5 rounded-[6px] border-2 flex items-center justify-center flex-shrink-0 transition-colors ${checked ? 'bg-[#5331EA] border-[#5331EA]' : 'border-[#D9D9D9] bg-white'
+                                            }`}>
                                             {checked && <Check size={12} className="text-white" strokeWidth={3} />}
                                         </div>
                                         <span className="text-[15px] font-medium text-[#2a2a2a]" style={{ fontFamily: 'Anek Latin' }}>{item.label}</span>
@@ -106,6 +105,8 @@ function MultiSelect<T extends { id: string; label: string }>({
 export default function CreateOfferForm({ onBack }: { onBack: () => void }) {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
+    const [image, setImage] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState('');
     const [appliesTo, setAppliesTo] = useState<'event' | 'play' | 'dining'>('event');
     const [entityIds, setEntityIds] = useState<string[]>([]);
     const [listings, setListings] = useState<AdminListing[]>([]);
@@ -116,6 +117,7 @@ export default function CreateOfferForm({ onBack }: { onBack: () => void }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const imageInputRef = useRef<HTMLInputElement>(null);
 
     // Load approved listings for the selected category
     useEffect(() => {
@@ -124,12 +126,15 @@ export default function CreateOfferForm({ onBack }: { onBack: () => void }) {
         setListingsLoading(true);
         const fetcher =
             appliesTo === 'event' ? adminApi.listEvents() :
-            appliesTo === 'dining' ? adminApi.listDining() :
-            adminApi.listPlay();
+                appliesTo === 'dining' ? adminApi.listDining() :
+                    adminApi.listPlay();
         fetcher
-            .then(all => setListings(
-                (all as AdminListing[]).filter(l => l.status === 'approved')
-            ))
+            .then(data => {
+                const all = Array.isArray(data) ? data : [];
+                // Show anything that has an ID, regardless of status for now
+                // if it's in the list, it's "available"
+                setListings(all.filter(l => !!(l.id || l._id)));
+            })
             .catch(() => setListings([]))
             .finally(() => setListingsLoading(false));
     }, [appliesTo]);
@@ -138,6 +143,18 @@ export default function CreateOfferForm({ onBack }: { onBack: () => void }) {
         setEntityIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
     const selectAllListings = () => setEntityIds(listings.map(l => (l.id || l._id || '')));
     const clearListings = () => setEntityIds([]);
+
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setImage(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
     const handleCreate = async () => {
         setError('');
@@ -152,6 +169,7 @@ export default function CreateOfferForm({ onBack }: { onBack: () => void }) {
             await adminApi.createOffer({
                 title: title.trim(),
                 description: description.trim(),
+                image: image || undefined,
                 discount_type: discountType,
                 discount_value: Number(discount),
                 applies_to: appliesTo,
@@ -159,7 +177,7 @@ export default function CreateOfferForm({ onBack }: { onBack: () => void }) {
                 valid_until: new Date(validUntil).toISOString(),
             });
             setSuccess('Offer created successfully!');
-            setTitle(''); setDescription(''); setDiscount(''); setEntityIds([]); setValidUntil('');
+            setTitle(''); setDescription(''); setDiscount(''); setEntityIds([]); setValidUntil(''); setImage(null); setImagePreview('');
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : 'Failed to create offer');
         } finally {
@@ -168,7 +186,7 @@ export default function CreateOfferForm({ onBack }: { onBack: () => void }) {
     };
 
     return (
-        <div className="bg-white rounded-[32px] p-10 md:p-12 lg:p-14 min-h-[480px] flex items-center justify-center gap-12">
+        <div className="bg-white rounded-[32px] p-10 md:p-12 lg:p-14 min-h-[560px] flex items-center justify-center gap-12">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-16 gap-y-8 w-full mt-[-60px]">
                 {/* Left Column */}
                 <div className="space-y-8">
@@ -264,7 +282,7 @@ export default function CreateOfferForm({ onBack }: { onBack: () => void }) {
                             onClear={clearListings}
                             placeholder={`-- Select ${appliesTo} listings --`}
                             loading={listingsLoading}
-                            emptyText={`No approved ${appliesTo}s found`}
+                            emptyText={`No ${appliesTo} listings found`}
                         />
                     </div>
 
@@ -278,6 +296,32 @@ export default function CreateOfferForm({ onBack }: { onBack: () => void }) {
                             className="w-full h-[52px] border border-[#D9D9D9] rounded-2xl px-5 text-[#2a2a2a] text-[16px] font-medium focus:border-purple-300 outline-none transition-all"
                             style={{ fontFamily: 'Anek Latin' }}
                         />
+                    </div>
+
+                    {/* Image Upload */}
+                    <div className="space-y-1.5">
+                        <label className="text-gray-600 text-[16px] font-medium block" style={{ fontFamily: 'Anek Latin' }}>Image</label>
+                        <input
+                            ref={imageInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageChange}
+                            className="hidden"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => imageInputRef.current?.click()}
+                            className="w-full h-[100px] border-2 border-dashed border-[#D9D9D9] rounded-2xl flex items-center justify-center gap-3 hover:border-purple-300 transition-all bg-[#F9F9F9]"
+                        >
+                            {imagePreview ? (
+                                <img src={imagePreview} alt="Preview" className="max-h-[90px] max-w-[90px] object-contain rounded" />
+                            ) : (
+                                <div className="text-center">
+                                    <div className="text-[13px] text-gray-500">Click to upload image</div>
+                                    <div className="text-[11px] text-gray-400">Max 5MB • JPEG, PNG</div>
+                                </div>
+                            )}
+                        </button>
                     </div>
                 </div>
             </div>

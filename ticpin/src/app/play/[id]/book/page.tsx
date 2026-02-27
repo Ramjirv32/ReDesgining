@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
@@ -33,6 +35,7 @@ export default function PlayBookPage() {
     const [duration, setDuration] = useState(1);
     const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
     const [selectedCourts, setSelectedCourts] = useState<number[]>([]);
+    const [coupons, setCoupons] = useState<any[]>([]);
 
     useEffect(() => {
         if (!id) return;
@@ -44,6 +47,13 @@ export default function PlayBookPage() {
             })
             .catch(() => setLoading(false));
     }, [id]);
+
+    useEffect(() => {
+        fetch(`/backend/api/coupons/play`)
+            .then(r => r.json())
+            .then(data => setCoupons(Array.isArray(data) ? data : []))
+            .catch(() => setCoupons([]));
+    }, []);
 
     const toggleCourt = (id: number) => {
         setSelectedCourts(prev =>
@@ -219,6 +229,23 @@ export default function PlayBookPage() {
                                 ))}
                             </div>
                         </section>
+
+                        {coupons.length > 0 && (
+                            <section className="space-y-3 border-t border-zinc-200 pt-6">
+                                <h2 className="text-[13px] font-semibold uppercase tracking-[0.12em] text-black">Available Coupons</h2>
+                                <div className="space-y-2">
+                                    {coupons.map((coupon: any) => (
+                                        <div key={coupon.id} className="flex items-center gap-3 p-3 bg-gradient-to-r from-[#FFF8E7] to-white border border-[#FFD700] rounded-[12px]">
+                                            <div className="flex-1">
+                                                <p className="text-[14px] font-bold text-black">{coupon.code}</p>
+                                                <p className="text-[12px] text-[#686868]">{coupon.discount_value}% OFF • Till {new Date(coupon.valid_until).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}</p>
+                                            </div>
+                                            <button className="px-3 py-1.5 bg-black text-white text-[11px] font-semibold rounded-[6px] hover:opacity-90 transition-all">APPLY</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        )}
 
                         <div className="pt-2 border-t border-zinc-200">
                             <button

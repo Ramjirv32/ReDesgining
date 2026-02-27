@@ -4,50 +4,82 @@ import (
 	"context"
 	"ticpin-backend/config"
 	"ticpin-backend/models"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// CreateProfile handles profile creation.
 func CreateProfile(c *fiber.Ctx) error {
-	var profile models.Profile
+	organizerID, ok := c.Locals("organizerId").(string)
+	if !ok || organizerID == "" {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	var profile models.OrganizerProfile
 	if err := c.BodyParser(&profile); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
-	_, err := config.GetDB().Collection("profiles").InsertOne(context.Background(), profile)
+
+	objID, err := primitive.ObjectIDFromHex(organizerID)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid organizerId"})
+	}
+
+	profile.ID = primitive.NewObjectID()
+	profile.OrganizerID = objID
+	profile.CreatedAt = time.Now()
+	profile.UpdatedAt = time.Now()
+
+	_, err = config.GetDB().Collection("organizer_profiles").InsertOne(context.Background(), profile)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.JSON(profile)
 }
 
-// GetProfile fetches an organizer's profile.
 func GetProfile(c *fiber.Ctx) error {
-	organizerID, _ := primitive.ObjectIDFromHex(c.Params("organizerId"))
-	var profile models.Profile
-	err := config.GetDB().Collection("profiles").FindOne(context.Background(), bson.M{"organizerId": organizerID}).Decode(&profile)
+	organizerID, ok := c.Locals("organizerId").(string)
+	if !ok || organizerID == "" {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	objID, err := primitive.ObjectIDFromHex(organizerID)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid organizerId"})
+	}
+
+	var profile models.OrganizerProfile
+	err = config.GetDB().Collection("organizer_profiles").FindOne(context.Background(), bson.M{"organizerId": objID}).Decode(&profile)
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "profile not found"})
 	}
 	return c.JSON(profile)
 }
 
-// UpdateProfile updates profile info.
 func UpdateProfile(c *fiber.Ctx) error {
-	organizerID, _ := primitive.ObjectIDFromHex(c.Params("organizerId"))
-	var updates bson.M
-	if err := c.BodyParser(&updates); err != nil {
+	organizerID, ok := c.Locals("organizerId").(string)
+	if !ok || organizerID == "" {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	objID, err := primitive.ObjectIDFromHex(organizerID)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid organizerId"})
+	}
+
+	var profile models.OrganizerProfile
+	if err := c.BodyParser(&profile); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
-	delete(updates, "_id")
-	delete(updates, "organizerId")
 
-	_, err := config.GetDB().Collection("profiles").UpdateOne(
+	profile.UpdatedAt = time.Now()
+
+	_, err = config.GetDB().Collection("organizer_profiles").UpdateOne(
 		context.Background(),
-		bson.M{"organizerId": organizerID},
-		bson.M{"$set": updates},
+		bson.M{"organizerId": objID},
+		bson.M{"$set": profile},
 	)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})

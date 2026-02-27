@@ -1,28 +1,17 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
-import { adminApi, OrganizerListItem, OrganizerDetail } from '@/lib/api/admin';
-import { CheckCircle, XCircle, Clock, ChevronLeft, ChevronRight, ExternalLink, User, Search } from 'lucide-react';
+import { adminApi, OrganizerListItem, OrganizerDetail, ListingStatus } from '@/lib/api/admin';
+import {
+    CheckCircle, XCircle, Clock, ChevronRight, X, User,
+    ExternalLink, RefreshCw, Trash2, Calendar, Mail, Phone, CreditCard, Hash, ArrowLeft
+} from 'lucide-react';
 import { getOrganizerSession } from '@/lib/auth/organizer';
 
-const STATUS_COLORS: Record<string, string> = {
-    approved: 'bg-green-100 text-green-700 border-green-200',
-    pending: 'bg-orange-100 text-orange-700 border-orange-200',
-    rejected: 'bg-red-100 text-red-700 border-red-200',
-};
+type Tab = 'pending' | 'approved' | 'all';
 
-const STATUS_ICONS: Record<string, React.ReactNode> = {
-    approved: <CheckCircle size={14} />,
-    pending: <Clock size={14} />,
-    rejected: <XCircle size={14} />,
-};
-
-function OrganizerDetailModal({
-    organizerId,
-    onClose,
-    onStatusChange,
-}: {
+function OrganizerDetailView({ organizerId, onClose, onStatusChange }: {
     organizerId: string;
     onClose: () => void;
     onStatusChange: () => void;
@@ -45,7 +34,6 @@ function OrganizerDetailModal({
         setUpdating(category);
         try {
             await adminApi.updateCategoryStatus(organizerId, category, status, rejectionReason || undefined);
-            // Update local state
             setDetail(prev => {
                 if (!prev) return prev;
                 return {
@@ -66,135 +54,155 @@ function OrganizerDetailModal({
         }
     };
 
+    if (loading) {
+        return (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#F3F0FF]">
+                <RefreshCw className="animate-spin text-[#AC9BF7]" size={48} />
+            </div>
+        );
+    }
+
+    if (!detail) return null;
+
     return (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
-            <div
-                className="bg-white rounded-[24px] shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto"
-                onClick={e => e.stopPropagation()}
-            >
-                <div className="sticky top-0 bg-white border-b border-zinc-100 px-8 py-5 flex items-center justify-between rounded-t-[24px]">
-                    <h2 className="text-[22px] font-bold text-black">Organizer Detail</h2>
-                    <button onClick={onClose} className="text-zinc-400 hover:text-black transition-colors">✕</button>
+        <div className="fixed inset-0 z-[70] bg-[#F3F0FF] h-screen overflow-hidden flex flex-col">
+            <div className="max-w-[1800px] mx-auto w-full h-full flex flex-col p-8">
+                {/* Header */}
+                <div className="mb-6 flex justify-between items-center">
+                    <div className="flex flex-col">
+                        <div className="flex items-center gap-4">
+                            <button onClick={onClose} className="p-2 hover:bg-white/50 rounded-full transition-colors">
+                                <ArrowLeft size={32} />
+                            </button>
+                            <h1 className="text-[40px] font-semibold text-black leading-tight" style={{ fontFamily: 'var(--font-anek-latin)' }}>Admin Panel</h1>
+                        </div>
+                        <div className="w-16 h-1 bg-black mt-2 ml-14"></div>
+                        <h2 className="text-[28px] font-medium text-black mt-3 ml-14" style={{ fontFamily: 'var(--font-anek-latin)' }}>Organizer Moderation</h2>
+                    </div>
                 </div>
 
-                {loading ? (
-                    <div className="p-12 text-center text-zinc-400">Loading...</div>
-                ) : !detail ? (
-                    <div className="p-12 text-center text-red-400">Failed to load organizer details.</div>
-                ) : (
-                    <div className="p-8 space-y-8">
-                        {/* Basic Info */}
-                        <div className="flex items-center gap-4">
-                            <div className="w-14 h-14 bg-[#5331EA]/10 rounded-full flex items-center justify-center">
-                                <User size={28} className="text-[#5331EA]" />
+                {/* Content Area */}
+                <div className="flex-1 bg-white rounded-[40px] shadow-sm p-12 flex gap-10 overflow-hidden">
+                    {/* Left: Identity */}
+                    <div className="w-1/4 flex flex-col">
+                        <div className="bg-[#EEEDFC] rounded-[30px] flex-1 flex flex-col items-center justify-center p-10 shadow-inner">
+                            <div className="w-36 h-36 bg-white rounded-full flex items-center justify-center shadow-lg mb-6">
+                                <User size={72} className="text-[#AC9BF7]" />
                             </div>
-                            <div>
-                                <p className="text-[20px] font-semibold text-black">{detail.organizer.email}</p>
-                                <p className="text-[14px] text-zinc-500">ID: {detail.organizer.id}</p>
-                            </div>
+                            <h3 className="text-[24px] font-bold text-black text-center break-all px-4 leading-tight">
+                                {detail.organizer.email}
+                            </h3>
+                            <p className="text-[18px] text-[#686868] mt-2 font-medium">ID: {detail.organizer.id.slice(-8).toUpperCase()}</p>
                         </div>
+                    </div>
 
-                        {/* Setups */}
-                        {detail.setups.length === 0 ? (
-                            <p className="text-zinc-400 italic">No setup submitted yet.</p>
-                        ) : (
-                            detail.setups.map(setup => {
-                                const currentStatus = detail.organizer.categoryStatus?.[setup.category] ?? 'pending';
-                                return (
-                                    <div key={setup.id} className="border border-zinc-200 rounded-[16px] p-6 space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <h3 className="text-[18px] font-bold capitalize text-black">{setup.category} Setup</h3>
-                                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[13px] font-medium border ${STATUS_COLORS[currentStatus] ?? 'bg-zinc-100 text-zinc-600'}`}>
-                                                {STATUS_ICONS[currentStatus]}
-                                                {currentStatus}
-                                            </span>
-                                        </div>
+                    {/* Right: Setup Details */}
+                    <div className="w-3/4 flex flex-col overflow-y-auto px-4 custom-scrollbar">
+                        {detail.setups && detail.setups.length > 0 ? (
+                            detail.setups.map((setup, idx) => (
+                                <div key={setup.id} className={idx > 0 ? 'mt-10 pt-10 border-t-2 border-dashed border-[#EEEDFC]' : ''}>
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h4 className="text-[22px] font-bold text-black uppercase tracking-wider">{setup.category} Setup Details</h4>
+                                        <span className={`px-5 py-1.5 rounded-full text-[16px] font-bold border-2 ${detail.organizer.categoryStatus?.[setup.category] === 'approved' ? 'bg-[#D1FAE5] text-[#065F46] border-[#065F46]/20' :
+                                                detail.organizer.categoryStatus?.[setup.category] === 'rejected' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-[#FFD9B7] text-[#8B4D1A] border-orange-200/20'
+                                            }`}>
+                                            {detail.organizer.categoryStatus?.[setup.category]?.toUpperCase() || 'PENDING'}
+                                        </span>
+                                    </div>
 
-                                        <div className="grid grid-cols-2 gap-4 text-[14px]">
-                                            <div><span className="text-zinc-500">Org Type:</span> <strong>{setup.orgType}</strong></div>
-                                            <div><span className="text-zinc-500">PAN:</span> <strong>{setup.pan || 'N/A'}</strong></div>
-                                            <div><span className="text-zinc-500">Name on PAN:</span> <strong>{setup.panName || 'N/A'}</strong></div>
-                                            <div><span className="text-zinc-500">DOB on PAN:</span> <strong>{setup.panDOB || 'N/A'}</strong></div>
-                                            <div><span className="text-zinc-500">Bank Account:</span> <strong>{setup.bankAccountNo || 'N/A'}</strong></div>
-                                            <div><span className="text-zinc-500">IFSC:</span> <strong>{setup.bankIfsc || 'N/A'}</strong></div>
-                                            <div><span className="text-zinc-500">Bank Name:</span> <strong>{setup.bankName || 'N/A'}</strong></div>
-                                            <div><span className="text-zinc-500">Account Holder:</span> <strong>{setup.accountHolder || 'N/A'}</strong></div>
-                                            <div><span className="text-zinc-500">Backup Email:</span> <strong>{setup.backupEmail || 'N/A'}</strong></div>
-                                            <div><span className="text-zinc-500">Backup Phone:</span> <strong>{setup.backupPhone || 'N/A'}</strong></div>
-                                        </div>
+                                    <div className="grid grid-cols-2 gap-x-10 gap-y-4">
+                                        {[
+                                            { label: 'Org Type', value: setup.orgType },
+                                            { label: 'PAN Card', value: setup.pan },
+                                            { label: 'PAN Name', value: setup.panName },
+                                            { label: 'DOB', value: setup.panDOB },
+                                            { label: 'Bank Acc', value: setup.bankAccountNo },
+                                            { label: 'Bank Name', value: setup.bankName },
+                                            { label: 'IFSC', value: setup.bankIfsc },
+                                            { label: 'Holder', value: setup.accountHolder },
+                                            { label: 'Backup Email', value: setup.backupEmail },
+                                            { label: 'Backup Phone', value: setup.backupPhone },
+                                        ].map((row, i) => (
+                                            <div key={i} className="flex flex-col border-b border-[#AEAEAE] pb-1.5">
+                                                <span className="text-[16px] font-medium text-[#686868]">{row.label}</span>
+                                                <span className="text-[18px] font-bold text-black mt-0.5">{"{"}{row.value || 'N/A'}{"}"}</span>
+                                            </div>
+                                        ))}
+                                    </div>
 
-                                        {setup.panCardUrl && (
+                                    {/* Documents */}
+                                    {setup.panCardUrl && (
+                                        <div className="mt-6">
                                             <a
                                                 href={setup.panCardUrl}
                                                 target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-2 text-[#5331EA] text-[14px] font-medium hover:underline"
+                                                rel="noreferrer"
+                                                className="inline-flex items-center gap-2 text-[#5331EA] font-bold text-[18px] bg-[#EEEDFC] px-6 py-2.5 rounded-[12px] hover:bg-[#AC9BF7] hover:text-white transition-all shadow-sm"
                                             >
-                                                View PAN Card <ExternalLink size={14} />
+                                                <ExternalLink size={20} /> View PAN Document
                                             </a>
-                                        )}
-
-                                        {/* Action Buttons */}
-                                        <div className="flex flex-wrap gap-3 pt-2">
-                                            <button
-                                                disabled={updating === setup.category}
-                                                onClick={() => handleStatusUpdate(setup.category, 'approved')}
-                                                className={`flex items-center gap-2 px-5 h-10 rounded-[10px] text-[14px] font-medium transition-colors ${currentStatus === 'approved' ? 'bg-green-100 text-green-700 border border-green-200 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700'}`}
-                                            >
-                                                <CheckCircle size={16} /> {currentStatus === 'approved' ? 'Approved' : 'Approve'}
-                                            </button>
-
-                                            {showRejectInput === setup.category ? (
-                                                <div className="flex items-center gap-2 flex-1">
-                                                    <input
-                                                        type="text"
-                                                        value={rejectionReason}
-                                                        onChange={e => setRejectionReason(e.target.value)}
-                                                        placeholder="Reason for rejection (optional)"
-                                                        className="flex-1 h-10 px-4 border border-zinc-300 rounded-[10px] text-[14px] focus:outline-none focus:border-red-400"
-                                                    />
-                                                    <button
-                                                        onClick={() => handleStatusUpdate(setup.category, 'rejected')}
-                                                        disabled={updating === setup.category}
-                                                        className="bg-red-500 text-white px-5 h-10 rounded-[10px] text-[14px] font-medium hover:bg-red-600 disabled:opacity-40 transition-colors"
-                                                    >
-                                                        {updating === setup.category ? 'Rejecting...' : 'Confirm Reject'}
-                                                    </button>
-                                                    <button
-                                                        onClick={() => { setShowRejectInput(null); setRejectionReason(''); }}
-                                                        className="text-zinc-500 px-3 h-10 text-[14px] hover:text-black"
-                                                    >
-                                                        Cancel
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <button
-                                                        disabled={updating === setup.category}
-                                                        onClick={() => setShowRejectInput(setup.category)}
-                                                        className={`flex items-center gap-2 px-5 h-10 rounded-[10px] text-[14px] font-medium transition-colors ${currentStatus === 'rejected' ? 'bg-red-100 text-red-700 border border-red-200 cursor-not-allowed' : 'bg-red-500 text-white hover:bg-red-600'}`}
-                                                    >
-                                                        <XCircle size={16} /> {currentStatus === 'rejected' ? 'Rejected' : 'Reject'}
-                                                    </button>
-
-                                                    {currentStatus !== 'pending' && (
-                                                        <button
-                                                            disabled={updating === setup.category}
-                                                            onClick={() => handleStatusUpdate(setup.category, 'pending')}
-                                                            className="text-zinc-500 border border-zinc-300 px-5 h-10 rounded-[10px] text-[14px] font-medium hover:bg-zinc-50 transition-colors"
-                                                        >
-                                                            Reset to Pending
-                                                        </button>
-                                                    )}
-                                                </>
-                                            )}
                                         </div>
+                                    )}
+
+                                    {/* Actions */}
+                                    <div className="mt-8 flex gap-4 justify-end">
+                                        {showRejectInput === setup.id ? (
+                                            <div className="flex flex-1 gap-3 items-center">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Reason..."
+                                                    className="flex-1 h-12 px-5 rounded-[12px] border-2 border-red-100 focus:border-red-400 focus:outline-none text-[16px]"
+                                                    value={rejectionReason}
+                                                    onChange={e => setRejectionReason(e.target.value)}
+                                                />
+                                                <button
+                                                    onClick={() => handleStatusUpdate(setup.category, 'rejected')}
+                                                    className="h-12 px-6 rounded-[12px] bg-red-600 text-white font-bold text-[16px] hover:scale-105 transition-transform shadow-md"
+                                                >
+                                                    Confirm
+                                                </button>
+                                                <button
+                                                    onClick={() => { setShowRejectInput(null); setRejectionReason(''); }}
+                                                    className="text-[#686868] font-bold hover:text-black px-2"
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <button
+                                                    onClick={() => handleStatusUpdate(setup.category, 'approved')}
+                                                    disabled={detail.organizer.categoryStatus?.[setup.category] === 'approved' || updating === setup.category}
+                                                    className="px-8 py-2.5 rounded-[12px] bg-[#D1FAE5] text-[#065F46] text-[18px] font-bold transition-all hover:scale-105 disabled:opacity-50 shadow-sm"
+                                                >
+                                                    Approve
+                                                </button>
+                                                <button
+                                                    onClick={() => setShowRejectInput(setup.id)}
+                                                    disabled={detail.organizer.categoryStatus?.[setup.category] === 'rejected' || updating === setup.category}
+                                                    className="px-8 py-2.5 rounded-[12px] bg-red-50 text-red-700 text-[18px] font-bold transition-all hover:scale-105 disabled:opacity-50 shadow-sm"
+                                                >
+                                                    Reject
+                                                </button>
+                                                <button
+                                                    onClick={() => handleStatusUpdate(setup.category, 'pending')}
+                                                    className="px-8 py-2.5 rounded-[12px] bg-[#EEEDFC] text-black border border-[#AC9BF7]/30 text-[18px] font-bold transition-all hover:scale-105 shadow-sm"
+                                                >
+                                                    Pending
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
-                                );
-                            })
+                                </div>
+                            ))
+                        ) : (
+                            <div className="flex-1 flex items-center justify-center flex-col opacity-40">
+                                <Clock size={64} className="mb-4" />
+                                <p className="text-[24px] font-bold">No application setups submitted yet</p>
+                            </div>
                         )}
                     </div>
-                )}
+                </div>
             </div>
         </div>
     );
@@ -206,7 +214,7 @@ function OrganizerModerationContent() {
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
-    const [search, setSearch] = useState('');
+    const [activeTab, setActiveTab] = useState<Tab>('pending');
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [authChecked, setAuthChecked] = useState(false);
 
@@ -219,10 +227,10 @@ function OrganizerModerationContent() {
         }
     }, [router]);
 
-    const fetchOrganizers = async (p = 1) => {
+    const fetchOrganizers = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await adminApi.listOrganizers(p, 20);
+            const data = await adminApi.listOrganizers(page, 50);
             setOrganizers(data.organizers);
             setTotalPages(data.pages);
         } catch (err) {
@@ -230,142 +238,167 @@ function OrganizerModerationContent() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [page]);
 
-    const handleDelete = async (id: string, email: string) => {
-        if (!confirm(`Are you sure you want to delete organizer ${email}? This cannot be undone.`)) return;
+    useEffect(() => { if (authChecked) fetchOrganizers(); }, [fetchOrganizers, authChecked]);
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('Permanently delete this organizer?')) return;
         try {
             await adminApi.deleteOrganizer(id);
-            alert('Organizer deleted successfully');
-            fetchOrganizers(page);
+            fetchOrganizers();
         } catch (err) {
-            alert(err instanceof Error ? err.message : 'Failed to delete organizer');
+            alert('Delete failed');
         }
     };
 
-    useEffect(() => { if (authChecked) fetchOrganizers(page); }, [page, authChecked]);
+    if (!authChecked) return null;
 
-    if (!authChecked) return <div className="min-h-screen animate-pulse bg-zinc-50" />;
+    const filtered = organizers.filter(org => {
+        const statuses = Object.entries(org.categoryStatus || {});
+        if (activeTab === 'all') return true;
 
-    const filtered = organizers.filter(o =>
-        search ? o.email.toLowerCase().includes(search.toLowerCase()) : true
-    );
+        // Hide organizers with NO APPLICATIONS if in Pending or Approved tabs
+        if (statuses.length === 0) return false;
+
+        if (activeTab === 'pending') return statuses.some(([_, s]) => s === 'pending');
+        if (activeTab === 'approved') return statuses.some(([_, s]) => s === 'approved');
+        return true;
+    });
 
     return (
-        <div className="min-h-screen bg-[#F8F9FA] font-[family-name:var(--font-anek-latin)] py-10 px-4 md:px-10">
-            <div className="max-w-6xl mx-auto space-y-8">
-                <div>
-                    <h1 className="text-[32px] font-bold text-black">Organizer Moderation</h1>
-                    <p className="text-[#686868] mt-1">Review and approve organizer applications across all verticals.</p>
+        <div className="min-h-screen bg-[#F3F0FF] p-8">
+            <div className="max-w-[1700px] mx-auto" style={{ zoom: 0.9 }}>
+                {/* Header */}
+                <div className="mb-8 flex justify-between items-start">
+                    <div className="flex flex-col">
+                        <h1 className="text-[40px] font-semibold text-black leading-tight" style={{ fontFamily: 'var(--font-anek-latin)' }}>Admin Panel</h1>
+                        <div className="w-16 h-1 bg-black mt-1.5 mb-5"></div>
+                        <h2 className="text-[28px] font-medium text-black mt-2" style={{ fontFamily: 'var(--font-anek-latin)' }}>Organizer Management</h2>
+                    </div>
+                    <button onClick={() => fetchOrganizers()} className="mt-6 flex items-center gap-2 text-[16px] font-bold text-[#686868] hover:text-black transition-all">
+                        <RefreshCw size={18} className={loading ? 'animate-spin' : ''} /> Refresh List
+                    </button>
                 </div>
 
-                {/* Search */}
-                <div className="relative max-w-md">
-                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
-                    <input
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        placeholder="Search by email..."
-                        className="w-full h-12 pl-11 pr-4 rounded-[14px] border border-zinc-200 focus:outline-none focus:border-[#5331EA] bg-white text-[15px]"
-                    />
+                {/* List Content */}
+                <div className="bg-white rounded-[35px] shadow-sm p-12 min-h-[700px]">
+                    {/* Tabs */}
+                    <div className="flex justify-center mb-12">
+                        <div className="bg-[#E7E2FA] rounded-[15px] flex w-[600px] h-[52px] overflow-hidden shadow-inner">
+                            {[
+                                { key: 'pending', label: 'Needs Approval' },
+                                { key: 'approved', label: 'Approved' },
+                                { key: 'all', label: 'View All' }
+                            ].map(tab => (
+                                <button
+                                    key={tab.key}
+                                    onClick={() => setActiveTab(tab.key as Tab)}
+                                    className={`flex-1 text-[20px] font-bold transition-all ${activeTab === tab.key ? 'bg-[#D3CBF5] text-black shadow-sm' : 'text-[#686868] hover:text-black'}`}
+                                    style={{ fontFamily: 'var(--font-anek-latin)' }}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {loading ? (
+                        <div className="flex justify-center py-32 opacity-20"><RefreshCw size={48} className="animate-spin text-[#AC9BF7]" /></div>
+                    ) : filtered.length === 0 ? (
+                        <div className="text-center py-32 text-[#686868] text-[24px] font-bold italic opacity-40">
+                            No organizers found for this filter
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 gap-8 px-8">
+                            {filtered.map(org => {
+                                const id = org.id;
+                                const verticals = Object.entries(org.categoryStatus || {});
+
+                                return (
+                                    <div key={id} className="relative group">
+                                        <div
+                                            onClick={() => setSelectedId(id)}
+                                            className="bg-[#EEEDFC] rounded-[24px] p-6 flex items-center gap-10 cursor-pointer transition-all hover:bg-[#E7E5FB] hover:shadow-lg border border-transparent hover:border-[#AC9BF7]/50"
+                                        >
+                                            {/* Mini Icon */}
+                                            <div className="w-[100px] h-[100px] rounded-[18px] bg-white flex items-center justify-center flex-shrink-0 shadow-sm transition-transform group-hover:scale-95">
+                                                <User size={48} className="text-[#AC9BF7] opacity-50" />
+                                            </div>
+
+                                            {/* Info */}
+                                            <div className="flex-1 flex flex-col justify-center min-w-0">
+                                                <div className="pl-8 border-l-[3px] border-[#AC9BF7] flex flex-col">
+                                                    <h3 className="text-[26px] font-bold text-black truncate leading-tight uppercase tracking-tight">
+                                                        {org.email}
+                                                    </h3>
+                                                    <p className="text-[18px] font-semibold text-[#686868] mt-0.5 opacity-80">
+                                                        Joined: {org.createdAt ? new Date(org.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
+                                                    </p>
+                                                </div>
+
+                                                {/* Verticals Status */}
+                                                <div className="flex flex-wrap gap-3 mt-4">
+                                                    {verticals.map(([cat, status]) => (
+                                                        <span key={cat} className={`px-4 py-1 rounded-[10px] text-[14px] font-bold border-2 transition-all ${status === 'approved' ? 'bg-[#D1FAE5] text-[#065F46] border-[#065F46]/10' :
+                                                                status === 'rejected' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-[#FFD9B7] text-[#8B4D1A] border-orange-200/20'
+                                                            }`}>
+                                                            {cat.toUpperCase()}: {status.toUpperCase()}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-6">
+                                                {/* Delete Button */}
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleDelete(org.id); }}
+                                                    className="p-3.5 rounded-full text-red-300 hover:text-red-500 hover:bg-white transition-all opacity-0 group-hover:opacity-100 shadow-sm"
+                                                >
+                                                    <Trash2 size={24} />
+                                                </button>
+
+                                                {/* Chevron */}
+                                                <div className="w-14 h-14 bg-black rounded-full flex items-center justify-center text-white shadow-xl transition-transform active:scale-90">
+                                                    <ChevronRight size={32} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div className="flex justify-center gap-6 mt-12 pt-8 border-t border-[#EEEDFC]">
+                            <button
+                                onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                                disabled={page === 1}
+                                className="px-6 py-2 rounded-[12px] border-2 border-[#AC9BF7]/50 text-[#5331EA] font-bold text-[16px] disabled:opacity-20 hover:bg-[#EEEDFC]"
+                            >
+                                Previous
+                            </button>
+                            <span className="flex items-center text-[18px] font-bold">Page {page} of {totalPages}</span>
+                            <button
+                                onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={page === totalPages}
+                                className="px-6 py-2 rounded-[12px] border-2 border-[#AC9BF7]/50 text-[#5331EA] font-bold text-[16px] disabled:opacity-20 hover:bg-[#EEEDFC]"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    )}
                 </div>
-
-                {loading ? (
-                    <div className="grid gap-4">
-                        {[...Array(5)].map((_, i) => (
-                            <div key={i} className="h-20 bg-white rounded-[16px] animate-pulse" />
-                        ))}
-                    </div>
-                ) : (
-                    <div className="bg-white rounded-[20px] border border-zinc-200 overflow-hidden shadow-sm">
-                        <table className="w-full text-[14px]">
-                            <thead className="bg-zinc-50 border-b border-zinc-100">
-                                <tr>
-                                    <th className="text-left px-6 py-4 font-semibold text-zinc-500">Email</th>
-                                    <th className="text-left px-6 py-4 font-semibold text-zinc-500">Dining</th>
-                                    <th className="text-left px-6 py-4 font-semibold text-zinc-500">Events</th>
-                                    <th className="text-left px-6 py-4 font-semibold text-zinc-500">Play</th>
-                                    <th className="text-left px-6 py-4 font-semibold text-zinc-500">Joined</th>
-                                    <th className="px-6 py-4" />
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-zinc-50">
-                                {filtered.length === 0 ? (
-                                    <tr><td colSpan={6} className="text-center py-12 text-zinc-400">No organizers found.</td></tr>
-                                ) : filtered.map(org => {
-                                    const categories = ['dining', 'events', 'play'];
-                                    return (
-                                        <tr key={org.id} className="hover:bg-zinc-50/50 transition-colors">
-                                            <td className="px-6 py-4 font-medium text-black">{org.email}</td>
-                                            {categories.map(cat => {
-                                                const status = org.categoryStatus?.[cat];
-                                                return (
-                                                    <td key={cat} className="px-6 py-4">
-                                                        {status ? (
-                                                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[12px] font-medium border ${STATUS_COLORS[status]}`}>
-                                                                {STATUS_ICONS[status]}
-                                                                {status}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-zinc-300 text-[12px]">—</span>
-                                                        )}
-                                                    </td>
-                                                );
-                                            })}
-                                            <td className="px-6 py-4 text-zinc-400">
-                                                {org.createdAt ? new Date(org.createdAt).toLocaleDateString('en-IN') : 'N/A'}
-                                            </td>
-                                            <td className="px-6 py-4 flex gap-2">
-                                                <button
-                                                    onClick={() => setSelectedId(org.id)}
-                                                    className="bg-[#5331EA] text-white px-4 h-9 rounded-[10px] text-[13px] font-medium hover:bg-[#4325C7] transition-colors"
-                                                >
-                                                    Review
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(org.id, org.email)}
-                                                    className="bg-white border border-red-200 text-red-500 px-4 h-9 rounded-[10px] text-[13px] font-medium hover:bg-red-50 transition-colors"
-                                                >
-                                                    Delete
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-
-                        {/* Pagination */}
-                        {totalPages > 1 && (
-                            <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-100">
-                                <span className="text-[13px] text-zinc-500">Page {page} of {totalPages}</span>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => setPage(p => Math.max(1, p - 1))}
-                                        disabled={page === 1}
-                                        className="h-8 w-8 flex items-center justify-center rounded-[8px] border border-zinc-200 disabled:opacity-40 hover:bg-zinc-50"
-                                    >
-                                        <ChevronLeft size={16} />
-                                    </button>
-                                    <button
-                                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                                        disabled={page === totalPages}
-                                        className="h-8 w-8 flex items-center justify-center rounded-[8px] border border-zinc-200 disabled:opacity-40 hover:bg-zinc-50"
-                                    >
-                                        <ChevronRight size={16} />
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
             </div>
 
+            {/* Full Page Detail View Overlay */}
             {selectedId && (
-                <OrganizerDetailModal
+                <OrganizerDetailView
                     organizerId={selectedId}
                     onClose={() => setSelectedId(null)}
-                    onStatusChange={() => fetchOrganizers(page)}
+                    onStatusChange={() => fetchOrganizers()}
                 />
             )}
         </div>
@@ -374,7 +407,7 @@ function OrganizerModerationContent() {
 
 export default function OrganizerModerationPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen animate-pulse bg-zinc-50" />}>
+        <Suspense fallback={<div className="min-h-screen bg-[#F3F0FF] flex justify-center items-center"><RefreshCw size={48} className="animate-spin text-[#AC9BF7]" /></div>}>
             <OrganizerModerationContent />
         </Suspense>
     );

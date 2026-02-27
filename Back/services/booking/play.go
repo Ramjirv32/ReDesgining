@@ -24,7 +24,7 @@ func CreatePlay(b *models.PlayBooking) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Fetch Play to get OrganizerID
+	
 	var play models.Play
 	errPlay := config.GetDB().Collection("play").FindOne(ctx, bson.M{"_id": b.PlayID}).Decode(&play)
 	if errPlay == nil {

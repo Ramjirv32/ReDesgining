@@ -63,3 +63,24 @@ func GetForEntity(entityType string, entityID string) ([]models.EventOffer, erro
 	}
 	return offers, nil
 }
+func GetByCategory(category string) ([]models.EventOffer, error) {
+	col := config.GetDB().Collection("offers")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"applies_to":  category,
+		"is_active":   true,
+		"valid_until": bson.M{"$gt": time.Now()},
+	}
+	cursor, err := col.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+	offers := []models.EventOffer{}
+	if err := cursor.All(ctx, &offers); err != nil {
+		return nil, err
+	}
+	return offers, nil
+}

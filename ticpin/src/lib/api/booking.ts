@@ -15,6 +15,7 @@ export interface CreateBookingPayload {
     booking_fee: number;
     coupon_code?: string;
     offer_id?: string;
+    user_id?: string;
 }
 
 export interface CreateDiningPayload {
@@ -28,6 +29,7 @@ export interface CreateDiningPayload {
     booking_fee: number;
     coupon_code?: string;
     offer_id?: string;
+    user_id?: string;
 }
 
 export interface CreatePlayPayload {
@@ -41,6 +43,7 @@ export interface CreatePlayPayload {
     booking_fee: number;
     coupon_code?: string;
     offer_id?: string;
+    user_id?: string;
 }
 
 export interface BookingResult {
@@ -91,12 +94,13 @@ export const bookingApi = {
     validateCoupon: async (
         code: string,
         eventId: string,
-        orderAmount: number
+        orderAmount: number,
+        userId?: string
     ): Promise<CouponValidateResult> => {
         const res = await fetch(`${BASE}/coupons/validate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code, event_id: eventId, order_amount: orderAmount }),
+            body: JSON.stringify({ code, event_id: eventId, order_amount: orderAmount, user_id: userId }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? 'Invalid coupon');
@@ -157,5 +161,19 @@ export const bookingApi = {
         const data = await res.json();
         if (!res.ok) return { booked: {} };
         return data as AvailabilityResult;
+    },
+
+    /** Get active coupons for a category.
+     *  Pass userId to also receive user-specific coupons for that user;
+     *  without it only global (unrestricted) coupons are returned.
+     */
+    getCouponsByCategory: async (category: string, userId?: string): Promise<any[]> => {
+        const url = userId
+            ? `${BASE}/coupons/${category}?user_id=${encodeURIComponent(userId)}`
+            : `${BASE}/coupons/${category}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (!res.ok) return [];
+        return Array.isArray(data) ? data : [];
     },
 };

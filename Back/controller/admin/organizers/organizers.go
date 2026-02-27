@@ -13,8 +13,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// ListOrganizers returns a paginated list of organizers with optional search.
-// GET /api/admin/organizers?page=1&limit=10&search=...
 func ListOrganizers(c *fiber.Ctx) error {
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
@@ -50,8 +48,6 @@ func ListOrganizers(c *fiber.Ctx) error {
 	})
 }
 
-// GetOrganizerDetail returns full organizer info + their verification setups.
-// GET /api/admin/organizers/:id
 func GetOrganizerDetail(c *fiber.Ctx) error {
 	id, err := primitive.ObjectIDFromHex(c.Params("id"))
 	if err != nil {
@@ -64,7 +60,6 @@ func GetOrganizerDetail(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "not found"})
 	}
 
-	// Fetch all setups for this organizer (dining, events, play)
 	cursor, err := config.GetDB().Collection("organizer_setups").Find(context.Background(), bson.M{"organizerId": id})
 	var setups []models.OrganizerSetup
 	if err == nil {
@@ -77,8 +72,6 @@ func GetOrganizerDetail(c *fiber.Ctx) error {
 	})
 }
 
-// UpdateCategoryStatus sets verification status for a specific vertical.
-// POST /api/admin/organizers/:id/status
 func UpdateCategoryStatus(c *fiber.Ctx) error {
 	id := c.Params("id")
 	var body struct {
@@ -96,24 +89,18 @@ func UpdateCategoryStatus(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "status updated for " + body.Category})
 }
 
-// DeleteOrganizer removes an organizer and all their setups.
-// DELETE /api/admin/organizers/:id
 func DeleteOrganizer(c *fiber.Ctx) error {
 	id, err := primitive.ObjectIDFromHex(c.Params("id"))
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid id"})
 	}
 
-	// Delete from organizers collection
 	_, err = config.GetDB().Collection("organizers").DeleteOne(context.Background(), bson.M{"_id": id})
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "failed to delete organizer"})
 	}
-
-	// Delete from setups collection
 	_, _ = config.GetDB().Collection("organizer_setups").DeleteMany(context.Background(), bson.M{"organizerId": id})
 
-	// Also delete from profiles if exists
 	_, _ = config.GetDB().Collection("profiles").DeleteOne(context.Background(), bson.M{"organizerId": id})
 
 	return c.JSON(fiber.Map{"message": "organizer and related data deleted"})

@@ -102,6 +102,22 @@ const CreateEventPage = () => {
             setAuthChecked(true);
             // Default organizer name in payment
             setPayment(p => ({ ...p, organizerName: session.email.split('@')[0] }));
+            // Pre-fill bank details from saved organizer setup
+            fetch(`/backend/api/organizer/${session.id}/existing-setup?category=events`, { credentials: 'include' })
+                .then(r => r.ok ? r.json() : null)
+                .then(setup => {
+                    if (setup) {
+                        setPayment(p => ({
+                            ...p,
+                            organizerName: setup.accountHolder || p.organizerName,
+                            gstin:         setup.gstNumber    || p.gstin,
+                            accountNumber: setup.bankAccountNo || p.accountNumber,
+                            ifsc:          setup.bankIfsc      || p.ifsc,
+                            accountType:   setup.bankName      || p.accountType,
+                        }));
+                    }
+                })
+                .catch(() => {});
         }
     }, []);
 
@@ -257,8 +273,8 @@ const CreateEventPage = () => {
     const removePoc = (idx: number) => setPocs(pocs.filter((_, i) => i !== idx));
 
     const addSalesNotif = () => {
-        if (!newSales.email || !newSales.mobile) return;
-        setSalesNotifs([...salesNotifs, newSales]);
+        if (!newSales.email.trim()) return;
+        setSalesNotifs([...salesNotifs, { email: newSales.email.trim(), mobile: '' }]);
         setNewSales({ email: '', mobile: '' });
     };
 
@@ -1377,28 +1393,16 @@ const CreateEventPage = () => {
                                 Send a copy of every sale to
                             </h2>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="w-full">
                                 <div className="space-y-3">
-                                    <label className="text-[20px] font-medium text-[#686868]" style={{ fontFamily: 'var(--font-anek-latin)' }}>Mail</label>
+                                    <label className="text-[20px] font-medium text-[#686868]" style={{ fontFamily: 'var(--font-anek-latin)' }}>Email</label>
                                     <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
                                         <input
-                                            type="text"
+                                            type="email"
                                             placeholder="Enter email address"
                                             value={newSales.email}
                                             onChange={e => setNewSales({ ...newSales, email: e.target.value })}
-                                            className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]"
-                                            style={{ fontFamily: 'var(--font-anek-latin)' }}
-                                        />
-                                    </div>
-                                </div>
-                                <div className="space-y-3">
-                                    <label className="text-[20px] font-medium text-[#686868]" style={{ fontFamily: 'var(--font-anek-latin)' }}>Mobile</label>
-                                    <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
-                                        <input
-                                            type="text"
-                                            placeholder="Enter mobile number"
-                                            value={newSales.mobile}
-                                            onChange={e => setNewSales({ ...newSales, mobile: e.target.value })}
+                                            onKeyDown={e => e.key === 'Enter' && addSalesNotif()}
                                             className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]"
                                             style={{ fontFamily: 'var(--font-anek-latin)' }}
                                         />
@@ -1410,7 +1414,7 @@ const CreateEventPage = () => {
                                 <div className="flex flex-wrap gap-3">
                                     {salesNotifs.map((s, i) => (
                                         <div key={i} className="bg-zinc-100 px-4 py-2 rounded-lg flex items-center gap-2">
-                                            <span>{s.email} ({s.mobile})</span>
+                                            <span>{s.email}</span>
                                             <button onClick={() => removeSalesNotif(i)} className="text-red-500">×</button>
                                         </div>
                                     ))}
