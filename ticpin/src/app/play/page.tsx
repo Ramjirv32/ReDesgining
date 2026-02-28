@@ -16,6 +16,7 @@ interface RealPlay {
     landscape_image_url?: string;
     category?: string;
     rating?: number;
+    status?: string;
 }
 
 const sportsCategories = [
@@ -40,7 +41,8 @@ export default function PlayPage() {
         fetch('/backend/api/play', { credentials: 'include' })
             .then(r => r.json())
             .then((data: RealPlay[]) => {
-                setVenues(Array.isArray(data) ? data : []);
+                const list = (Array.isArray(data) ? data : []).filter(v => v.status === 'approved');
+                setVenues(list);
                 setLoading(false);
             })
             .catch(() => setLoading(false));

@@ -35,11 +35,10 @@ export default function Navbar() {
         pathname === '/terms' ||
         pathname === '/privacy' ||
         pathname === '/refund' ||
+        pathname.startsWith('/admin') ||
         pathname.endsWith('/book') ||
         pathname.endsWith('/book/tickets') ||
-        pathname.endsWith('/book/review') ||
-        pathname.endsWith('/admin/ChatSupportPage') ||
-        pathname.endsWith('/admin/ChatSupportPage/reply');
+        pathname.endsWith('/book/review');
 
     useEffect(() => {
         if (hideNavbar) return;

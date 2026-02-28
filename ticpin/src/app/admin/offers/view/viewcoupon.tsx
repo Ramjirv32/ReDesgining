@@ -1,19 +1,32 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChevronRight } from 'lucide-react';
-import { adminApi, CouponRecord } from '@/lib/api/admin';
+import { ChevronRight, X, User, BarChart3, Clock } from 'lucide-react';
+import { adminApi, CouponRecord, UserRecord } from '@/lib/api/admin';
 
 export default function ViewCouponForm({ onBack }: { onBack: () => void }) {
     const [coupons, setCoupons] = useState<CouponRecord[]>([]);
+    const [users, setUsers] = useState<UserRecord[]>([]);
+    const [selectedCoupon, setSelectedCoupon] = useState<CouponRecord | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
     useEffect(() => {
-        adminApi.listCoupons()
-            .then(setCoupons)
-            .catch(() => setError('Failed to load coupons'))
-            .finally(() => setLoading(false));
+        const fetchData = async () => {
+            try {
+                const [couponData, userData] = await Promise.all([
+                    adminApi.listCoupons(),
+                    adminApi.listUsers().catch(() => [])
+                ]);
+                setCoupons(couponData);
+                setUsers(userData);
+            } catch (err) {
+                setError('Failed to load coupon data');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
     }, []);
 
     const formatDate = (iso: string) => {
@@ -21,8 +34,38 @@ export default function ViewCouponForm({ onBack }: { onBack: () => void }) {
         catch { return iso; }
     };
 
+    const formatFullDate = (iso: string) => {
+        try {
+            return new Date(iso).toLocaleDateString('en-IN', {
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch { return iso; }
+    };
+
+    const getUserName = (coupon?: CouponRecord) => {
+        if (!coupon) return 'Global (All Users)';
+
+        // Try single user_id field first
+        let primaryId = coupon.user_id;
+
+        // If not found, try user_ids array
+        if (!primaryId && coupon.user_ids && coupon.user_ids.length > 0) {
+            const first = coupon.user_ids[0];
+            primaryId = typeof first === 'string' ? first : first.$oid;
+        }
+
+        if (!primaryId) return 'Global (All Users)';
+
+        const user = users.find(u => u.id === primaryId);
+        return user ? user.name : `User (${primaryId})`;
+    };
+
     return (
-        <div className="bg-white rounded-[32px] p-10 md:p-12 lg:p-14 min-h-[480px] flex items-center justify-center gap-12">
+        <div className="bg-white rounded-[32px] p-10 md:p-12 lg:p-14 min-h-[480px] flex items-center justify-center gap-12 relative">
             <div className="relative w-full max-w-[1050px]">
                 {loading ? (
                     <div className="text-center py-20 text-gray-400 text-[16px]">Loading coupons...</div>
@@ -35,8 +78,9 @@ export default function ViewCouponForm({ onBack }: { onBack: () => void }) {
                         {coupons.map((coupon) => (
                             <div
                                 key={coupon.id}
-                                className="bg-[#F1EDFF] rounded-[24px] p-5 flex flex-col justify-center"
-                                style={{ width: '290px', height: '150px', opacity: 1 }}
+                                onClick={() => setSelectedCoupon(coupon)}
+                                className="bg-[#F1EDFF] rounded-[24px] p-5 flex flex-col justify-center cursor-pointer hover:shadow-lg transition-all active:scale-95 group border border-transparent hover:border-[#866BFF]/30"
+                                style={{ width: '290px', height: '150px' }}
                             >
                                 <div className="flex items-center gap-4">
                                     {/* Coupon Token */}
@@ -94,6 +138,101 @@ export default function ViewCouponForm({ onBack }: { onBack: () => void }) {
                     <ChevronRight className="w-6 h-6" />
                 </button>
             </div>
+
+            {/* Modal Overlay */}
+            {selectedCoupon && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+                    <div className="bg-white w-full max-w-[500px] rounded-[40px] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
+                        {/* Header */}
+                        <div className="bg-[#866BFF] p-8 text-white relative">
+                            <button
+                                onClick={() => setSelectedCoupon(null)}
+                                className="absolute right-8 top-8 p-1 hover:bg-white/20 rounded-full transition-all"
+                            >
+                                <X size={24} />
+                            </button>
+                            <h2 className="text-[24px] font-bold" style={{ fontFamily: 'var(--font-anek-latin)' }}>Coupon Details</h2>
+                            <div className="mt-2 inline-block px-3 py-1 bg-white/20 rounded-lg text-[14px] font-bold tracking-widest uppercase">
+                                {selectedCoupon.code}
+                            </div>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-8 space-y-8" style={{ fontFamily: 'var(--font-anek-latin)' }}>
+                            {/* User Allocation */}
+                            <div className="flex items-start gap-4">
+                                <div className="w-10 h-10 rounded-xl bg-[#F1EDFF] flex items-center justify-center shrink-0">
+                                    <User className="text-[#866BFF]" size={20} />
+                                </div>
+                                <div className="flex-1">
+                                    <label className="text-[12px] text-gray-500 font-bold uppercase tracking-wider">Allocated User</label>
+                                    <p className="text-[18px] text-black font-bold mt-1">
+                                        {getUserName(selectedCoupon)}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Usage Stats */}
+                            <div className="flex items-start gap-4">
+                                <div className="w-10 h-10 rounded-xl bg-[#F1EDFF] flex items-center justify-center shrink-0">
+                                    <BarChart3 className="text-[#866BFF]" size={20} />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-[12px] text-gray-500 font-bold uppercase tracking-wider">Usage Statistics</p>
+                                    <div className="grid grid-cols-2 gap-4 mt-3">
+                                        <div className="bg-zinc-50 rounded-2xl p-4 border border-zinc-100">
+                                            <p className="text-[22px] font-bold text-black">{selectedCoupon.used_count}</p>
+                                            <p className="text-[11px] text-gray-400 font-bold uppercase">Total Used</p>
+                                        </div>
+                                        <div className="bg-zinc-50 rounded-2xl p-4 border border-zinc-100">
+                                            <p className="text-[22px] font-bold text-black">
+                                                {selectedCoupon.max_uses === 0 ? '∞' : selectedCoupon.max_uses}
+                                            </p>
+                                            <p className="text-[11px] text-gray-400 font-bold uppercase">Usable Times</p>
+                                        </div>
+                                    </div>
+                                    {selectedCoupon.max_uses > 0 && (
+                                        <div className="mt-4 bg-gray-100 h-2 rounded-full overflow-hidden">
+                                            <div
+                                                className="bg-[#866BFF] h-full transition-all duration-1000"
+                                                style={{ width: `${Math.min(100, (selectedCoupon.used_count / selectedCoupon.max_uses) * 100)}%` }}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Validity */}
+                            <div className="flex items-start gap-4">
+                                <div className="w-10 h-10 rounded-xl bg-[#F1EDFF] flex items-center justify-center shrink-0">
+                                    <Clock className="text-[#866BFF]" size={20} />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-[12px] text-gray-500 font-bold uppercase tracking-wider">Validity period</p>
+                                    <div className="mt-3 space-y-2">
+                                        <div className="flex justify-between items-center text-[14px]">
+                                            <span className="text-gray-400 font-medium">Valid From</span>
+                                            <span className="text-black font-bold">{formatFullDate(selectedCoupon.valid_from)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-[14px]">
+                                            <span className="text-gray-400 font-medium">Valid Until</span>
+                                            <span className="text-black font-bold">{formatFullDate(selectedCoupon.valid_until)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Footer Action */}
+                            <button
+                                onClick={() => setSelectedCoupon(null)}
+                                className="w-full h-[56px] bg-black text-white rounded-2xl font-bold text-[16px] transition-all active:scale-[0.98] hover:bg-zinc-800 shadow-xl"
+                            >
+                                Close Details
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

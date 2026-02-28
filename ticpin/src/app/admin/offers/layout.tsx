@@ -35,7 +35,7 @@ export default function OffersLayout({
                         <Link
                             href="/admin/offers/create"
                             className={`flex-1 text-center py-2.5 text-[18px] font-medium transition-all ${pathname.includes('/create')
-                                ? 'bg-[#C4B5FD] text-black'
+                                    ? 'bg-[#C4B5FD] text-black'
                                 : 'text-black'
                                 }`}
                             style={{ fontFamily: 'Anek Latin' }}
@@ -45,7 +45,7 @@ export default function OffersLayout({
                         <Link
                             href="/admin/offers/view"
                             className={`flex-1 text-center py-2.5 text-[18px] font-medium transition-all ${pathname.includes('/view')
-                                ? 'bg-[#C4B5FD] text-black'
+                                    ? 'bg-[#C4B5FD] text-black'
                                 : 'text-black'
                                 }`}
                             style={{ fontFamily: 'Anek Latin' }}
@@ -63,8 +63,6 @@ export default function OffersLayout({
                     {children}
                 </div>
             </main>
-
-
         </div>
     );
 }

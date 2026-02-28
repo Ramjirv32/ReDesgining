@@ -50,7 +50,7 @@ function MultiSelect<T extends { id: string; label: string }>({
                         selected.map(id => {
                             const item = items.find(i => i.id === id);
                             return (
-                                <span key={id} className="inline-flex items-center gap-1 bg-[#EDE9FD] text-[#5331EA] text-[13px] font-semibold rounded-full px-2.5 py-0.5">
+                                <span key={id} className="inline-flex items-center gap-1 bg-[#EDE9FE] text-[#5331EA] text-[13px] font-semibold rounded-full px-2.5 py-0.5">
                                     {item?.label ?? id}
                                     <button type="button" onClick={e => { e.stopPropagation(); onToggle(id); }}>
                                         <X size={11} />
@@ -94,9 +94,8 @@ function MultiSelect<T extends { id: string; label: string }>({
                                         key={item.id}
                                         className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-[#F5F3FF] transition-colors ${checked ? 'bg-[#F5F3FF]' : ''}`}
                                     >
-                                        <div className={`w-5 h-5 rounded-[6px] border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-                                            checked ? 'bg-[#5331EA] border-[#5331EA]' : 'border-[#D9D9D9] bg-white'
-                                        }`}>
+                                        <div className={`w-5 h-5 rounded-[6px] border-2 flex items-center justify-center flex-shrink-0 transition-colors ${checked ? 'bg-[#7C3AED] border-[#7C3AED]' : 'border-[#D9D9D9] bg-white'
+                                            }`}>
                                             {checked && <Check size={12} className="text-white" strokeWidth={3} />}
                                         </div>
                                         <span className="text-[15px] font-medium text-[#2a2a2a]" style={{ fontFamily: 'Anek Latin' }}>

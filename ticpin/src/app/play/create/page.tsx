@@ -95,11 +95,40 @@ const CreatePlayPage = () => {
         );
     }
 
+    const validateImageDimensions = (file: File, expectedWidth: number, expectedHeight: number): Promise<boolean> => {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.src = URL.createObjectURL(file);
+            img.onload = () => {
+                URL.revokeObjectURL(img.src);
+                if (img.width > expectedWidth || img.height > expectedHeight) {
+                    alert(`Invalid dimensions! Maximum allowed is ${expectedWidth}x${expectedHeight}px, but yours is ${img.width}x${img.height}px.`);
+                    resolve(false);
+                } else {
+                    resolve(true);
+                }
+            };
+            img.onerror = () => {
+                URL.revokeObjectURL(img.src);
+                resolve(false);
+            };
+        });
+    };
+
     const handleUpload = async (key: string, file: File, multi = false) => {
         const maxSizeMB = key === 'video' ? 5 : 1.5;
         if (file.size > maxSizeMB * 1024 * 1024) {
             alert(`File size exceeds the allowable limit. Maximum allowed size is ${maxSizeMB}MB.`);
             return;
+        }
+
+        // Dimension Validation
+        if (key === 'portrait') {
+            const isValid = await validateImageDimensions(file, 900, 1200);
+            if (!isValid) return;
+        } else if (key === 'landscape') {
+            const isValid = await validateImageDimensions(file, 1600, 900);
+            if (!isValid) return;
         }
 
         setUploading(u => ({ ...u, [key]: true }));

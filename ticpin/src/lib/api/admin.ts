@@ -76,6 +76,7 @@ export interface AdminListing {
     _id?: string;
     id?: string;
     name?: string;
+    description?: string;
     title?: string;
     category?: string;
     sub_category?: string;
@@ -85,6 +86,8 @@ export interface AdminListing {
     organizer_name?: string;
     created_at?: string;
     updated_at?: string;
+    createdAt?: string;
+    updatedAt?: string;
     // Images
     image?: string;
     images?: string[];
@@ -118,7 +121,14 @@ export interface AdminListing {
         languages?: string[];
         is_kid_friendly?: boolean;
         is_pet_friendly?: boolean;
+        facilities?: string[];
+        event_instructions?: string;
     };
+    prohibited_items?: string[];
+    tickets_needed_for?: string;
+    terms?: string;
+    points_of_contact?: Array<{ name: string; phone: string; email: string }>;
+    sales_notifications?: Array<{ type: string; message: string }>;
     instagram_link?: string;
     youtube_video_url?: string;
     legal_info?: string;
@@ -128,6 +138,7 @@ export interface AdminListing {
         account_number?: string;
         ifsc?: string;
         account_type?: string;
+        mobile?: string;
     };
     // dining-specific
     cuisine?: string;
@@ -189,6 +200,7 @@ export interface CouponRecord {
     is_active: boolean;
     created_at: string;
     user_id?: string;
+    user_ids?: (string | { $oid: string })[];
 }
 
 export interface UserRecord {

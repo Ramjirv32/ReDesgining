@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { ChevronRight, Trash2, X, Tag, CheckCircle2, ChevronDown } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { bookingApi, OfferItem } from '@/lib/api/booking';
 import Link from 'next/link';
 import { useUserSession } from '@/lib/auth/user';
@@ -26,6 +26,7 @@ export default function ReviewBookingPage() {
     const params = useParams();
     const id = params?.id as string;
     const session = useUserSession();
+    const billingRef = useRef<HTMLDivElement>(null);
 
     const [cart, setCart] = useState<CartData | null>(null);
 
@@ -45,6 +46,7 @@ export default function ReviewBookingPage() {
 
     // Inline UI state
     const [expandedSection, setExpandedSection] = useState<'none' | 'offers' | 'coupons'>('none');
+    const [showGstDetails, setShowGstDetails] = useState(false);
 
     // User details
     const [email, setEmail] = useState('');
@@ -84,7 +86,52 @@ export default function ReviewBookingPage() {
             // Default to 'event' if not specified
             setCart({ ...data, type: data.type || 'event' });
         }
+
+        const savedEmail = localStorage.getItem('ticpin_billing_email');
+        if (savedEmail) setEmail(savedEmail);
+
+        const savedBilling = localStorage.getItem('ticpin_billing_data');
+        if (savedBilling) {
+            try {
+                setBilling(JSON.parse(savedBilling));
+            } catch (e) { }
+        }
+
+        const savedStep = localStorage.getItem('ticpin_booking_step');
+        if (savedStep === 'billing') {
+            setStep('billing');
+            // Give it a tiny delay to ensure cart is loaded before scrolling
+            setTimeout(() => {
+                billingRef.current?.scrollIntoView({ behavior: 'instant' });
+            }, 100);
+        }
     }, []);
+
+    // Also pre-fill with session data if available and state is empty
+    useEffect(() => {
+        if (session) {
+            setBilling(prev => ({
+                ...prev,
+                name: prev.name && prev.name !== '' ? prev.name : (session.name || ''),
+                phone: prev.phone && prev.phone !== '' ? prev.phone : (session.phone || ''),
+            }));
+        }
+    }, [session]);
+
+    // Persist changes
+    useEffect(() => {
+        if (email) localStorage.setItem('ticpin_billing_email', email);
+    }, [email]);
+
+    useEffect(() => {
+        if (billing.name || billing.phone || billing.address) {
+            localStorage.setItem('ticpin_billing_data', JSON.stringify(billing));
+        }
+    }, [billing]);
+
+    useEffect(() => {
+        localStorage.setItem('ticpin_booking_step', step);
+    }, [step]);
 
     useEffect(() => {
         if (id && cart?.type) {
@@ -126,7 +173,11 @@ export default function ReviewBookingPage() {
     };
 
     const updateTicketQuantity = (i: number, newQuantity: number) => {
-        if (!cart || newQuantity < 1) return;
+        if (!cart) return;
+        if (newQuantity < 1) {
+            removeTicket(i);
+            return;
+        }
         const newTickets = [...cart.tickets];
         newTickets[i] = { ...newTickets[i], quantity: newQuantity };
         const newTotal = newTickets.reduce((s, t) => s + t.price * t.quantity, 0);
@@ -183,18 +234,20 @@ export default function ReviewBookingPage() {
     };
 
     const handleContinue = () => {
-        if (!email.trim() || !email.includes('@')) {
-            setBookingError('Please enter a valid email address');
+        if (!billing.phone.trim() || billing.phone.length < 10) {
+            setBookingError('Please enter a valid 10-digit mobile number');
             return;
         }
         setBookingError('');
         setStep('billing');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setTimeout(() => {
+            billingRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
     };
 
     const handlePayNow = async () => {
         if (!billing.name.trim()) { setBookingError('Please enter your full name'); return; }
-        if (!billing.phone.trim() || billing.phone.length < 10) { setBookingError('Please enter a valid phone number'); return; }
+        if (!email.trim() || !email.includes('@')) { setBookingError('Please enter a valid email address'); return; }
         if (!billing.nationality.trim()) { setBookingError('Please select your nationality'); return; }
         if (!billing.address.trim()) { setBookingError('Please enter your address'); return; }
         if (!billing.city.trim()) { setBookingError('Please enter your city'); return; }
@@ -259,6 +312,9 @@ export default function ReviewBookingPage() {
             }
             setBookingId(result.booking_id);
             localStorage.removeItem('ticpin_cart');
+            localStorage.removeItem('ticpin_billing_email');
+            localStorage.removeItem('ticpin_billing_data');
+            localStorage.removeItem('ticpin_booking_step');
             setStep('success');
         } catch (err: unknown) {
             setBookingError(err instanceof Error ? err.message : 'Booking failed. Please try again.');
@@ -268,7 +324,6 @@ export default function ReviewBookingPage() {
     };
 
     const toggleSection = (section: 'offers' | 'coupons') => {
-        if (step !== 'review') return;
         setExpandedSection(prev => prev === section ? 'none' : section);
     };
 
@@ -356,40 +411,31 @@ export default function ReviewBookingPage() {
                                             )}
 
                                             <div className="flex items-center gap-3 mt-2">
-                                                {step === 'review' ? (
-                                                    <div className="flex items-center gap-2 border border-[#AEAEAE] rounded-[6px] px-2 py-1">
-                                                        <button
-                                                            onClick={() => updateTicketQuantity(i, ticket.quantity - 1)}
-                                                            disabled={ticket.quantity <= 1}
-                                                            className="w-[24px] h-[24px] flex items-center justify-center text-[16px] font-bold text-black hover:text-[#5331EA] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                                                        >
-                                                            −
-                                                        </button>
-                                                        <span className="w-[30px] text-center text-[14px] font-semibold text-black">
-                                                            {ticket.quantity}
-                                                        </span>
-                                                        <button
-                                                            onClick={() => updateTicketQuantity(i, ticket.quantity + 1)}
-                                                            className="w-[24px] h-[24px] flex items-center justify-center text-[16px] font-bold text-black hover:text-[#5331EA] transition-colors"
-                                                        >
-                                                            +
-                                                        </button>
-                                                    </div>
-                                                ) : (
-                                                    <p className="text-[14px] text-black font-semibold">
-                                                        {ticket.quantity} <span className="text-[12px] uppercase font-normal">{cart.type === 'dining' ? 'reservation' : 'ticket'}{ticket.quantity > 1 ? 's' : ''}</span>
-                                                    </p>
-                                                )}
+                                                <div className="flex items-center gap-2 border border-[#AEAEAE] rounded-[6px] px-2 py-1">
+                                                    <button
+                                                        onClick={() => updateTicketQuantity(i, ticket.quantity - 1)}
+                                                        className="w-[24px] h-[24px] flex items-center justify-center text-[16px] font-bold text-black hover:text-[#5331EA] transition-colors"
+                                                    >
+                                                        −
+                                                    </button>
+                                                    <span className="w-[30px] text-center text-[14px] font-semibold text-black">
+                                                        {ticket.quantity}
+                                                    </span>
+                                                    <button
+                                                        onClick={() => updateTicketQuantity(i, ticket.quantity + 1)}
+                                                        className="w-[24px] h-[24px] flex items-center justify-center text-[16px] font-bold text-black hover:text-[#5331EA] transition-colors"
+                                                    >
+                                                        +
+                                                    </button>
+                                                </div>
                                                 <span className="text-[#AEAEAE]">×</span>
                                                 <p className="text-[14px] text-[#686868]">₹{ticket.price.toLocaleString('en-IN')}</p>
                                             </div>
                                         </div>
                                         <div className="flex flex-col items-end gap-4">
-                                            {step === 'review' && (
-                                                <Trash2 size={14} className="text-[#AEAEAE] cursor-pointer hover:text-red-500 transition-colors"
-                                                    onClick={() => removeTicket(i)}
-                                                />
-                                            )}
+                                            <Trash2 size={14} className="text-[#AEAEAE] cursor-pointer hover:text-red-500 transition-colors"
+                                                onClick={() => removeTicket(i)}
+                                            />
                                             <span style={{ color: 'black', fontSize: '20px', fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}>
                                                 ₹{(ticket.price * ticket.quantity).toLocaleString('en-IN')}
                                             </span>
@@ -404,7 +450,7 @@ export default function ReviewBookingPage() {
                             </div>
 
                             {/* OFFERS */}
-                            <div>
+                            < div >
                                 <div className="flex items-center gap-4 mb-4 mt-[-20px]">
                                     <h3 style={{ color: 'black', fontSize: '25px', fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)', fontWeight: 100, lineHeight: '60px' }} className="uppercase">OFFERS</h3>
                                     <div className="flex-grow h-[0.5px] bg-[#AEAEAE]" />
@@ -589,12 +635,31 @@ export default function ReviewBookingPage() {
                                         <span>Subtotal</span>
                                         <span>₹{orderAmount.toLocaleString('en-IN')}</span>
                                     </div>
-                                    <div className="flex justify-between items-center" style={{ color: '#686868', fontSize: '20px', fontFamily: 'var(--font-anek-latin)', fontWeight: 500 }}>
-                                        <div className="flex items-center gap-1">
-                                            <span>Booking fee (inc. of GST)</span>
-                                            <ChevronRight size={18} className="rotate-90" />
+                                    <div className="flex flex-col">
+                                        <div
+                                            className="flex justify-between items-center cursor-pointer group"
+                                            onClick={() => setShowGstDetails(!showGstDetails)}
+                                            style={{ color: '#686868', fontSize: '20px', fontFamily: 'var(--font-anek-latin)', fontWeight: 500 }}
+                                        >
+                                            <div className="flex items-center gap-1 group-hover:text-black transition-colors">
+                                                <span>Booking fee (inc. of GST)</span>
+                                                <ChevronRight size={18} className={`transition-transform duration-300 ${showGstDetails ? 'rotate-90' : ''}`} />
+                                            </div>
+                                            <span>₹{bookingFee.toLocaleString('en-IN')}</span>
                                         </div>
-                                        <span>₹{bookingFee.toLocaleString('en-IN')}</span>
+                                        {showGstDetails && (
+                                            <div className="pl-4 pr-1 mt-2 mb-1 space-y-2 animate-in slide-in-from-top-2 duration-300 overflow-hidden">
+                                                <div className="flex justify-between text-[16px] text-[#686868] font-medium">
+                                                    <span>Base Platform Fee</span>
+                                                    <span>₹{Math.round(bookingFee / 1.18).toLocaleString('en-IN')}</span>
+                                                </div>
+                                                <div className="flex justify-between text-[16px] text-[#686868] font-medium">
+                                                    <span>Integrated GST (18%)</span>
+                                                    <span>₹{(bookingFee - Math.round(bookingFee / 1.18)).toLocaleString('en-IN')}</span>
+                                                </div>
+                                                <div className="h-[0.5px] bg-[#EBEBEB] w-full" />
+                                            </div>
+                                        )}
                                     </div>
                                     {totalDiscount > 0 && (
                                         <div className="flex justify-between items-center" style={{ color: '#16a34a', fontSize: '18px', fontFamily: 'var(--font-anek-latin)', fontWeight: 500 }}>
@@ -610,18 +675,19 @@ export default function ReviewBookingPage() {
                                 </div>
                             </div>
 
-                            {/* EMAIL & CONTINUE */}
+                            {/* PHONE & CONTINUE */}
                             {step === 'review' && (
                                 <div className="space-y-4 pt-2">
                                     <div>
                                         <label className="text-[15px] font-medium text-[#686868] block mb-2">
-                                            Enter your email to receive booking confirmation
+                                            Enter your mobile number to receive booking confirmation
                                         </label>
                                         <input
-                                            type="email"
-                                            value={email}
-                                            onChange={e => { setEmail(e.target.value); setBookingError(''); }}
-                                            placeholder="your@email.com"
+                                            type="tel"
+                                            value={billing.phone}
+                                            onChange={e => { setBilling(b => ({ ...b, phone: e.target.value.replace(/\D/g, '') })); setBookingError(''); }}
+                                            placeholder="10-digit mobile number"
+                                            maxLength={10}
                                             className="w-full h-[55px] border border-[#AEAEAE] rounded-[10px] px-5 focus:outline-none focus:border-black text-black font-medium text-[16px] placeholder:text-[#AEAEAE]"
                                         />
                                     </div>
@@ -644,14 +710,14 @@ export default function ReviewBookingPage() {
 
                 {/* ── BILLING FORM ───────────────────── */}
                 {step === 'billing' && (
-                    <div className="w-full bg-white border border-white rounded-[20px] shadow-sm overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
+                    <div ref={billingRef} className="w-full bg-white border border-white rounded-[20px] shadow-sm overflow-hidden animate-in slide-in-from-bottom-4 duration-500 mb-20">
                         <div className="p-6 md:p-8">
 
                             {/* Mini order summary */}
                             <div className="flex justify-between items-center mb-6 mt-[-10px]">
                                 <div>
-                                    <h2 style={{ color: 'black', fontSize: '30px', fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)', fontWeight: 600 }}>Billing Details</h2>
-                                    <p style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }} className="text-[14px] text-[#686868] mt-1">{cart?.eventName} &nbsp;·&nbsp; ₹{grandTotal.toLocaleString('en-IN')} total</p>
+                                    <h2 style={{ color: 'black', fontSize: '30px', fontFamily: 'var(--font-anek-latin)', fontWeight: 600 }}>Billing Details</h2>
+                                    <p style={{ fontFamily: 'var(--font-anek-latin)' }} className="text-[14px] text-[#686868] mt-1">{cart?.eventName} &nbsp;·&nbsp; ₹{grandTotal.toLocaleString('en-IN')} total</p>
                                 </div>
                                 {/* Check-circle: purple outline → solid green #0AC655 with white tick when all fields done */}
                                 <div
@@ -704,26 +770,25 @@ export default function ReviewBookingPage() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[15px] font-medium text-[#686868]" style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}>Phone Number <span className="text-red-500">*</span></label>
-                                        <input
-                                            type="tel"
-                                            value={billing.phone}
-                                            onChange={e => { setBilling(b => ({ ...b, phone: e.target.value.replace(/\D/g, '') })); setBookingError(''); }}
-                                            placeholder="10-digit mobile number"
-                                            maxLength={10}
-                                            className="w-full h-[55px] border border-[#AEAEAE] rounded-[10px] px-5 focus:outline-none focus:border-black text-black font-medium text-[16px] placeholder:text-[#AEAEAE]"
-                                            style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}
-                                        />
+                                        <label className="text-[15px] font-medium text-[#686868]" style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}>Phone Number</label>
+                                        <div className="w-full h-[55px] border border-[#AEAEAE] rounded-[10px] px-5 flex items-center bg-[#f8f8f8]">
+                                            <span className="text-[16px] font-medium text-black" style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}>{billing.phone}</span>
+                                        </div>
                                     </div>
                                 </div>
 
                                 {/* Email (read-only) + Nationality */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div className="space-y-2">
-                                        <label className="text-[15px] font-medium text-[#686868]" style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}>Email</label>
-                                        <div className="w-full h-[55px] border border-[#AEAEAE] rounded-[10px] px-5 flex items-center bg-[#f8f8f8]">
-                                            <span className="text-[16px] font-medium text-black" style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}>{email}</span>
-                                        </div>
+                                        <label className="text-[15px] font-medium text-[#686868]" style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}>Email <span className="text-red-500">*</span></label>
+                                        <input
+                                            type="email"
+                                            value={email}
+                                            onChange={e => { setEmail(e.target.value); setBookingError(''); }}
+                                            placeholder="Enter your email"
+                                            className="w-full h-[55px] border border-[#AEAEAE] rounded-[10px] px-5 focus:outline-none focus:border-black text-black font-medium text-[16px] placeholder:text-[#AEAEAE]"
+                                            style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}
+                                        />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[15px] font-medium text-[#686868]" style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}>Nationality <span className="text-red-500">*</span></label>
@@ -813,7 +878,7 @@ export default function ReviewBookingPage() {
                                         {acceptedTerms && <div className="w-2 h-1 border-white border-b-2 border-r-2 rotate-45 mb-1" />}
                                     </div>
                                     <span className="text-[13px] md:text-[14px] font-medium text-[#686868]" style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}>
-                                        I have read and accepted the <Link href="/terms" className="text-[#5331EA] hover:underline font-semibold">Terms &amp; Conditions</Link> and <Link href="/refund" className="text-[#5331EA] hover:underline font-semibold">Refund Policy</Link>
+                                        I have read and accepted the <Link href="/terms" target="_blank" className="text-[#5331EA] hover:underline font-semibold">Terms &amp; Conditions</Link> and <Link href="/refund" target="_blank" className="text-[#5331EA] hover:underline font-semibold">Refund Policy</Link>
                                     </span>
                                 </div>
 
@@ -821,18 +886,11 @@ export default function ReviewBookingPage() {
                                     <p className="text-red-500 text-[14px] font-medium" style={{ fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)' }}>{bookingError}</p>
                                 )}
 
-                                <div className="grid grid-cols-3 gap-4">
-                                    <button
-                                        onClick={() => { setStep('review'); setBookingError(''); }}
-                                        className="col-span-1 h-[55px] border border-[#AEAEAE] text-black rounded-[10px] font-bold text-[16px] hover:bg-[#f5f5f5] transition-colors uppercase"
-                                        style={{ fontFamily: 'Anek Tamil Condensed' }}
-                                    >
-                                        Back
-                                    </button>
+                                <div className="flex gap-4">
                                     <button
                                         onClick={handlePayNow}
                                         disabled={bookingLoading}
-                                        className="col-span-2 h-[55px] bg-black text-white rounded-[10px] font-bold text-[22px] uppercase hover:bg-zinc-800 transition-colors disabled:opacity-50 tracking-wider shadow-lg shadow-black/10"
+                                        className="flex-1 h-[55px] bg-black text-white rounded-[10px] font-bold text-[22px] uppercase hover:bg-zinc-800 transition-colors disabled:opacity-50 tracking-wider shadow-lg shadow-black/10"
                                         style={{ fontFamily: 'Anek Tamil Condensed' }}
                                     >
                                         {bookingLoading ? 'Processing...' : 'PAY NOW'}

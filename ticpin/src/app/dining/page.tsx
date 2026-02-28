@@ -24,6 +24,7 @@ interface RealDining {
     amenities?: string[];
     serves_alcohol?: boolean;
     discount?: number;
+    status?: string;
 }
 
 // Fallback offers removed, using state instead
@@ -41,7 +42,8 @@ export default function DiningPage() {
         fetch('/backend/api/dining', { credentials: 'include' })
             .then(r => r.json())
             .then((data: RealDining[]) => {
-                setVenues(Array.isArray(data) ? data : []);
+                const list = (Array.isArray(data) ? data : []).filter(v => v.status === 'approved');
+                setVenues(list);
             })
             .catch(() => { });
 

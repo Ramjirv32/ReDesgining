@@ -1,11 +1,9 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { getOrganizerSession } from '@/lib/auth/organizer';
-import { adminApi } from '@/lib/api/admin';
+import { User } from 'lucide-react';
 
 import Footer from '../layout/Footer';
 
@@ -33,7 +31,7 @@ const Card = ({ title, iconSrc, iconComponent, href }: CardProps) => {
                             alt={title}
                             width={58}
                             height={58}
-                            className="object-contain"
+                            className="object-contain" // Preserves aspect ratio
                         />
                     ) : (
                         <div className="[&>svg]:w-[58px] [&>svg]:h-[58px] [&>svg]:stroke-[1.5] text-[#686868]">
@@ -63,25 +61,6 @@ const Card = ({ title, iconSrc, iconComponent, href }: CardProps) => {
 };
 
 export default function AdminPanel() {
-    const router = useRouter();
-    const [ready, setReady] = useState(false);
-
-    useEffect(() => {
-        const session = getOrganizerSession();
-        if (!session?.isAdmin) {
-            router.replace('/list-your-events/Login');
-        } else {
-            setReady(true);
-        }
-    }, [router]);
-
-    const handleLogout = async () => {
-        await adminApi.logout();
-        router.replace('/list-your-events/Login');
-    };
-
-    if (!ready) return <div className="min-h-screen animate-pulse bg-zinc-50" />;
-
     return (
         <div
             className="w-full min-h-[118vh] font-sans bg-white flex flex-col"
@@ -95,17 +74,9 @@ export default function AdminPanel() {
         >
             <div className="flex-1 mx-auto w-full max-w-[1440px] px-6 md:px-[68px] py-12 md:py-20 space-y-12 md:space-y-20">
                 {/* Page Title */}
-                <div className="flex items-start justify-between">
-                    <div className="space-y-2">
-                        <h1 className="text-[32px] md:text-[40px] font-semibold leading-tight text-black">Admin Panel</h1>
-                        <div className="w-[80px] md:w-[101px] h-[1.5px] bg-[#686868]"></div>
-                    </div>
-                    <button
-                        onClick={handleLogout}
-                        className="mt-3 px-5 h-10 bg-black text-white text-[14px] font-medium rounded-[12px] hover:bg-zinc-800 transition-colors"
-                    >
-                        Logout
-                    </button>
+                <div className="space-y-2">
+                    <h1 className="text-[32px] md:text-[40px] font-semibold leading-tight text-black">Admin Panel</h1>
+                    <div className="w-[80px] md:w-[101px] h-[1.5px] bg-[#686868]"></div>
                 </div>
 
                 {/* Grid Container */}
@@ -113,12 +84,12 @@ export default function AdminPanel() {
                     <Card title="User Details" iconSrc="/admin panel/user-settingicon.svg" href="/admin/user-details" />
                     <Card title="Events" iconSrc="/admin panel/event-icon.svg" href="/admin/events" />
                     <Card title="Dining" iconSrc="/admin panel/dining-icon.svg" href="/admin/dining" />
-                    <Card title="Play" iconSrc="/admin panel/cricket-icon.svg" href="/admin/play" />
-                    <Card title="Chat Support" iconSrc="/admin panel/chat-icon.svg" href="/admin/ChatSupportPage" />
+                    <Card title="Play" iconSrc="/admin panel/cricket-icon.svg" />
+                    <Card title="Chat Support" iconSrc="/admin panel/chat-icon.svg" />
                     <Card title="Push Notification" iconSrc="/admin panel/notification-icon.svg" href="/admin/push-notification" />
                     <Card title="Offers / Coupons" iconSrc="/admin panel/pricetag-icon.svg" href="/admin/offers" />
-                    <Card title="Ticket" iconSrc="/admin panel/ticket-icon.svg" href="/admin/tickets" />
-                    <Card title="Organizer Approval" iconSrc="/admin panel/user-plus-icon.svg" href="/admin/organizers" />
+                    <Card title="Ticket" iconSrc="/admin panel/ticket-icon.svg" />
+                    <Card title="Organizer Approval" iconSrc="/admin panel/user-plus-icon.svg" href="/admin/organizer" />
                 </div>
             </div>
 

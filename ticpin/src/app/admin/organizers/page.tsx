@@ -104,7 +104,7 @@ function OrganizerDetailView({ organizerId, onClose, onStatusChange }: {
                                     <div className="flex items-center justify-between mb-6">
                                         <h4 className="text-[22px] font-bold text-black uppercase tracking-wider">{setup.category} Setup Details</h4>
                                         <span className={`px-5 py-1.5 rounded-full text-[16px] font-bold border-2 ${detail.organizer.categoryStatus?.[setup.category] === 'approved' ? 'bg-[#D1FAE5] text-[#065F46] border-[#065F46]/20' :
-                                                detail.organizer.categoryStatus?.[setup.category] === 'rejected' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-[#FFD9B7] text-[#8B4D1A] border-orange-200/20'
+                                            detail.organizer.categoryStatus?.[setup.category] === 'rejected' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-[#FFD9B7] text-[#8B4D1A] border-orange-200/20'
                                             }`}>
                                             {detail.organizer.categoryStatus?.[setup.category]?.toUpperCase() || 'PENDING'}
                                         </span>
@@ -267,22 +267,26 @@ function OrganizerModerationContent() {
     });
 
     return (
-        <div className="min-h-screen bg-[#F3F0FF] p-8">
-            <div className="max-w-[1700px] mx-auto" style={{ zoom: 0.9 }}>
-                {/* Header */}
-                <div className="mb-8 flex justify-between items-start">
-                    <div className="flex flex-col">
-                        <h1 className="text-[40px] font-semibold text-black leading-tight" style={{ fontFamily: 'var(--font-anek-latin)' }}>Admin Panel</h1>
-                        <div className="w-16 h-1 bg-black mt-1.5 mb-5"></div>
-                        <h2 className="text-[28px] font-medium text-black mt-2" style={{ fontFamily: 'var(--font-anek-latin)' }}>Organizer Management</h2>
-                    </div>
-                    <button onClick={() => fetchOrganizers()} className="mt-6 flex items-center gap-2 text-[16px] font-bold text-[#686868] hover:text-black transition-all">
-                        <RefreshCw size={18} className={loading ? 'animate-spin' : ''} /> Refresh List
-                    </button>
+        <div className="min-h-screen relative overflow-x-hidden flex flex-col" style={{ background: 'rgba(255, 241, 168, 0.1)', zoom: 0.85 }}>
+            {/* Premium Header */}
+            <header className="w-full h-[114px] bg-white border-b border-zinc-100 flex items-center justify-between px-[37px] sticky top-0 z-50">
+                <div className="flex items-center gap-4">
+                    <div className="w-[159px] h-[40px] flex items-center font-bold text-2xl tracking-tighter cursor-pointer" onClick={() => router.push('/admin')}>TICPIN</div>
                 </div>
+                <div className="flex items-center gap-8">
+                    <div className="flex items-center gap-2 cursor-pointer hover:opacity-80">
+                        <User size={23} className="text-[#E7C200]" />
+                    </div>
+                </div>
+            </header>
+
+            <main className="flex-1 max-w-[1440px] mx-auto w-full px-[37px] py-[66px]">
+                <h1 className="text-[40px] font-semibold text-black leading-none" style={{ fontFamily: 'var(--font-anek-latin)' }}>Admin Panel</h1>
+                <div className="w-[101px] h-[1.5px] bg-[#686868] mt-[24px] mb-[24px]"></div>
+                <h2 className="text-[25px] font-medium text-black" style={{ fontFamily: 'var(--font-anek-latin)' }}>Organizer Management</h2>
 
                 {/* List Content */}
-                <div className="bg-white rounded-[35px] shadow-sm p-12 min-h-[700px]">
+                <div className="bg-white rounded-[30px] shadow-sm mt-[33px] p-20 min-h-[600px] flex flex-col relative">
                     {/* Tabs */}
                     <div className="flex justify-center mb-12">
                         <div className="bg-[#E7E2FA] rounded-[15px] flex w-[600px] h-[52px] overflow-hidden shadow-inner">
@@ -341,7 +345,7 @@ function OrganizerModerationContent() {
                                                 <div className="flex flex-wrap gap-3 mt-4">
                                                     {verticals.map(([cat, status]) => (
                                                         <span key={cat} className={`px-4 py-1 rounded-[10px] text-[14px] font-bold border-2 transition-all ${status === 'approved' ? 'bg-[#D1FAE5] text-[#065F46] border-[#065F46]/10' :
-                                                                status === 'rejected' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-[#FFD9B7] text-[#8B4D1A] border-orange-200/20'
+                                                            status === 'rejected' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-[#FFD9B7] text-[#8B4D1A] border-orange-200/20'
                                                             }`}>
                                                             {cat.toUpperCase()}: {status.toUpperCase()}
                                                         </span>
@@ -391,7 +395,7 @@ function OrganizerModerationContent() {
                         </div>
                     )}
                 </div>
-            </div>
+            </main>
 
             {/* Full Page Detail View Overlay */}
             {selectedId && (

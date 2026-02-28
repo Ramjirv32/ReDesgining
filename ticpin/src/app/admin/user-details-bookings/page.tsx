@@ -1,5 +1,6 @@
+import { Suspense } from 'react';
 import UserDetails3 from '../UserDetails/userdetails3';
 
 export default function Page() {
-    return <UserDetails3 />;
+    return <Suspense><UserDetails3 /></Suspense>;
 }

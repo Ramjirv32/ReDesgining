@@ -1,8 +1,10 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import Image from 'next/image';
 import { bookingApi } from '@/lib/api/booking';
+import { TicketSkeleton } from '@/components/ui/Skeleton';
 
 interface TicketCategory {
     name: string;
@@ -36,6 +38,7 @@ export default function TicketSelectionPage() {
 
     useEffect(() => {
         if (!id) return;
+        setLoading(true);
         Promise.all([
             fetch(`/backend/api/events/${id}`, { credentials: 'include' }).then(r => r.json()),
             bookingApi.getEventAvailability(id),
@@ -53,9 +56,12 @@ export default function TicketSelectionPage() {
             .catch(() => setCoupons([]));
     }, []);
 
-    const categories: TicketCategory[] = event?.ticket_categories && event.ticket_categories.length > 0
-        ? event.ticket_categories
-        : event ? [{ name: 'General Admission', price: event.price_starts_from ?? 0 }] : [];
+    const categories: TicketCategory[] = useMemo(() => {
+        if (!event) return [];
+        return event.ticket_categories && event.ticket_categories.length > 0
+            ? event.ticket_categories
+            : [{ name: 'General Admission', price: event.price_starts_from ?? 0 }];
+    }, [event]);
 
     const getAvailable = (cat: TicketCategory) => {
         if (!cat.capacity || cat.capacity <= 0) return Infinity;
@@ -72,18 +78,24 @@ export default function TicketSelectionPage() {
     };
     const remove = (i: number) => setCounts(c => ({ ...c, [i]: Math.max(0, (c[i] ?? 0) - 1) }));
 
-    const totalTickets = Object.values(counts).reduce((s, v) => s + v, 0);
-    const totalPrice = categories.reduce((s, cat, i) => s + (counts[i] ?? 0) * (cat.price ?? 0), 0);
+    const totalTickets = useMemo(() => Object.values(counts).reduce((s, v) => s + v, 0), [counts]);
+    const totalPrice = useMemo(() => categories.reduce((s, cat, i) => s + (counts[i] ?? 0) * (cat.price ?? 0), 0), [categories, counts]);
 
-    const formattedDateVenue = [
-        event?.date ? new Date(event.date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }) : null,
-        event?.time ?? null,
-        event?.venue_name ?? event?.city ?? null,
-    ].filter(Boolean).join(' | ');
+    const formattedDateVenue = useMemo(() => {
+        return [
+            event?.date ? new Date(event.date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }) : null,
+            event?.time ?? null,
+            event?.venue_name ?? event?.city ?? null,
+        ].filter(Boolean).join(' | ');
+    }, [event]);
 
     if (loading) return (
-        <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(180deg, #ECE8FD 0%, #FFFFFF 100%)' }}>
-            <div className="w-10 h-10 border-4 border-[#7B2FF7] border-t-transparent rounded-full animate-spin" />
+        <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(180deg, #ECE8FD 0%, #FFFFFF 100%)' }}>
+            <div className="max-w-[1400px] mx-auto w-full px-6 md:px-12 py-20 space-y-6">
+                <TicketSkeleton />
+                <TicketSkeleton />
+                <TicketSkeleton />
+            </div>
         </div>
     );
 
@@ -92,12 +104,12 @@ export default function TicketSelectionPage() {
 
             {/* Header — no global navbar */}
             <header className="w-full h-[60px] md:h-[80px] bg-white flex items-center justify-between px-6 md:px-10 border-b border-[#FFFFFF] shadow-sm relative z-10">
-                <div className="flex-shrink-0 cursor-pointer" onClick={() => router.push('/')}>
-                    <img src="/ticpin-logo-black.png" alt="TICPIN" className="h-[20px] md:h-[25px] w-auto" />
+                <div className="flex-shrink-0 cursor-pointer relative w-[100px] h-[25px]" onClick={() => router.push('/')}>
+                    <Image src="/ticpin-logo-black.png" alt="TICPIN" fill className="object-contain" />
                 </div>
 
                 <div className="flex flex-col items-center justify-center absolute left-1/2 -translate-x-1/2">
-                    <h1 className="text-[18px] font-semibold text-black leading-tight uppercase" style={{ fontFamily: 'var(--font-anek-latin)' }}>
+                    <h1 className="text-[18px] font-semibold text-black leading-tight uppercase line-clamp-1" style={{ fontFamily: 'var(--font-anek-latin)' }}>
                         {event?.name ?? '—'}
                     </h1>
                     <p className="text-[13px] font-medium text-[#686868] leading-tight" style={{ fontFamily: 'var(--font-anek-latin)' }}>
@@ -119,11 +131,11 @@ export default function TicketSelectionPage() {
                     const current = counts[i] ?? 0;
 
                     return (
-                        <div key={i} className={`w-full bg-white border-[0.5px] rounded-[15px] p-5 md:p-6 flex flex-col md:flex-row justify-between gap-5 relative ${isSoldOut ? 'border-red-200 opacity-70' : 'border-[#AEAEAE]'}`}>
+                        <div key={i} className={`w-full bg-white border-[0.5px] rounded-[15px] p-5 md:p-6 flex flex-col md:flex-row justify-between gap-5 relative transition-all hover:shadow-md ${isSoldOut ? 'border-red-200 opacity-70' : 'border-[#AEAEAE]'}`}>
                             {/* Category image */}
                             {cat.has_image && cat.image_url && (
-                                <div className="w-[90px] h-[90px] rounded-[10px] overflow-hidden flex-shrink-0">
-                                    <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover" />
+                                <div className="relative w-[90px] h-[90px] rounded-[10px] overflow-hidden flex-shrink-0">
+                                    <Image src={cat.image_url} alt={cat.name} fill className="object-cover" />
                                 </div>
                             )}
 
@@ -143,8 +155,8 @@ export default function TicketSelectionPage() {
                                 <p className="text-[12px] md:text-[13px] font-medium text-[#686868]">
                                     • This ticket grants entry to one individual only.
                                 </p>
-                                {cat.capacity && cat.capacity > 0 && (
-                                    <p className={`text-[12px] md:text-[13px] font-semibold ${available <= 10 && !isSoldOut ? 'text-orange-500' : 'text-[#686868]'}`}>
+                                {cat.capacity && (
+                                    <p className={`text-[12px] md:text-[13px] font-semibold ${available <= 10 && !isSoldOut ? 'text-orange-500 font-bold' : 'text-[#686868]'}`}>
                                         {isSoldOut
                                             ? '• No seats available'
                                             : available === Infinity
@@ -162,21 +174,24 @@ export default function TicketSelectionPage() {
                                     </div>
                                 ) : (
                                     <>
-                                        <button
-                                            onClick={() => current === 0 && add(i)}
-                                            className="w-[86px] h-[38px] bg-[#D9D9D9] rounded-[7px]"
-                                        >
-                                            <span className="text-[20px] md:text-[28px] text-black" style={{ fontFamily: "'Anek Tamil Condensed', sans-serif" }}>ADD</span>
-                                        </button>
-                                        <div className={`w-[86px] h-[38px] bg-black rounded-[7px] flex items-center justify-between px-2 text-white transition-opacity ${current === 0 ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
-                                            <button onClick={() => remove(i)} className="text-[24px] leading-none hover:text-[#D9D9D9] cursor-pointer active:scale-90 transition-transform">-</button>
-                                            <span className="text-[18px] md:text-[20px] font-medium" style={{ fontFamily: "'Anek Tamil Condensed', sans-serif" }}>{current}</span>
+                                        {current === 0 ? (
                                             <button
                                                 onClick={() => add(i)}
-                                                disabled={current >= available}
-                                                className="text-[20px] leading-none hover:text-[#D9D9D9] cursor-pointer active:scale-90 transition-transform disabled:opacity-40"
-                                            >+</button>
-                                        </div>
+                                                className="w-[86px] h-[38px] bg-[#D9D9D9] rounded-[7px] hover:bg-zinc-300 transition-colors active:scale-95"
+                                            >
+                                                <span className="text-[20px] md:text-[28px] text-black" style={{ fontFamily: "'Anek Tamil Condensed', sans-serif" }}>ADD</span>
+                                            </button>
+                                        ) : (
+                                            <div className="w-[86px] h-[38px] bg-black rounded-[7px] flex items-center justify-between px-2 text-white shadow-lg">
+                                                <button onClick={() => remove(i)} className="w-6 h-6 flex items-center justify-center text-[24px] leading-none hover:text-[#D9D9D9] cursor-pointer transition-colors">-</button>
+                                                <span className="text-[18px] md:text-[20px] font-medium" style={{ fontFamily: "'Anek Tamil Condensed', sans-serif" }}>{current}</span>
+                                                <button
+                                                    onClick={() => add(i)}
+                                                    disabled={current >= available}
+                                                    className="w-6 h-6 flex items-center justify-center text-[20px] leading-none hover:text-[#D9D9D9] cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                                >+</button>
+                                            </div>
+                                        )}
                                     </>
                                 )}
                             </div>
@@ -186,7 +201,7 @@ export default function TicketSelectionPage() {
             </main>
 
             {/* Sticky Footer */}
-            <footer className="w-full h-[70px] md:h-[110px] bg-[#2A2A2A] sticky bottom-0 z-50 flex items-center justify-between px-6 md:px-10">
+            <footer className="w-full h-[70px] md:h-[110px] bg-[#2A2A2A] sticky bottom-0 z-50 flex items-center justify-between px-6 md:px-10 shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
                 <div className="flex flex-col justify-center">
                     <span className="text-[20px] md:text-[28px] font-medium text-white" style={{ fontFamily: 'var(--font-anek-latin)' }}>
                         ₹{totalPrice.toLocaleString('en-IN')}
@@ -213,10 +228,10 @@ export default function TicketSelectionPage() {
                         localStorage.setItem('ticpin_cart', JSON.stringify(cart));
                         router.push(`/events/${id}/book/review`);
                     }}
-                    className={`w-[130px] md:w-[200px] h-[40px] md:h-[48px] bg-white rounded-[7px] flex items-center justify-center transition-all ${totalTickets === 0 ? 'opacity-50 grayscale' : 'active:scale-[0.98] hover:bg-[#f0f0f0]'}`}
+                    className={`group relative w-[130px] md:w-[220px] h-[40px] md:h-[54px] bg-white rounded-[7px] flex items-center justify-center transition-all overflow-hidden ${totalTickets === 0 ? 'opacity-50 grayscale cursor-not-allowed' : 'active:scale-[0.98] hover:bg-[#7B2FF7] hover:text-white'}`}
                 >
-                    <span className="text-[16px] md:text-[22px] font-medium text-black uppercase" style={{ fontFamily: "'Anek Tamil Condensed', sans-serif" }}>
-                        ADD TO CART
+                    <span className="relative z-10 text-[16px] md:text-[22px] font-medium text-black group-hover:text-white uppercase tracking-wider" style={{ fontFamily: "'Anek Tamil Condensed', sans-serif" }}>
+                        CONTINUE
                     </span>
                 </button>
             </footer>

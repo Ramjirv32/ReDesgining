@@ -2,11 +2,13 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, ChevronUp, PlusCircle, ExternalLink, Upload, Search, ArrowLeft } from 'lucide-react';
+import Image from 'next/image';
 import { CATEGORIES, CITIES, CATEGORY_DATA } from '@/app/events/create/data';
 import { useRouter, useParams } from 'next/navigation';
 import { getOrganizerSession } from '@/lib/auth/organizer';
 import { uploadMedia } from '@/lib/api/admin';
 import { eventsApi } from '@/lib/api/events';
+import { ArtistSection, TicketSection } from '@/components/events/shared/FormSections';
 
 export default function EditEventPage() {
     const router = useRouter();
@@ -435,7 +437,7 @@ export default function EditEventPage() {
                                         <div className="relative border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
                                             <select value={duration} onChange={e => setDuration(e.target.value)} className="w-full appearance-none bg-transparent outline-none text-[20px] text-black">
                                                 <option value="">Select duration</option>
-                                                {["30 mins","1 hour","1.5 hours","2 hours","2.5 hours","3 hours","3.5 hours","4 hours","5 hours","6 hours","All day"].map(d => <option key={d} value={d}>{d}</option>)}
+                                                {["30 mins", "1 hour", "1.5 hours", "2 hours", "2.5 hours", "3 hours", "3.5 hours", "4 hours", "5 hours", "6 hours", "All day"].map(d => <option key={d} value={d}>{d}</option>)}
                                             </select>
                                             <ChevronDown size={20} className="absolute right-6 pointer-events-none" />
                                         </div>
@@ -508,141 +510,9 @@ export default function EditEventPage() {
                             </label>
                         </section>
 
-                        {/* Artists Section */}
-                        <section className="bg-white rounded-[15px] p-8">
-                            <h2 className="text-[30px] font-medium text-black mb-2">Artists</h2>
-                            <p className="text-[20px] font-medium text-[#AEAEAE] mb-6">Add performers or artists for your event. You can add any number of artists.</p>
-                            <div className="w-full h-[1px] bg-[#AEAEAE] mb-8" />
-
-                            {artists.map((artist, idx) => (
-                                <div key={idx} className="bg-[#F5F5F5] rounded-[12px] p-6 mb-6 space-y-4">
-                                    <input type="file" id={`upload-artist-${idx}`} accept="image/*" className="hidden"
-                                        onChange={e => { const f = e.target.files?.[0]; if (f) handleArtistImageUpload(idx, f); }} />
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-[22px] font-semibold text-black">Artist {idx + 1}</span>
-                                        <button onClick={() => setArtists(prev => prev.filter((_, i) => i !== idx))} className="text-red-500 text-[18px] font-medium hover:underline">Remove</button>
-                                    </div>
-                                    <div>
-                                        <label className="text-[18px] font-medium text-[#686868]">Artist Name <span className="text-[#5331EA]">*</span></label>
-                                        <div className="border border-[#686868] rounded-[10px] h-[56px] flex items-center px-6 mt-2 bg-white">
-                                            <input type="text" placeholder="Enter artist name" value={artist.name}
-                                                onChange={e => setArtists(prev => prev.map((a, i) => i === idx ? { ...a, name: e.target.value } : a))}
-                                                className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]" />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="text-[18px] font-medium text-[#686868]">About the Artist</label>
-                                        <div className="border border-[#686868] rounded-[10px] p-4 mt-2 bg-white">
-                                            <textarea value={artist.description}
-                                                onChange={e => setArtists(prev => prev.map((a, i) => i === idx ? { ...a, description: e.target.value } : a))}
-                                                placeholder="Brief description of the artist..."
-                                                className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE] min-h-[80px] resize-y" />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="text-[18px] font-medium text-[#686868]">Artist Image</label>
-                                        <div className="flex items-center gap-4 mt-2">
-                                            {artist.image_url && <img src={artist.image_url} alt="" className="w-[60px] h-[60px] rounded-[8px] object-cover border border-[#686868]" />}
-                                            <div onClick={() => document.getElementById(`upload-artist-${idx}`)?.click()}
-                                                className="flex items-center border border-[#686868] rounded-[8px] h-[40px] overflow-hidden cursor-pointer bg-white">
-                                                <span className="px-4 text-[18px] font-medium text-black">
-                                                    {uploading[`artist-${idx}`] ? 'Uploading...' : artist.image_url ? 'Replace' : 'Upload Image'}
-                                                </span>
-                                                <div className="bg-[#AC9BF7] w-[40px] h-full flex items-center justify-center border-l border-[#686868]">
-                                                    <Upload size={18} className="text-black" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-
-                            <button onClick={() => setArtists(prev => [...prev, { name: '', image_url: '', description: '' }])}
-                                className="flex items-center gap-3 bg-black text-white rounded-[12px] h-[52px] px-6 text-[20px] font-medium">
-                                <PlusCircle size={22} />
-                                Add Artist
-                            </button>
-                        </section>
-
-                        {/* Ticket Categories Section */}
-                        <section className="bg-white rounded-[15px] p-8">
-                            <h2 className="text-[30px] font-medium text-black mb-2">Ticket Categories</h2>
-                            <p className="text-[20px] font-medium text-[#AEAEAE] mb-6">Define ticket tiers for your event (e.g. Gold, Silver, General). Choose <strong>Basic</strong> for a simple category or <strong>With Image</strong> to include a category banner.</p>
-                            <div className="w-full h-[1px] bg-[#AEAEAE] mb-8" />
-
-                            {ticketCategories.map((cat, idx) => (
-                                <div key={idx} className="bg-[#F5F5F5] rounded-[12px] p-6 mb-6 space-y-4">
-                                    <input type="file" id={`upload-ticket-${idx}`} accept="image/*" className="hidden"
-                                        onChange={e => { const f = e.target.files?.[0]; if (f) handleTicketImageUpload(idx, f); }} />
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-[22px] font-semibold text-black">Category {idx + 1}</span>
-                                        <button onClick={() => setTicketCategories(prev => prev.filter((_, i) => i !== idx))} className="text-red-500 text-[18px] font-medium hover:underline">Remove</button>
-                                    </div>
-
-                                    <div className="flex gap-3">
-                                        <button onClick={() => setTicketCategories(prev => prev.map((c, i) => i === idx ? { ...c, has_image: false } : c))}
-                                            className={`px-5 py-2 rounded-[8px] text-[18px] font-medium border transition-all ${!cat.has_image ? 'bg-black text-white border-black' : 'bg-white text-[#686868] border-[#686868]'}`}>
-                                            Basic
-                                        </button>
-                                        <button onClick={() => setTicketCategories(prev => prev.map((c, i) => i === idx ? { ...c, has_image: true } : c))}
-                                            className={`px-5 py-2 rounded-[8px] text-[18px] font-medium border transition-all ${cat.has_image ? 'bg-black text-white border-black' : 'bg-white text-[#686868] border-[#686868]'}`}>
-                                            With Image
-                                        </button>
-                                    </div>
-
-                                    <div className="grid grid-cols-3 gap-6">
-                                        <div>
-                                            <label className="text-[18px] font-medium text-[#686868]">Category Name <span className="text-[#5331EA]">*</span></label>
-                                            <div className="border border-[#686868] rounded-[10px] h-[56px] flex items-center px-6 mt-2 bg-white">
-                                                <input type="text" placeholder="e.g. Gold, Silver, General" value={cat.name}
-                                                    onChange={e => setTicketCategories(prev => prev.map((c, i) => i === idx ? { ...c, name: e.target.value } : c))}
-                                                    className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]" />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="text-[18px] font-medium text-[#686868]">Price (₹)</label>
-                                            <div className="border border-[#686868] rounded-[10px] h-[56px] flex items-center px-6 mt-2 bg-white">
-                                                <input type="number" placeholder="0.00" value={cat.price}
-                                                    onChange={e => setTicketCategories(prev => prev.map((c, i) => i === idx ? { ...c, price: e.target.value } : c))}
-                                                    className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]" />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="text-[18px] font-medium text-[#686868]">Capacity</label>
-                                            <div className="border border-[#686868] rounded-[10px] h-[56px] flex items-center px-6 mt-2 bg-white">
-                                                <input type="number" placeholder="Max tickets" value={cat.capacity}
-                                                    onChange={e => setTicketCategories(prev => prev.map((c, i) => i === idx ? { ...c, capacity: e.target.value } : c))}
-                                                    className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]" />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {cat.has_image && (
-                                        <div>
-                                            <label className="text-[18px] font-medium text-[#686868]">Category Image</label>
-                                            <div className="flex items-center gap-4 mt-2">
-                                                {cat.image_url && <img src={cat.image_url} alt="" className="w-[60px] h-[60px] rounded-[8px] object-cover border border-[#686868]" />}
-                                                <div onClick={() => document.getElementById(`upload-ticket-${idx}`)?.click()}
-                                                    className="flex items-center border border-[#686868] rounded-[8px] h-[40px] overflow-hidden cursor-pointer bg-white">
-                                                    <span className="px-4 text-[18px] font-medium text-black">
-                                                        {uploading[`ticket-${idx}`] ? 'Uploading...' : cat.image_url ? 'Replace' : 'Upload Image'}
-                                                    </span>
-                                                    <div className="bg-[#AC9BF7] w-[40px] h-full flex items-center justify-center border-l border-[#686868]">
-                                                        <Upload size={18} className="text-black" />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-
-                            <button onClick={() => setTicketCategories(prev => [...prev, { name: '', price: '', capacity: '', image_url: '', has_image: false }])}
-                                className="flex items-center gap-3 bg-black text-white rounded-[12px] h-[52px] px-6 text-[20px] font-medium">
-                                <PlusCircle size={22} />
-                                Add Ticket Category
-                            </button>
-                        </section>
+                        {/* Artists & Tickets */}
+                        <ArtistSection artists={artists} onChange={setArtists} onUpload={handleArtistImageUpload} />
+                        <TicketSection categories={ticketCategories} onChange={setTicketCategories} onUpload={handleTicketImageUpload} />
 
                         {/* Event Guide */}
                         <section className="bg-white rounded-[15px] p-8">
@@ -665,12 +535,12 @@ export default function EditEventPage() {
                                             {type === 'select-lang' && (
                                                 <select value={guide.languages[0] || ''} onChange={e => setGuide({ ...guide, languages: [e.target.value] })} className="w-full appearance-none bg-transparent outline-none text-[25px]">
                                                     <option value="">Select Language</option>
-                                                    {["English","Hindi","Tamil","Telugu","Kannada","Malayalam","Marathi","Gujarati","Bengali","Punjabi","Other"].map(l => <option key={l} value={l}>{l}</option>)}
+                                                    {["English", "Hindi", "Tamil", "Telugu", "Kannada", "Malayalam", "Marathi", "Gujarati", "Bengali", "Punjabi", "Other"].map(l => <option key={l} value={l}>{l}</option>)}
                                                 </select>
                                             )}
                                             {type === 'select-age' && (
                                                 <select value={guide[field as 'minAge' | 'ticketRequiredAboveAge']} onChange={e => setGuide({ ...guide, [field]: Number(e.target.value) })} className="w-full appearance-none bg-transparent outline-none text-[25px]">
-                                                    {[0,5,10,12,14,16,18,21].map(a => <option key={a} value={a}>{a}</option>)}
+                                                    {[0, 5, 10, 12, 14, 16, 18, 21].map(a => <option key={a} value={a}>{a}</option>)}
                                                 </select>
                                             )}
                                             {type === 'select' && (
@@ -680,7 +550,7 @@ export default function EditEventPage() {
                                             )}
                                             {type === 'bool' && (
                                                 <select value={guide[field as 'isKidFriendly' | 'isPetFriendly' | 'gatesOpenBefore'] ? 'Yes' : 'No'} onChange={e => setGuide({ ...guide, [field]: e.target.value === 'Yes' })} className="w-full appearance-none bg-transparent outline-none text-[25px]">
-                                                    {['Yes','No'].map(o => <option key={o} value={o}>{o}</option>)}
+                                                    {['Yes', 'No'].map(o => <option key={o} value={o}>{o}</option>)}
                                                 </select>
                                             )}
                                             <ChevronDown size={24} className="absolute right-6" />
@@ -693,13 +563,13 @@ export default function EditEventPage() {
                                     <div className="flex gap-4 w-[840px]">
                                         <div className="relative border border-[#686868] rounded-[10px] h-[64px] flex-1 flex items-center px-6">
                                             <select value={guide.gatesOpenBeforeValue} onChange={e => setGuide({ ...guide, gatesOpenBeforeValue: Number(e.target.value) })} className="w-full appearance-none bg-transparent outline-none text-[25px]">
-                                                {[...Array(60)].map((_, i) => <option key={i} value={i+1}>{i+1}</option>)}
+                                                {[...Array(60)].map((_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}
                                             </select>
                                             <ChevronDown size={24} className="absolute right-6" />
                                         </div>
                                         <div className="relative border border-[#686868] rounded-[10px] h-[64px] flex-1 flex items-center px-6">
                                             <select value={guide.gatesOpenBeforeUnit} onChange={e => setGuide({ ...guide, gatesOpenBeforeUnit: e.target.value })} className="w-full appearance-none bg-transparent outline-none text-[25px]">
-                                                {['Minutes','Hours'].map(u => <option key={u} value={u}>{u}</option>)}
+                                                {['Minutes', 'Hours'].map(u => <option key={u} value={u}>{u}</option>)}
                                             </select>
                                             <ChevronDown size={24} className="absolute right-6" />
                                         </div>
