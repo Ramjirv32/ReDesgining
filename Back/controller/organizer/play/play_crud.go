@@ -59,17 +59,8 @@ func GetOrganizerPlays(c *fiber.Ctx) error {
 	if !ok || authOrgID == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
 	}
-	organizerID := c.Params("organizer_id")
-	if organizerID == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "organizer_id is required",
-		})
-	}
-	if authOrgID != organizerID {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "forbidden: you can only view your own plays"})
-	}
 
-	plays, err := playservice.GetByOrganizer(organizerID)
+	plays, err := playservice.GetByOrganizer(authOrgID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": err.Error(),

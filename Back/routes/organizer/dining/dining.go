@@ -18,7 +18,7 @@ func DiningRoutes(app *fiber.App) {
 	dining.Post("/setup", middleware.RequireAuth, ctrl.DiningSetup)
 	dining.Post("/submit-verification", middleware.RequireAuth, ctrl.SubmitVerification)
 	dining.Post("/create", middleware.RequireAuth, middleware.RequireCategoryApproval("dining"), ctrl.CreateOrganizerDining)
-	dining.Get("/:organizer_id/list", middleware.RequireAuth, ctrl.GetOrganizerDinings)
+	dining.Get("/list", middleware.RequireAuth, ctrl.GetOrganizerDinings)
 	dining.Put("/:id", middleware.RequireAuth, ctrl.UpdateOrganizerDining)
 	dining.Delete("/:id", middleware.RequireAuth, ctrl.DeleteOrganizerDining)
 }

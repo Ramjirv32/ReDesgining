@@ -153,7 +153,6 @@ func PlaySetup(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "setup saved", "status": "pending"})
 }
 
-
 func ResendOTP(c *fiber.Ctx) error {
 	var req struct {
 		Email string `json:"email"`
@@ -168,15 +167,19 @@ func ResendOTP(c *fiber.Ctx) error {
 }
 
 func SubmitVerification(c *fiber.Ctx) error {
+	authOrgID, ok := c.Locals("organizerId").(string)
+	if !ok || authOrgID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	orgObjID, err := primitive.ObjectIDFromHex(authOrgID)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid organizer token"})
+	}
 	var v models.PlayVerification
 	if err := c.BodyParser(&v); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
-
-	if v.OrganizerID.IsZero() {
-		return c.Status(400).JSON(fiber.Map{"error": "organizer_id required"})
-	}
-
+	v.OrganizerID = orgObjID
 	if err := verifysvc.SubmitPlayVerification(&v); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}

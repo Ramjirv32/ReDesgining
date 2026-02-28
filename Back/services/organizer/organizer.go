@@ -148,12 +148,9 @@ func UpdateProfile(organizerID string, p *models.OrganizerProfile) error {
 }
 
 func Login(email, password string) (*models.Organizer, error) {
-	// 1. Check for Admin Login via .env
 	adminEmail := config.GetAdminEmail()
 	adminPass := os.Getenv("ADMIN_PASSWORD")
 	if adminEmail != "" && adminPass != "" && email == adminEmail && password == adminPass {
-		// Return a "virtual" admin profile (or find/create one in DB)
-		// For consistency, let's try to find it in DB first, but override password check
 		collection := config.GetDB().Collection("organizers")
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -162,8 +159,6 @@ func Login(email, password string) (*models.Organizer, error) {
 		if err == nil {
 			return &org, nil
 		}
-		// If not in DB, create a temporary one for the session token (though VerifyOTP will need it in DB)
-		// Better: Create it if it doesn't exist
 		hashed, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		org = models.Organizer{
 			ID:             primitive.NewObjectID(),

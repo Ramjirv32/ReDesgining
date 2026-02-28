@@ -16,7 +16,6 @@ func UserRoutes(app *fiber.App) {
 	users.Post("/login", ctrl.LoginUser)
 	users.Get("/:id", ctrl.GetUser)
 
-	// Coupons & Offers endpoints
 	api.Get("/coupons/:category", admincoupon.GetCouponsByCategory)
 	api.Get("/offers/:category", adminoffer.GetOffersByCategory)
 }

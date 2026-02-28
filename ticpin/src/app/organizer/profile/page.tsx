@@ -49,7 +49,7 @@ function ProfileContent() {
                     setIsNewProfile(false);
                 }
             } catch (err) {
-                console.log('Profile not found, user might be new');
+                // profile not found — new user
             } finally {
                 setLoading(false);
             }

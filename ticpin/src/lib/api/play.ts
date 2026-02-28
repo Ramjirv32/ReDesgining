@@ -58,24 +58,24 @@ export const playApi = {
       body: JSON.stringify(payload),
     }),
 
-  list: (organizerId: string) =>
-    request(`/organizer/play/${organizerId}/list`),
+  list: () =>
+    request(`/organizer/play/list`),
 
-  getById: async (organizerId: string, id: string) => {
-    const items = await request<Record<string, unknown>[]>(`/organizer/play/${organizerId}/list`);
+  getById: async (id: string) => {
+    const items = await request<Record<string, unknown>[]>(`/organizer/play/list`);
     const found = Array.isArray(items) ? items.find((i) => i.id === id) : null;
     if (!found) throw new Error('Play listing not found');
     return found;
   },
 
-  update: (id: string, organizerId: string, payload: Record<string, unknown>) =>
+  update: (id: string, payload: Record<string, unknown>) =>
     request(`/organizer/play/${id}`, {
       method: 'PUT',
-      body: JSON.stringify({ organizer_id: organizerId, ...payload }),
+      body: JSON.stringify(payload),
     }),
 
-  delete: (id: string, organizerId: string) =>
-    request(`/organizer/play/${id}?organizer_id=${organizerId}`, {
+  delete: (id: string) =>
+    request(`/organizer/play/${id}`, {
       method: 'DELETE',
     }),
 };

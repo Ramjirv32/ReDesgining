@@ -4,6 +4,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { Share2, MapPin, ChevronDown, Ticket, Timer, ArrowLeft } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
+import DOMPurify from 'isomorphic-dompurify';
 import { useUserSession } from '@/lib/auth/user';
 import AuthModal from '@/components/modals/AuthModal';
 import { DetailSkeleton } from '@/components/ui/Skeleton';
@@ -97,9 +98,10 @@ export default function EventDetailPage() {
 
     const processedDesc = useMemo(() => {
         if (!event?.description) return { plain: '', isLong: false };
-        const plainText = event.description.replace(/<[^>]+>/g, '');
+        const sanitized = DOMPurify.sanitize(event.description);
+        const plainText = sanitized.replace(/<[^>]+>/g, '');
         return {
-            html: event.description,
+            html: sanitized,
             isLong: plainText.length > 400
         };
     }, [event?.description]);

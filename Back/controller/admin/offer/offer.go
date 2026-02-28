@@ -62,13 +62,26 @@ func CreateOffer(c *fiber.Ctx) error {
 		if err == nil {
 			defer file.Close()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-			defer cancel()
+			var resp *uploader.UploadResult
+			var uploadErr error
+			for i := 0; i < 3; i++ {
+				if i > 0 {
+					file.Seek(0, 0)
+					time.Sleep(2 * time.Second)
+				}
 
-			resp, err := config.GetCloudinary().Upload.Upload(ctx, file, uploader.UploadParams{
-				Folder: "ticpin/offers",
-			})
-			if err == nil {
+				attemptCtx, attemptCancel := context.WithTimeout(context.Background(), 120*time.Second)
+				resp, uploadErr = config.GetCloudinary().Upload.Upload(attemptCtx, file, uploader.UploadParams{
+					Folder: "ticpin/offers",
+				})
+				attemptCancel()
+
+				if uploadErr == nil {
+					break
+				}
+			}
+
+			if uploadErr == nil {
 				imageURL = resp.SecureURL
 			}
 		}
@@ -83,7 +96,6 @@ func CreateOffer(c *fiber.Ctx) error {
 		entityObjIDs = append(entityObjIDs, objID)
 	}
 
-	// Create offer
 	offer := &models.EventOffer{
 		ID:            primitive.NewObjectID(),
 		Title:         title,
@@ -147,4 +159,88 @@ func GetOffersByCategory(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.JSON(offers)
+}
+
+func UpdateOffer(c *fiber.Ctx) error {
+	id := c.Params("id")
+	title := c.FormValue("title")
+	description := c.FormValue("description")
+	discountTypeStr := c.FormValue("discount_type")
+	discountValueStr := c.FormValue("discount_value")
+	appliesTo := c.FormValue("applies_to")
+	validUntil := c.FormValue("valid_until")
+	isActiveStr := c.FormValue("is_active")
+
+	form, _ := c.MultipartForm()
+	entityIDs := []string{}
+	if form != nil {
+		entityIDs = form.Value["entity_ids"]
+	}
+
+	var discountValue float64
+	fmt.Sscanf(discountValueStr, "%f", &discountValue)
+
+	validUntilTime, _ := time.Parse(time.RFC3339, validUntil)
+
+	var imageURL string
+	fileHeader, err := c.FormFile("image")
+	if err == nil && fileHeader != nil {
+		file, err := fileHeader.Open()
+		if err == nil {
+			defer file.Close()
+			var resp *uploader.UploadResult
+			var uploadErr error
+			for i := 0; i < 3; i++ {
+				if i > 0 {
+					file.Seek(0, 0)
+					time.Sleep(2 * time.Second)
+				}
+				attemptCtx, attemptCancel := context.WithTimeout(context.Background(), 120*time.Second)
+				resp, uploadErr = config.GetCloudinary().Upload.Upload(attemptCtx, file, uploader.UploadParams{
+					Folder: "ticpin/offers",
+				})
+				attemptCancel()
+				if uploadErr == nil {
+					break
+				}
+			}
+			if uploadErr == nil {
+				imageURL = resp.SecureURL
+			}
+		}
+	}
+
+	var entityObjIDs []primitive.ObjectID
+	for _, eid := range entityIDs {
+		objID, _ := primitive.ObjectIDFromHex(eid)
+		entityObjIDs = append(entityObjIDs, objID)
+	}
+
+	offer := &models.EventOffer{
+		Title:         title,
+		Description:   description,
+		DiscountType:  discountTypeStr,
+		DiscountValue: discountValue,
+		AppliesTo:     appliesTo,
+		EntityIDs:     entityObjIDs,
+		ValidUntil:    validUntilTime,
+		IsActive:      isActiveStr == "true" || isActiveStr == "", // default to active if not specified
+		UpdatedAt:     time.Now(),
+	}
+	if imageURL != "" {
+		offer.Image = imageURL
+	}
+
+	if err := offersvc.Update(id, offer); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"message": "offer updated"})
+}
+
+func DeleteOffer(c *fiber.Ctx) error {
+	id := c.Params("id")
+	if err := offersvc.Delete(id); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"message": "offer deleted"})
 }

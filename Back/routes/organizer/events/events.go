@@ -18,7 +18,7 @@ func EventsRoutes(app *fiber.App) {
 	events.Post("/setup", middleware.RequireAuth, ctrl.EventsSetup)
 	events.Post("/submit-verification", middleware.RequireAuth, ctrl.SubmitVerification)
 	events.Post("/create", middleware.RequireAuth, middleware.RequireCategoryApproval("events"), ctrl.CreateOrganizerEvent)
-	events.Get("/:organizer_id/list", middleware.RequireAuth, ctrl.GetOrganizerEvents)
+	events.Get("/list", middleware.RequireAuth, ctrl.GetOrganizerEvents)
 	events.Put("/:id", middleware.RequireAuth, ctrl.UpdateOrganizerEvent)
 	events.Delete("/:id", middleware.RequireAuth, ctrl.DeleteOrganizerEvent)
 }

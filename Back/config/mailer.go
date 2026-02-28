@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"os"
 	"strconv"
+	"strings"
 
 	gomail "gopkg.in/gomail.v2"
 )
@@ -15,13 +16,16 @@ func sendOTP(from, pass, to, subject, body string) error {
 		port = 587
 	}
 
+	// Clean password (remove spaces often found in app passwords)
+	cleanPass := strings.ReplaceAll(pass, " ", "")
+
 	m := gomail.NewMessage()
 	m.SetHeader("From", from)
 	m.SetHeader("To", to)
 	m.SetHeader("Subject", subject)
 	m.SetBody("text/html", body)
 
-	d := gomail.NewDialer("smtp.gmail.com", port, from, pass)
+	d := gomail.NewDialer("smtp.gmail.com", port, from, cleanPass)
 	return d.DialAndSend(m)
 }
 
@@ -78,7 +82,7 @@ func SendSaleNotification(toEmail, eventName, customerEmail string, grandTotal f
 		pass = os.Getenv("ADMIN_APP_PASSWORD")
 	}
 	if from == "" || pass == "" {
-		return nil // silently skip if not configured
+		return nil
 	}
 	subject := fmt.Sprintf("[Ticpin] New Sale: %s", eventName)
 	body := fmt.Sprintf(`
@@ -92,5 +96,33 @@ func SendSaleNotification(toEmail, eventName, customerEmail string, grandTotal f
   </table>
   <p style="color:#AEAEAE;font-size:12px;margin-top:24px;">This is an automated sale notification from Ticpin.</p>
 </body></html>`, eventName, customerEmail, grandTotal, bookingID)
+	return sendOTP(from, pass, toEmail, subject, body)
+}
+
+func SendNotificationEmail(toEmail, subject, content, imageURL string) error {
+	from := os.Getenv("ADMIN_EMAIL")
+	if from == "" {
+		from = "23cs139@kpriet.ac.in"
+	}
+	pass := os.Getenv("ADMIN_APP_PASSWORD")
+
+	var body string
+	if imageURL != "" {
+		body = fmt.Sprintf(`
+<html><body style="font-family:sans-serif;color:#222;max-width:600px;margin:auto;">
+  <h2 style="color:#5331EA;">%s</h2>
+  <div style="margin:20px 0; line-height:1.6;">%s</div>
+  <img src="%s" style="width:100%%; border-radius:15px; margin-top:20px;" />
+  <p style="color:#AEAEAE;font-size:12px;margin-top:24px;">Sent from Ticpin Admin Panel.</p>
+</body></html>`, subject, content, imageURL)
+	} else {
+		body = fmt.Sprintf(`
+<html><body style="font-family:sans-serif;color:#222;max-width:600px;margin:auto;">
+  <h2 style="color:#5331EA;">%s</h2>
+  <div style="margin:20px 0; line-height:1.6;">%s</div>
+  <p style="color:#AEAEAE;font-size:12px;margin-top:24px;">Sent from Ticpin Admin Panel.</p>
+</body></html>`, subject, content)
+	}
+
 	return sendOTP(from, pass, toEmail, subject, body)
 }

@@ -24,7 +24,6 @@ func CreateDining(b *models.DiningBooking) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Fetch Dining to get OrganizerID
 	var dining models.Dining
 	errDining := config.GetDB().Collection("dining").FindOne(ctx, bson.M{"_id": b.DiningID}).Decode(&dining)
 	if errDining == nil {
@@ -35,11 +34,9 @@ func CreateDining(b *models.DiningBooking) error {
 		b.OrganizerID = adminID
 	}
 
-	// Duplicate check
 	var existing models.DiningBooking
 	err := col.FindOne(ctx, bson.M{"dining_id": b.DiningID, "user_email": b.UserEmail, "date": b.Date, "time_slot": b.TimeSlot}).Decode(&existing)
 	if err == nil {
-		// Exempt admin/organizers
 		isAdmin := b.UserEmail == "23cs139@kpriet.ac.in"
 		if !isAdmin {
 			orgCol := config.GetDB().Collection("organizers")

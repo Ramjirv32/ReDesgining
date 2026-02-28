@@ -84,3 +84,47 @@ func GetByCategory(category string) ([]models.EventOffer, error) {
 	}
 	return offers, nil
 }
+
+func Update(id string, o *models.EventOffer) error {
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+	col := config.GetDB().Collection("offers")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	updateFields := bson.M{
+		"title":          o.Title,
+		"description":    o.Description,
+		"discount_type":  o.DiscountType,
+		"discount_value": o.DiscountValue,
+		"applies_to":     o.AppliesTo,
+		"entity_ids":     o.EntityIDs,
+		"valid_until":    o.ValidUntil,
+		"is_active":      o.IsActive,
+		"updated_at":     time.Now(),
+	}
+
+	if o.Image != "" {
+		updateFields["image"] = o.Image
+	}
+
+	update := bson.M{"$set": updateFields}
+
+	_, err = col.UpdateOne(ctx, bson.M{"_id": objID}, update)
+	return err
+}
+
+func Delete(id string) error {
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+	col := config.GetDB().Collection("offers")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err = col.DeleteOne(ctx, bson.M{"_id": objID})
+	return err
+}

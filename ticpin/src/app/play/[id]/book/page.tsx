@@ -88,7 +88,7 @@ export default function PlayBookPage() {
             totalPrice: total
         };
 
-        localStorage.setItem('ticpin_cart', JSON.stringify(cartItem));
+        sessionStorage.setItem('ticpin_cart', JSON.stringify(cartItem));
         router.push(`/events/${venue.id}/book/review`);
     };
 

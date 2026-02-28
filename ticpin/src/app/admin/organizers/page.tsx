@@ -234,7 +234,7 @@ function OrganizerModerationContent() {
             setOrganizers(data.organizers);
             setTotalPages(data.pages);
         } catch (err) {
-            console.error(err);
+            // error suppressed
         } finally {
             setLoading(false);
         }

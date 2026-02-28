@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, X, Check } from 'lucide-react';
-import { adminApi, AdminListing } from '@/lib/api/admin';
+import { adminApi, AdminListing, OfferRecord } from '@/lib/api/admin';
 
 // ── Reusable multi-select checkbox dropdown ────────────────────────────
 function MultiSelect<T extends { id: string; label: string }>({
@@ -33,10 +33,9 @@ function MultiSelect<T extends { id: string; label: string }>({
 
     return (
         <div ref={ref} className="relative">
-            <button
-                type="button"
+            <div
                 onClick={() => setOpen(v => !v)}
-                className="w-full min-h-[52px] border border-[#D9D9D9] rounded-2xl px-5 py-2 flex items-center justify-between gap-2 bg-white focus:border-purple-300 outline-none transition-all text-left"
+                className="w-full min-h-[52px] border border-[#D9D9D9] rounded-2xl px-5 py-2 flex items-center justify-between gap-2 bg-white focus-within:border-purple-300 outline-none transition-all text-left cursor-pointer"
             >
                 <div className="flex flex-wrap gap-1.5 flex-1">
                     {selected.length === 0 ? (
@@ -60,7 +59,7 @@ function MultiSelect<T extends { id: string; label: string }>({
                     )}
                 </div>
                 <ChevronDown size={18} className={`text-gray-400 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
-            </button>
+            </div>
 
             {open && (
                 <div className="absolute z-50 left-0 right-0 top-[calc(100%+6px)] bg-white border border-[#D9D9D9] rounded-2xl shadow-xl overflow-hidden">
@@ -102,26 +101,47 @@ function MultiSelect<T extends { id: string; label: string }>({
     );
 }
 
-export default function CreateOfferForm({ onBack }: { onBack: () => void }) {
-    const [title, setTitle] = useState('');
-    const [description, setDescription] = useState('');
+export default function CreateOfferForm({ onBack, editData }: { onBack: () => void, editData?: OfferRecord }) {
+    const [title, setTitle] = useState(editData?.title || '');
+    const [description, setDescription] = useState(editData?.description || '');
     const [image, setImage] = useState<File | null>(null);
-    const [imagePreview, setImagePreview] = useState('');
-    const [appliesTo, setAppliesTo] = useState<'event' | 'play' | 'dining'>('event');
-    const [entityIds, setEntityIds] = useState<string[]>([]);
+    const [imagePreview, setImagePreview] = useState(editData?.image || '');
+    const [appliesTo, setAppliesTo] = useState<'event' | 'play' | 'dining'>(editData?.applies_to as any || 'event');
+    const [entityIds, setEntityIds] = useState<string[]>(editData?.entity_ids || []);
     const [listings, setListings] = useState<AdminListing[]>([]);
     const [listingsLoading, setListingsLoading] = useState(false);
-    const [discountType, setDiscountType] = useState<'percent' | 'flat'>('percent');
-    const [discount, setDiscount] = useState('');
-    const [validUntil, setValidUntil] = useState('');
+    const [discountType, setDiscountType] = useState<'percent' | 'flat'>(editData?.discount_type || 'percent');
+    const [discount, setDiscount] = useState(editData?.discount_value?.toString() || '');
+    const [validUntil, setValidUntil] = useState(editData?.valid_until ? new Date(editData.valid_until).toISOString().slice(0, 16) : '');
+    const [isActive, setIsActive] = useState(editData?.is_active ?? true);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const imageInputRef = useRef<HTMLInputElement>(null);
 
+    // Initial load for listings if we have editData
+    useEffect(() => {
+        if (editData && listings.length === 0) {
+            setListingsLoading(true);
+            const fetcher =
+                appliesTo === 'event' ? adminApi.listEvents() :
+                    appliesTo === 'dining' ? adminApi.listDining() :
+                        adminApi.listPlay();
+            fetcher
+                .then(data => {
+                    const all = Array.isArray(data) ? data : [];
+                    setListings(all.filter(l => !!(l.id || l._id)));
+                })
+                .catch(() => setListings([]))
+                .finally(() => setListingsLoading(false));
+        }
+    }, []);
+
     // Load approved listings for the selected category
     useEffect(() => {
-        setEntityIds([]);
+        if (!editData) {
+            setEntityIds([]);
+        }
         setListings([]);
         setListingsLoading(true);
         const fetcher =
@@ -131,8 +151,6 @@ export default function CreateOfferForm({ onBack }: { onBack: () => void }) {
         fetcher
             .then(data => {
                 const all = Array.isArray(data) ? data : [];
-                // Show anything that has an ID, regardless of status for now
-                // if it's in the list, it's "available"
                 setListings(all.filter(l => !!(l.id || l._id)));
             })
             .catch(() => setListings([]))
@@ -156,7 +174,7 @@ export default function CreateOfferForm({ onBack }: { onBack: () => void }) {
         }
     };
 
-    const handleCreate = async () => {
+    const handleSave = async () => {
         setError('');
         setSuccess('');
         if (!title.trim()) { setError('Title is required'); return; }
@@ -166,7 +184,7 @@ export default function CreateOfferForm({ onBack }: { onBack: () => void }) {
 
         setLoading(true);
         try {
-            await adminApi.createOffer({
+            const payload = {
                 title: title.trim(),
                 description: description.trim(),
                 image: image || undefined,
@@ -175,11 +193,20 @@ export default function CreateOfferForm({ onBack }: { onBack: () => void }) {
                 applies_to: appliesTo,
                 entity_ids: entityIds,
                 valid_until: new Date(validUntil).toISOString(),
-            });
-            setSuccess('Offer created successfully!');
-            setTitle(''); setDescription(''); setDiscount(''); setEntityIds([]); setValidUntil(''); setImage(null); setImagePreview('');
+                is_active: isActive,
+            };
+
+            if (editData) {
+                await adminApi.updateOffer(editData.id, payload);
+                setSuccess('Offer updated successfully!');
+                setTimeout(() => onBack(), 1500);
+            } else {
+                await adminApi.createOffer(payload);
+                setSuccess('Offer created successfully!');
+                setTitle(''); setDescription(''); setDiscount(''); setEntityIds([]); setValidUntil(''); setImage(null); setImagePreview('');
+            }
         } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : 'Failed to create offer');
+            setError(e instanceof Error ? e.message : `Failed to ${editData ? 'update' : 'create'} offer`);
         } finally {
             setLoading(false);
         }
@@ -326,18 +353,43 @@ export default function CreateOfferForm({ onBack }: { onBack: () => void }) {
                 </div>
             </div>
 
-            {/* Feedback & Create Button */}
+            {/* Status Toggle (only for editing) */}
+            {editData && (
+                <div className="flex items-center gap-3 mt-4">
+                    <label className="text-gray-600 text-[16px] font-medium block" style={{ fontFamily: 'Anek Latin' }}>Offer Status</label>
+                    <button
+                        type="button"
+                        onClick={() => setIsActive(!isActive)}
+                        className={`w-14 h-7 rounded-full transition-colors relative ${isActive ? 'bg-[#B5E4B8]' : 'bg-[#FFCDD2]'}`}
+                    >
+                        <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all ${isActive ? 'right-1' : 'left-1 shadow-sm'}`} />
+                    </button>
+                    <span className="text-[14px] font-bold uppercase tracking-tight">{isActive ? 'Active' : 'Inactive'}</span>
+                </div>
+            )}
+
+            {/* Feedback & Action Button */}
             <div className="absolute bottom-14 right-14 flex flex-col items-end gap-2">
                 {error && <p className="text-red-500 text-[13px] font-medium">{error}</p>}
                 {success && <p className="text-green-600 text-[13px] font-bold">{success}</p>}
-                <button
-                    className="w-[80px] h-[48px] bg-[#000000] text-white rounded-[14px] text-[16px] font-semibold disabled:opacity-40"
-                    style={{ fontFamily: 'Anek Latin' }}
-                    onClick={handleCreate}
-                    disabled={loading}
-                >
-                    {loading ? '...' : 'Create'}
-                </button>
+                <div className="flex gap-3">
+                    <button
+                        type="button"
+                        onClick={onBack}
+                        className="w-[80px] h-[48px] bg-white border border-black text-black rounded-[14px] text-[16px] font-semibold"
+                        style={{ fontFamily: 'Anek Latin' }}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        className="w-120px min-w-[100px] h-[48px] bg-[#000000] text-white rounded-[14px] px-6 text-[16px] font-semibold disabled:opacity-40"
+                        style={{ fontFamily: 'Anek Latin' }}
+                        onClick={handleSave}
+                        disabled={loading}
+                    >
+                        {loading ? '...' : editData ? 'Update Offer' : 'Create'}
+                    </button>
+                </div>
             </div>
         </div>
     );

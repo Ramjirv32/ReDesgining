@@ -225,7 +225,7 @@ export default function TicketSelectionPage() {
                             })).filter(t => t.quantity > 0),
                             totalPrice
                         };
-                        localStorage.setItem('ticpin_cart', JSON.stringify(cart));
+                        sessionStorage.setItem('ticpin_cart', JSON.stringify(cart));
                         router.push(`/events/${id}/book/review`);
                     }}
                     className={`group relative w-[130px] md:w-[220px] h-[40px] md:h-[54px] bg-white rounded-[7px] flex items-center justify-center transition-all overflow-hidden ${totalTickets === 0 ? 'opacity-50 grayscale cursor-not-allowed' : 'active:scale-[0.98] hover:bg-[#7B2FF7] hover:text-white'}`}

@@ -70,7 +70,7 @@ export interface AdminStats {
 
 // ─── Listings types ───────────────────────────────────────────────────────────
 
-export type ListingStatus = 'pending' | 'approved' | 'rejected';
+export type ListingStatus = 'pending' | 'approved' | 'rejected' | 'draft';
 
 export interface AdminListing {
     _id?: string;
@@ -148,6 +148,16 @@ export interface AdminListing {
     price_per_slot?: number;
 }
 
+export interface NotificationRecord {
+    id: string;
+    title: string;
+    description: string;
+    image_url: string;
+    target_type: 'all_users' | 'all_organizers' | 'selected_users' | 'selected_organizers' | 'both';
+    recipient_ids?: string[];
+    created_at: string;
+}
+
 // ─── Offer & Coupon types ─────────────────────────────────────────────────────
 
 export interface CreateOfferPayload {
@@ -190,8 +200,9 @@ export interface OfferRecord {
 export interface CouponRecord {
     id: string;
     code: string;
+    description?: string;
     category: string;
-    discount_type: string;
+    discount_type: 'percent' | 'flat';
     discount_value: number;
     valid_from: string;
     valid_until: string;
@@ -226,7 +237,7 @@ export const adminApi = {
     logout: async () => {
         try {
             await fetch('/backend/api/organizer/logout', { method: 'POST', credentials: 'include' });
-        } catch (e) { console.error(e); }
+        } catch (_e) { }
         if (typeof window !== 'undefined') {
             const { clearOrganizerSession } = await import('@/lib/auth/organizer');
             clearOrganizerSession();
@@ -338,19 +349,21 @@ export const adminApi = {
     /** POST /api/admin/offers */
     createOffer: async (payload: CreateOfferPayload): Promise<OfferRecord> => {
         const formData = new FormData();
-        formData.append('title', payload.title);
-        formData.append('description', payload.description);
-        formData.append('discount_type', payload.discount_type);
-        formData.append('discount_value', String(payload.discount_value));
-        formData.append('applies_to', payload.applies_to);
-        formData.append('valid_until', payload.valid_until);
+        for (const key in payload) {
+            if (Object.prototype.hasOwnProperty.call(payload, key)) {
+                const value = payload[key as keyof CreateOfferPayload];
+                if (value === undefined || value === null) continue;
 
-        if (payload.entity_ids) {
-            payload.entity_ids.forEach(id => formData.append('entity_ids', id));
-        }
-
-        if (payload.image) {
-            formData.append('image', payload.image);
+                if (key === 'image') {
+                    if (value instanceof File) {
+                        formData.append(key, value);
+                    }
+                } else if (Array.isArray(value)) {
+                    value.forEach(v => formData.append(key, String(v)));
+                } else {
+                    formData.append(key, String(value));
+                }
+            }
         }
 
         const res = await fetch(`${ADMIN_BASE}/offers`, {
@@ -366,6 +379,37 @@ export const adminApi = {
     /** GET /api/admin/offers */
     listOffers: () => adminRequest<OfferRecord[]>('/offers'),
 
+    /** PUT /api/admin/offers/:id */
+    updateOffer: async (id: string, payload: Partial<CreateOfferPayload> & { is_active?: boolean }): Promise<{ message: string }> => {
+        const formData = new FormData();
+        if (payload.title) formData.append('title', payload.title);
+        if (payload.description) formData.append('description', payload.description);
+        if (payload.discount_type) formData.append('discount_type', payload.discount_type);
+        if (payload.discount_value) formData.append('discount_value', String(payload.discount_value));
+        if (payload.applies_to) formData.append('applies_to', payload.applies_to);
+        if (payload.valid_until) formData.append('valid_until', payload.valid_until);
+        if (payload.is_active !== undefined) formData.append('is_active', String(payload.is_active));
+
+        if (payload.entity_ids) {
+            payload.entity_ids.forEach(eid => formData.append('entity_ids', eid));
+        }
+        if (payload.image) {
+            formData.append('image', payload.image);
+        }
+
+        const res = await fetch(`${ADMIN_BASE}/offers/${id}`, {
+            method: 'PUT',
+            credentials: 'include',
+            body: formData,
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? 'Failed to update offer');
+        return data as { message: string };
+    },
+
+    /** DELETE /api/admin/offers/:id */
+    deleteOffer: (id: string) => adminRequest<{ message: string }>(`/offers/${id}`, { method: 'DELETE' }),
+
     // ── Coupons ───────────────────────────────────────────────────────────────
 
     /** POST /api/admin/coupons */
@@ -379,6 +423,16 @@ export const adminApi = {
 
     /** GET /api/admin/coupons */
     listCoupons: () => adminRequest<CouponRecord[]>('/coupons'),
+
+    /** PUT /api/admin/coupons/:id */
+    updateCoupon: (id: string, payload: Partial<CreateCouponPayload> & { is_active?: boolean }) =>
+        adminRequest<{ message: string }>(`/coupons/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+        }),
+
+    /** DELETE /api/admin/coupons/:id */
+    deleteCoupon: (id: string) => adminRequest<{ message: string }>(`/coupons/${id}`, { method: 'DELETE' }),
 
     /** GET /api/coupons/:category — get active coupons for a category (public) */
     getCouponsByCategory: (category: string) =>
@@ -396,6 +450,18 @@ export const adminApi = {
 
     /** GET /api/admin/users — for coupon user-selector */
     listUsers: () => adminRequest<UserRecord[]>('/users'),
+
+    // ── Notifications ─────────────────────────────────────────────────────────
+
+    /** POST /api/admin/notifications */
+    sendNotification: (n: Partial<NotificationRecord>) =>
+        adminRequest<{ message: string; notification: NotificationRecord }>('/notifications', {
+            method: 'POST',
+            body: JSON.stringify(n),
+        }),
+
+    /** GET /api/admin/notifications */
+    listNotifications: () => adminRequest<NotificationRecord[]>('/notifications'),
 };
 
 // ─── Media upload ─────────────────────────────────────────────────────────────

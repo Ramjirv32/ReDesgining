@@ -36,7 +36,7 @@ func GetExistingSetupHandler(c *fiber.Ctx) error {
 	organizerID := c.Params("id")
 	category := c.Query("category")
 	if category == "" {
-		category = "dining" // default category
+		category = "dining"
 	}
 	if organizerID == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "organizerId required"})

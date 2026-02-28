@@ -75,8 +75,8 @@ func GetOrganizerDetail(c *fiber.Ctx) error {
 func UpdateCategoryStatus(c *fiber.Ctx) error {
 	id := c.Params("id")
 	var body struct {
-		Category string `json:"category"` // "dining" | "events" | "play"
-		Status   string `json:"status"`   // "pending" | "approved" | "rejected"
+		Category string `json:"category"`
+		Status   string `json:"status"`
 	}
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid body"})

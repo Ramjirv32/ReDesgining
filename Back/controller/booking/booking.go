@@ -13,7 +13,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// CreateEventBooking handles POST /api/bookings/events
 func CreateEventBooking(c *fiber.Ctx) error {
 	var req struct {
 		UserEmail   string                 `json:"user_email"`
@@ -44,7 +43,6 @@ func CreateEventBooking(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid event_id"})
 	}
 
-	// Apply coupon discount if provided
 	var discountAmount float64
 	var appliedCouponCode string
 	var couponIDToIncrement primitive.ObjectID
@@ -59,7 +57,6 @@ func CreateEventBooking(c *fiber.Ctx) error {
 		}
 	}
 
-	// Parse optional offer ID
 	var offerObjID primitive.ObjectID
 	if req.OfferID != "" {
 		offerObjID, _ = primitive.ObjectIDFromHex(req.OfferID)
@@ -88,12 +85,10 @@ func CreateEventBooking(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	// Increment coupon usage only after the booking is confirmed in the DB
 	if !couponIDToIncrement.IsZero() {
 		_ = couponsvc.IncrementUsage(couponIDToIncrement, couponMaxUses)
 	}
 
-	// Send sale notification emails to organizer's sales_notifications (non-blocking)
 	bookingID := booking.ID.Hex()
 	bookingEventObjID := eventObjID
 	bookingUserEmail := req.UserEmail
@@ -120,7 +115,6 @@ func CreateEventBooking(c *fiber.Ctx) error {
 	})
 }
 
-// CreateDiningBooking handles POST /api/bookings/dining
 func CreateDiningBooking(c *fiber.Ctx) error {
 	var req struct {
 		UserEmail   string  `json:"user_email"`
@@ -200,7 +194,6 @@ func CreateDiningBooking(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	// Increment coupon usage only after the booking is confirmed in the DB
 	if !couponIDToIncrement.IsZero() {
 		_ = couponsvc.IncrementUsage(couponIDToIncrement, couponMaxUses)
 	}
@@ -213,7 +206,6 @@ func CreateDiningBooking(c *fiber.Ctx) error {
 	})
 }
 
-// CreatePlayBooking handles POST /api/bookings/play
 func CreatePlayBooking(c *fiber.Ctx) error {
 	var req struct {
 		UserEmail   string                 `json:"user_email"`
@@ -293,7 +285,6 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	// Increment coupon usage only after the booking is confirmed in the DB
 	if !couponIDToIncrement.IsZero() {
 		_ = couponsvc.IncrementUsage(couponIDToIncrement, couponMaxUses)
 	}
@@ -306,7 +297,6 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 	})
 }
 
-// GetEventAvailability handles GET /api/events/:id/availability
 func GetEventAvailability(c *fiber.Ctx) error {
 	eventID := c.Params("id")
 	availability, err := bookingsvc.GetAvailability(eventID)

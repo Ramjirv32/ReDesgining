@@ -62,7 +62,9 @@ export default function LoginPage() {
                     <div className="grid grid-cols-2 gap-8 mb-8">
                         <div>
                             <label className="block font-medium text-[#686868] mb-4" style={{ fontSize: '20px', lineHeight: '22px' }}>Enter your email</label>
-                            <input type="email" placeholder="Email address" value={email} onChange={e => setEmail(e.target.value)}
+                            <input type="email" placeholder="Email address" value={email}
+                                onChange={e => setEmail(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleLogin()}
                                 className="w-full px-6 py-4 border-[1.5px] border-[#AEAEAE] rounded-[20px] text-[#AEAEAE] placeholder-[#AEAEAE] focus:outline-none focus:border-black transition-colors"
                                 style={{ height: '65px' }} />
                         </div>
@@ -78,7 +80,7 @@ export default function LoginPage() {
                     <button onClick={handleLogin} disabled={loading}
                         className="bg-black text-white px-8 py-4 rounded-[15px] flex items-center gap-2 font-medium transition-all active:scale-95 disabled:opacity-60"
                         style={{ fontSize: '20px', lineHeight: '22px', width: 'fit-content' }}>
-                        {loading ? 'Please wait...' : 'Log in'} <ChevronRight size={20} />
+                        {loading ? 'Please wait...' : 'Continue'} <ChevronRight size={20} />
                     </button>
                 </div>
             </main>

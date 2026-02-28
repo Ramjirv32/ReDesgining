@@ -20,11 +20,12 @@ export default function EventCard({
   image,
 }: EventCardProps) {
   return (
-    <Link href={`/events/${id}`} className="block">
+    <Link href={`/events/${id}`} className="block h-full">
       <div
         className="overflow-hidden cursor-pointer w-full sm:w-auto flex flex-col hover:shadow-lg transition-all"
         style={{
           width: '285px',
+          height: '560px',
           background: 'white',
           borderRadius: '10px',
           border: '1px solid #686868'
@@ -39,7 +40,7 @@ export default function EventCard({
             className="w-full h-full object-contain"
           />
         </div>
-        <div className="p-4 flex flex-col">
+        <div className="p-4 flex flex-col flex-1">
           <div className="text-xs font-semibold text-purple-600 mb-2">
             {date} / {time}
           </div>

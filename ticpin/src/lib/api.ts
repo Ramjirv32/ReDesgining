@@ -1,31 +1,11 @@
 // Base URL — all API calls go through Next.js rewrite proxy to localhost:9000
 const BASE = '/backend/api';
 
-// ─── Storage helpers ──────────────────────────────────────────────
-export const saveAuth = (organizerId: string, email: string, vertical: string) => {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem('organizerId', organizerId);
-  localStorage.setItem('organizerEmail', email);
-  localStorage.setItem('organizerVertical', vertical);
-};
-
-export const getOrganizerId = (): string =>
-  typeof window !== 'undefined' ? localStorage.getItem('organizerId') ?? '' : '';
-
-export const getOrganizerEmail = (): string =>
-  typeof window !== 'undefined' ? localStorage.getItem('organizerEmail') ?? '' : '';
-
-export const clearAuth = () => {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem('organizerId');
-  localStorage.removeItem('organizerEmail');
-  localStorage.removeItem('organizerVertical');
-};
-
 // ─── Generic fetch wrapper ─────────────────────────────────────────
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     ...options,
   });
   const data = await res.json();
@@ -71,17 +51,17 @@ export const diningApi = {
       body: JSON.stringify(payload),
     }),
 
-  list: (organizerId: string) =>
-    request(`/organizer/dining/${organizerId}/list`),
+  list: () =>
+    request(`/organizer/dining/list`),
 
-  update: (id: string, organizerId: string, payload: Record<string, unknown>) =>
+  update: (id: string, payload: Record<string, unknown>) =>
     request(`/organizer/dining/${id}`, {
       method: 'PUT',
-      body: JSON.stringify({ organizer_id: organizerId, ...payload }),
+      body: JSON.stringify(payload),
     }),
 
-  delete: (id: string, organizerId: string) =>
-    request(`/organizer/dining/${id}?organizer_id=${organizerId}`, {
+  delete: (id: string) =>
+    request(`/organizer/dining/${id}`, {
       method: 'DELETE',
     }),
 };
@@ -112,17 +92,17 @@ export const eventsApi = {
       body: JSON.stringify(payload),
     }),
 
-  list: (organizerId: string) =>
-    request(`/organizer/events/${organizerId}/list`),
+  list: () =>
+    request(`/organizer/events/list`),
 
-  update: (id: string, organizerId: string, payload: Record<string, unknown>) =>
+  update: (id: string, payload: Record<string, unknown>) =>
     request(`/organizer/events/${id}`, {
       method: 'PUT',
-      body: JSON.stringify({ organizer_id: organizerId, ...payload }),
+      body: JSON.stringify(payload),
     }),
 
-  delete: (id: string, organizerId: string) =>
-    request(`/organizer/events/${id}?organizer_id=${organizerId}`, {
+  delete: (id: string) =>
+    request(`/organizer/events/${id}`, {
       method: 'DELETE',
     }),
 };
@@ -153,17 +133,17 @@ export const playApi = {
       body: JSON.stringify(payload),
     }),
 
-  list: (organizerId: string) =>
-    request(`/organizer/play/${organizerId}/list`),
+  list: () =>
+    request(`/organizer/play/list`),
 
-  update: (id: string, organizerId: string, payload: Record<string, unknown>) =>
+  update: (id: string, payload: Record<string, unknown>) =>
     request(`/organizer/play/${id}`, {
       method: 'PUT',
-      body: JSON.stringify({ organizer_id: organizerId, ...payload }),
+      body: JSON.stringify(payload),
     }),
 
-  delete: (id: string, organizerId: string) =>
-    request(`/organizer/play/${id}?organizer_id=${organizerId}`, {
+  delete: (id: string) =>
+    request(`/organizer/play/${id}`, {
       method: 'DELETE',
     }),
 };

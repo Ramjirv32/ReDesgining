@@ -88,24 +88,24 @@ export const diningApi = {
       body: JSON.stringify(payload),
     }),
 
-  list: (organizerId: string) =>
-    request(`/organizer/dining/${organizerId}/list`),
+  list: () =>
+    request(`/organizer/dining/list`),
 
-  getById: async (organizerId: string, id: string) => {
-    const items = await request<Record<string, unknown>[]>(`/organizer/dining/${organizerId}/list`);
+  getById: async (id: string) => {
+    const items = await request<Record<string, unknown>[]>(`/organizer/dining/list`);
     const found = Array.isArray(items) ? items.find((i) => i.id === id) : null;
     if (!found) throw new Error('Dining listing not found');
     return found;
   },
 
-  update: (id: string, organizerId: string, payload: Record<string, unknown>) =>
+  update: (id: string, payload: Record<string, unknown>) =>
     request(`/organizer/dining/${id}`, {
       method: 'PUT',
-      body: JSON.stringify({ organizer_id: organizerId, ...payload }),
+      body: JSON.stringify(payload),
     }),
 
-  delete: (id: string, organizerId: string) =>
-    request(`/organizer/dining/${id}?organizer_id=${organizerId}`, {
+  delete: (id: string) =>
+    request(`/organizer/dining/${id}`, {
       method: 'DELETE',
     }),
 };

@@ -4,6 +4,7 @@ import (
 	adminauth "ticpin-backend/controller/admin/auth"
 	admincoupon "ticpin-backend/controller/admin/coupon"
 	adminlistings "ticpin-backend/controller/admin/listings"
+	adminnotification "ticpin-backend/controller/admin/notification"
 	adminoffer "ticpin-backend/controller/admin/offer"
 	adminorgs "ticpin-backend/controller/admin/organizers"
 	adminstats "ticpin-backend/controller/admin/stats"
@@ -43,6 +44,8 @@ func AdminRoutes(app *fiber.App) {
 
 	admin.Post("/coupons", admincoupon.CreateCoupon)
 	admin.Get("/coupons", admincoupon.ListCoupons)
+	admin.Put("/coupons/:id", admincoupon.UpdateCoupon)
+	admin.Delete("/coupons/:id", admincoupon.DeleteCoupon)
 	admin.Get("/users", admincoupon.ListUsers)
 	admin.Get("/users/:id", adminusers.GetUser)
 	admin.Get("/users/:id/stats", adminusers.GetUserStats)
@@ -52,6 +55,11 @@ func AdminRoutes(app *fiber.App) {
 
 	admin.Post("/offers", adminoffer.CreateOffer)
 	admin.Get("/offers", adminoffer.ListOffers)
+	admin.Put("/offers/:id", adminoffer.UpdateOffer)
+	admin.Delete("/offers/:id", adminoffer.DeleteOffer)
+
+	admin.Post("/notifications", adminnotification.SendNotification)
+	admin.Get("/notifications", adminnotification.ListNotifications)
 
 	admin.Post("/upload-media", orgmedia.UploadMedia)
 }

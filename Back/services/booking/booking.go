@@ -12,7 +12,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// Create stores a new event booking.
 func Create(b *models.Booking) error {
 	if b.UserEmail == "" {
 		return errors.New("user email is required")
@@ -24,8 +23,6 @@ func Create(b *models.Booking) error {
 		return errors.New("at least one ticket is required")
 	}
 
-	// 1. Check for duplicate booking (one booking per email per event)
-	// EXEMPTIONS: Admin and Organizers can book multiple times.
 	col := config.GetDB().Collection("bookings")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -33,24 +30,17 @@ func Create(b *models.Booking) error {
 	var existing models.Booking
 	err := col.FindOne(ctx, bson.M{"event_id": b.EventID, "user_email": b.UserEmail, "status": "booked"}).Decode(&existing)
 	if err == nil {
-		// Found existing booking. Check if this email is exempt.
-		isAdmin := b.UserEmail == "23cs139@kpriet.ac.in" // Default admin email from auth.go
-		// In production, we should check os.Getenv("ADMIN_EMAIL") but for now we follow the pattern in auth.go
+		isAdmin := b.UserEmail == "23cs139@kpriet.ac.in"
 		if !isAdmin {
-			// Check if it's an organizer
 			orgCol := config.GetDB().Collection("organizers")
 			var org models.Organizer
 			errOrg := orgCol.FindOne(ctx, bson.M{"email": b.UserEmail}).Decode(&org)
 			if errOrg != nil {
-				// Not an admin and not an organizer -> Reject duplicate
 				return errors.New("this email has already booked for this event")
 			}
 		}
 	}
 
-	// 2. Verify capacity: for each ticket category, count booked tickets
-
-	// Fetch event to get capacity info
 	var event models.Event
 	evCtx, evCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer evCancel()
@@ -59,15 +49,12 @@ func Create(b *models.Booking) error {
 		return errors.New("event not found")
 	}
 
-	// Set OrganizerID from Event
 	b.OrganizerID = event.OrganizerID
 	if b.OrganizerID.IsZero() {
-		
 		adminID, _ := primitive.ObjectIDFromHex("000000000000000000000001")
 		b.OrganizerID = adminID
 	}
 
-	// Build a map of category name -> capacity
 	capacityMap := map[string]int{}
 	for _, cat := range event.TicketCategories {
 		if cat.Capacity > 0 {
@@ -75,14 +62,12 @@ func Create(b *models.Booking) error {
 		}
 	}
 
-	// For each ticket in this booking, check if adding them would exceed capacity
 	if len(capacityMap) > 0 {
 		for _, t := range b.Tickets {
 			cap, hasCap := capacityMap[t.Category]
 			if !hasCap {
 				continue
 			}
-			// Count already booked tickets for this category
 			pipeline := []bson.M{
 				{"$match": bson.M{
 					"event_id": b.EventID,
@@ -124,7 +109,6 @@ func Create(b *models.Booking) error {
 	return err
 }
 
-// GetAvailability returns per-category booked count for an event
 func GetAvailability(eventID string) (map[string]int, error) {
 	objID, err := primitive.ObjectIDFromHex(eventID)
 	if err != nil {
@@ -163,7 +147,6 @@ func GetAvailability(eventID string) (map[string]int, error) {
 	return result, nil
 }
 
-// itoa is a tiny int-to-string helper to avoid importing strconv in a loop
 func itoa(n int) string {
 	if n == 0 {
 		return "0"

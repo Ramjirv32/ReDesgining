@@ -71,8 +71,6 @@ func UpdateEvent(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid body"})
 	}
 	update.UpdatedAt = time.Now()
-	// Prevent overwriting ID or OrganizerID if they are zero/empty in the update body
-	// Usually admin won't send them, but we should be careful.
 	col := config.GetDB().Collection("events")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

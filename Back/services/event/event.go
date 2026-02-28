@@ -33,12 +33,10 @@ func Create(e *models.Event) error {
 	if err := orgCol.FindOne(ctx, bson.M{"_id": e.OrganizerID}).Decode(&org); err != nil {
 		return errors.New("organizer not found")
 	}
-	// Check admin approval via CategoryStatus — this is the sole gate for event creation.
 	if org.CategoryStatus["events"] != "approved" {
 		return errors.New("organizer is not approved for the events category")
 	}
 
-	// Auto-calculate PriceStartsFrom if not provided or if categories exist
 	if len(e.TicketCategories) > 0 {
 		e.PriceStartsFrom = calculateMinPrice(e.TicketCategories)
 	}
@@ -126,7 +124,6 @@ func Update(id string, organizerID string, update *models.Event) error {
 		return err
 	}
 	col := config.GetDB().Collection("events")
-	// Fetch original to preserve immutable fields (ownership + createdAt)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	var original models.Event
@@ -134,14 +131,15 @@ func Update(id string, organizerID string, update *models.Event) error {
 		return errors.New("event not found or not owned by this organizer")
 	}
 	update.UpdatedAt = time.Now()
-	update.OrganizerID = orgID            // never allow organizer_id to change
-	update.CreatedAt = original.CreatedAt // never overwrite creation timestamp
+	update.OrganizerID = orgID
+	update.CreatedAt = original.CreatedAt
 
-	// Recalculate price if categories are provided in update
+	// Always reset to pending so admin must re-approve after any organizer edit
+	update.Status = "pending"
+
 	if len(update.TicketCategories) > 0 {
 		update.PriceStartsFrom = calculateMinPrice(update.TicketCategories)
 	} else {
-		// If categories are not being updated, keep the old price
 		update.PriceStartsFrom = original.PriceStartsFrom
 	}
 	ctx2, cancel2 := context.WithTimeout(context.Background(), 5*time.Second)

@@ -6,14 +6,12 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// BookingTicket represents one ticket category line item in a booking
 type BookingTicket struct {
 	Category string  `bson:"category" json:"category"`
 	Price    float64 `bson:"price" json:"price"`
 	Quantity int     `bson:"quantity" json:"quantity"`
 }
 
-// Booking represents a completed event booking
 type Booking struct {
 	ID             primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	UserEmail      string             `bson:"user_email" json:"user_email"`
@@ -27,11 +25,10 @@ type Booking struct {
 	CouponCode     string             `bson:"coupon_code" json:"coupon_code"`
 	OfferID        primitive.ObjectID `bson:"offer_id,omitempty" json:"offer_id,omitempty"`
 	GrandTotal     float64            `bson:"grand_total" json:"grand_total"`
-	Status         string             `bson:"status" json:"status"` // "booked", "cancelled"
+	Status         string             `bson:"status" json:"status"`
 	BookedAt       time.Time          `bson:"booked_at" json:"booked_at"`
 }
 
-// PlayBooking represents a court or play area booking
 type PlayBooking struct {
 	ID             primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	UserEmail      string             `bson:"user_email" json:"user_email"`
@@ -51,7 +48,6 @@ type PlayBooking struct {
 	BookedAt       time.Time          `bson:"booked_at" json:"booked_at"`
 }
 
-// DiningBooking represents a restaurant table booking
 type DiningBooking struct {
 	ID             primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	UserEmail      string             `bson:"user_email" json:"user_email"`

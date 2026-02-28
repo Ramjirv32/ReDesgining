@@ -1,33 +1,53 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChevronRight, X, User, BarChart3, Clock } from 'lucide-react';
+import { ChevronRight, X, User, BarChart3, Clock, Pencil, Trash2 } from 'lucide-react';
 import { adminApi, CouponRecord, UserRecord } from '@/lib/api/admin';
+import CreateCouponPage from '../create/createcoupon';
 
 export default function ViewCouponForm({ onBack }: { onBack: () => void }) {
     const [coupons, setCoupons] = useState<CouponRecord[]>([]);
     const [users, setUsers] = useState<UserRecord[]>([]);
     const [selectedCoupon, setSelectedCoupon] = useState<CouponRecord | null>(null);
+    const [editingCoupon, setEditingCoupon] = useState<CouponRecord | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const [couponData, userData] = await Promise.all([
+                adminApi.listCoupons(),
+                adminApi.listUsers().catch(() => [])
+            ]);
+            setCoupons(couponData);
+            setUsers(userData);
+        } catch (err) {
+            setError('Failed to load coupon data');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [couponData, userData] = await Promise.all([
-                    adminApi.listCoupons(),
-                    adminApi.listUsers().catch(() => [])
-                ]);
-                setCoupons(couponData);
-                setUsers(userData);
-            } catch (err) {
-                setError('Failed to load coupon data');
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchData();
     }, []);
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this coupon?')) return;
+        try {
+            await adminApi.deleteCoupon(id);
+            setCoupons(prev => prev.filter(c => c.id !== id));
+            setSelectedCoupon(null);
+        } catch (err) {
+            alert('Failed to delete coupon');
+        }
+    };
+
+    const handleEdit = (coupon: CouponRecord) => {
+        setEditingCoupon(coupon);
+        setSelectedCoupon(null);
+    };
 
     const formatDate = (iso: string) => {
         try { return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }); }
@@ -55,7 +75,7 @@ export default function ViewCouponForm({ onBack }: { onBack: () => void }) {
         // If not found, try user_ids array
         if (!primaryId && coupon.user_ids && coupon.user_ids.length > 0) {
             const first = coupon.user_ids[0];
-            primaryId = typeof first === 'string' ? first : first.$oid;
+            primaryId = typeof first === 'string' ? first : (first as any).$oid;
         }
 
         if (!primaryId) return 'Global (All Users)';
@@ -63,6 +83,10 @@ export default function ViewCouponForm({ onBack }: { onBack: () => void }) {
         const user = users.find(u => u.id === primaryId);
         return user ? user.name : `User (${primaryId})`;
     };
+
+    if (editingCoupon) {
+        return <CreateCouponPage onBack={() => { setEditingCoupon(null); fetchData(); }} editData={editingCoupon || undefined} />;
+    }
 
     return (
         <div className="bg-white rounded-[32px] p-10 md:p-12 lg:p-14 min-h-[480px] flex items-center justify-center gap-12 relative">
@@ -151,7 +175,25 @@ export default function ViewCouponForm({ onBack }: { onBack: () => void }) {
                             >
                                 <X size={24} />
                             </button>
-                            <h2 className="text-[24px] font-bold" style={{ fontFamily: 'var(--font-anek-latin)' }}>Coupon Details</h2>
+                            <div className="flex items-center justify-between mr-8">
+                                <h2 className="text-[24px] font-bold" style={{ fontFamily: 'var(--font-anek-latin)' }}>Coupon Details</h2>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => handleEdit(selectedCoupon)}
+                                        className="p-2 bg-white/20 hover:bg-white/30 rounded-xl transition-all"
+                                        title="Edit Coupon"
+                                    >
+                                        <Pencil size={18} />
+                                    </button>
+                                    <button
+                                        onClick={() => handleDelete(selectedCoupon.id)}
+                                        className="p-2 bg-red-500/80 hover:bg-red-500 rounded-xl transition-all"
+                                        title="Delete Coupon"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
+                                </div>
+                            </div>
                             <div className="mt-2 inline-block px-3 py-1 bg-white/20 rounded-lg text-[14px] font-bold tracking-widest uppercase">
                                 {selectedCoupon.code}
                             </div>
@@ -159,6 +201,14 @@ export default function ViewCouponForm({ onBack }: { onBack: () => void }) {
 
                         {/* Body */}
                         <div className="p-8 space-y-8" style={{ fontFamily: 'var(--font-anek-latin)' }}>
+                            {/* Description */}
+                            {selectedCoupon.description && (
+                                <div className="bg-zinc-50 rounded-2xl p-4 border border-zinc-100">
+                                    <p className="text-[12px] text-gray-500 font-bold uppercase tracking-wider mb-1">Description</p>
+                                    <p className="text-[15px] text-black font-medium">{selectedCoupon.description}</p>
+                                </div>
+                            )}
+
                             {/* User Allocation */}
                             <div className="flex items-start gap-4">
                                 <div className="w-10 h-10 rounded-xl bg-[#F1EDFF] flex items-center justify-center shrink-0">

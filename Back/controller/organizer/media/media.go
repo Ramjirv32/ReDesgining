@@ -2,7 +2,6 @@ package media
 
 import (
 	"context"
-	"fmt"
 	"ticpin-backend/config"
 	"ticpin-backend/models"
 	"time"
@@ -30,14 +29,27 @@ func UploadPANCard(c *fiber.Ctx) error {
 	}
 	defer file.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
+	var resp *uploader.UploadResult
+	var uploadErr error
+	for i := 0; i < 3; i++ {
+		if i > 0 {
+			file.Seek(0, 0)
+			time.Sleep(2 * time.Second)
+		}
 
-	resp, err := config.GetCloudinary().Upload.Upload(ctx, file, uploader.UploadParams{
-		Folder: "ticpin/pan",
-	})
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "upload failed: " + err.Error()})
+		attemptCtx, attemptCancel := context.WithTimeout(context.Background(), 120*time.Second)
+		resp, uploadErr = config.GetCloudinary().Upload.Upload(attemptCtx, file, uploader.UploadParams{
+			Folder: "ticpin/pan",
+		})
+		attemptCancel()
+
+		if uploadErr == nil {
+			break
+		}
+	}
+
+	if uploadErr != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "upload failed after retries: " + uploadErr.Error()})
 	}
 
 	url := resp.SecureURL
@@ -60,16 +72,13 @@ func UploadPANCard(c *fiber.Ctx) error {
 }
 
 func UploadMedia(c *fiber.Ctx) error {
-	fmt.Println("[UploadMedia] Start")
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
-		fmt.Printf("[UploadMedia] FormFile error: %v\n", err)
 		return c.Status(400).JSON(fiber.Map{"error": "file required"})
 	}
 
 	file, err := fileHeader.Open()
 	if err != nil {
-		fmt.Printf("[UploadMedia] fileHeader.Open error: %v\n", err)
 		return c.Status(500).JSON(fiber.Map{"error": "failed to open file"})
 	}
 	defer file.Close()
@@ -80,21 +89,31 @@ func UploadMedia(c *fiber.Ctx) error {
 			organizerID = val
 		}
 	}
-	fmt.Printf("[UploadMedia] Uploading file: %s for organizer: %s\n", fileHeader.Filename, organizerID)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
+	var resp *uploader.UploadResult
+	var uploadErr error
+	for i := 0; i < 3; i++ {
+		if i > 0 {
+			file.Seek(0, 0)
+			time.Sleep(2 * time.Second)
+		}
 
-	resp, err := config.GetCloudinary().Upload.Upload(ctx, file, uploader.UploadParams{
-		Folder: "ticpin/media",
-	})
-	if err != nil {
-		fmt.Printf("[UploadMedia] Cloudinary Upload error: %v\n", err)
-		return c.Status(500).JSON(fiber.Map{"error": "upload failed: " + err.Error()})
+		attemptCtx, attemptCancel := context.WithTimeout(context.Background(), 120*time.Second)
+		resp, uploadErr = config.GetCloudinary().Upload.Upload(attemptCtx, file, uploader.UploadParams{
+			Folder: "ticpin/media",
+		})
+		attemptCancel()
+
+		if uploadErr == nil {
+			break
+		}
+	}
+
+	if uploadErr != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "upload failed after retries: " + uploadErr.Error()})
 	}
 
 	url := resp.SecureURL
-	fmt.Printf("[UploadMedia] Successfully uploaded to: %s\n", url)
 
 	if organizerID != "" {
 		objID, err := primitive.ObjectIDFromHex(organizerID)

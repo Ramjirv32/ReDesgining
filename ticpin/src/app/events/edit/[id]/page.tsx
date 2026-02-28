@@ -196,7 +196,7 @@ export default function EditEventPage() {
         if (!portraitUrl || !landscapeUrl) { setSubmitMsg('Please upload both portrait and landscape images.'); return; }
         setSubmitLoading(true); setSubmitMsg('');
         try {
-            await eventsApi.update(id, session.id, {
+            await eventsApi.update(id, {
                 name: eventName.trim(),
                 description: editorRef.current?.innerHTML ?? '',
                 category: selections.category,

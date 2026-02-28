@@ -57,7 +57,7 @@ export default function EditPlayPage() {
             const session = getOrganizerSession();
             if (!session) { router.replace('/'); return; }
             try {
-                const d = await playApi.getById(session.id, id) as Record<string, unknown>;
+                const d = await playApi.getById(id) as Record<string, unknown>;
                 setVenueName((d.name as string) ?? '');
                 if (editorRef.current) editorRef.current.innerHTML = (d.description as string) ?? '';
                 setHasContent(!!d.description);
@@ -132,7 +132,7 @@ export default function EditPlayPage() {
         if (!portraitUrl || !landscapeUrl) { setSubmitMsg('Please upload both portrait and landscape images.'); return; }
         setSubmitLoading(true); setSubmitMsg('');
         try {
-            await playApi.update(id, session.id, {
+            await playApi.update(id, {
                 name: venueName.trim(),
                 description: editorRef.current?.innerHTML ?? '',
                 category: selections.category,

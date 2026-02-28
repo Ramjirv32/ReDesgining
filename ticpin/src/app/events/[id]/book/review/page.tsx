@@ -80,24 +80,24 @@ export default function ReviewBookingPage() {
     const [bookingId, setBookingId] = useState('');
 
     useEffect(() => {
-        const saved = localStorage.getItem('ticpin_cart');
+        const saved = sessionStorage.getItem('ticpin_cart');
         if (saved) {
             const data = JSON.parse(saved);
             // Default to 'event' if not specified
             setCart({ ...data, type: data.type || 'event' });
         }
 
-        const savedEmail = localStorage.getItem('ticpin_billing_email');
+        const savedEmail = sessionStorage.getItem('ticpin_billing_email');
         if (savedEmail) setEmail(savedEmail);
 
-        const savedBilling = localStorage.getItem('ticpin_billing_data');
+        const savedBilling = sessionStorage.getItem('ticpin_billing_data');
         if (savedBilling) {
             try {
                 setBilling(JSON.parse(savedBilling));
             } catch (e) { }
         }
 
-        const savedStep = localStorage.getItem('ticpin_booking_step');
+        const savedStep = sessionStorage.getItem('ticpin_booking_step');
         if (savedStep === 'billing') {
             setStep('billing');
             // Give it a tiny delay to ensure cart is loaded before scrolling
@@ -120,17 +120,17 @@ export default function ReviewBookingPage() {
 
     // Persist changes
     useEffect(() => {
-        if (email) localStorage.setItem('ticpin_billing_email', email);
+        if (email) sessionStorage.setItem('ticpin_billing_email', email);
     }, [email]);
 
     useEffect(() => {
         if (billing.name || billing.phone || billing.address) {
-            localStorage.setItem('ticpin_billing_data', JSON.stringify(billing));
+            sessionStorage.setItem('ticpin_billing_data', JSON.stringify(billing));
         }
     }, [billing]);
 
     useEffect(() => {
-        localStorage.setItem('ticpin_booking_step', step);
+        sessionStorage.setItem('ticpin_booking_step', step);
     }, [step]);
 
     useEffect(() => {
@@ -167,7 +167,7 @@ export default function ReviewBookingPage() {
         const newTotal = newTickets.reduce((s, t) => s + t.price * t.quantity, 0);
         const newCart = { ...cart, tickets: newTickets, totalPrice: newTotal };
         setCart(newCart);
-        localStorage.setItem('ticpin_cart', JSON.stringify(newCart));
+        sessionStorage.setItem('ticpin_cart', JSON.stringify(newCart));
         if (appliedOffer) applyOffer(appliedOffer, newTotal);
         if (appliedCoupon) validateCoupon(couponInput, newTotal);
     };
@@ -183,7 +183,7 @@ export default function ReviewBookingPage() {
         const newTotal = newTickets.reduce((s, t) => s + t.price * t.quantity, 0);
         const newCart = { ...cart, tickets: newTickets, totalPrice: newTotal };
         setCart(newCart);
-        localStorage.setItem('ticpin_cart', JSON.stringify(newCart));
+        sessionStorage.setItem('ticpin_cart', JSON.stringify(newCart));
         if (appliedOffer) applyOffer(appliedOffer, newTotal);
         if (appliedCoupon) validateCoupon(couponInput, newTotal);
     };
@@ -311,10 +311,10 @@ export default function ReviewBookingPage() {
                 });
             }
             setBookingId(result.booking_id);
-            localStorage.removeItem('ticpin_cart');
-            localStorage.removeItem('ticpin_billing_email');
-            localStorage.removeItem('ticpin_billing_data');
-            localStorage.removeItem('ticpin_booking_step');
+            sessionStorage.removeItem('ticpin_cart');
+            sessionStorage.removeItem('ticpin_billing_email');
+            sessionStorage.removeItem('ticpin_billing_data');
+            sessionStorage.removeItem('ticpin_booking_step');
             setStep('success');
         } catch (err: unknown) {
             setBookingError(err instanceof Error ? err.message : 'Booking failed. Please try again.');

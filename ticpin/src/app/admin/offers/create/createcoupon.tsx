@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, X, Check } from 'lucide-react';
-import { adminApi, UserRecord } from '@/lib/api/admin';
+import { adminApi, UserRecord, CouponRecord } from '@/lib/api/admin';
 
 // ── Reusable multi-select checkbox dropdown ───────────────────────────────────
 function MultiSelect<T extends { id: string; label: string }>({
@@ -34,10 +34,9 @@ function MultiSelect<T extends { id: string; label: string }>({
     return (
         <div ref={ref} className="relative">
             {/* Trigger */}
-            <button
-                type="button"
+            <div
                 onClick={() => setOpen(v => !v)}
-                className="w-full min-h-[52px] border border-[#D9D9D9] rounded-2xl px-5 py-2 flex items-center justify-between gap-2 bg-white focus:border-purple-300 outline-none transition-all text-left"
+                className="w-full min-h-[52px] border border-[#D9D9D9] rounded-2xl px-5 py-2 flex items-center justify-between gap-2 bg-white focus-within:border-purple-300 outline-none transition-all text-left cursor-pointer"
             >
                 <div className="flex flex-wrap gap-1.5 flex-1">
                     {selected.length === 0 ? (
@@ -61,7 +60,7 @@ function MultiSelect<T extends { id: string; label: string }>({
                     )}
                 </div>
                 <ChevronDown size={18} className={`text-gray-400 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
-            </button>
+            </div>
 
             {/* Dropdown panel */}
             {open && (
@@ -113,18 +112,21 @@ function MultiSelect<T extends { id: string; label: string }>({
     );
 }
 
-export default function CreateCouponPage({ onBack }: { onBack: () => void }) {
-    const [code, setCode] = useState('');
-    const [description, setDescription] = useState('');
-    const [category, setCategory] = useState<'event' | 'play' | 'dining'>('event');
-    const [discountType, setDiscountType] = useState<'percent' | 'flat'>('percent');
-    const [discount, setDiscount] = useState('');
-    const [maxUses, setMaxUses] = useState('');
-    const [userIds, setUserIds] = useState<string[]>([]);
+export default function CreateCouponPage({ onBack, editData }: { onBack: () => void, editData?: CouponRecord }) {
+    const [code, setCode] = useState(editData?.code || '');
+    const [description, setDescription] = useState(editData?.description || '');
+    const [category, setCategory] = useState<'event' | 'play' | 'dining'>(editData?.category as any || 'event');
+    const [discountType, setDiscountType] = useState<'percent' | 'flat'>(editData?.discount_type || 'percent');
+    const [discount, setDiscount] = useState(editData?.discount_value?.toString() || '');
+    const [maxUses, setMaxUses] = useState(editData?.max_uses?.toString() || '');
+    const [userIds, setUserIds] = useState<string[]>(
+        (editData?.user_ids || []).map(u => typeof u === 'string' ? u : u.$oid)
+    );
     const [users, setUsers] = useState<UserRecord[]>([]);
     const [usersLoading, setUsersLoading] = useState(false);
-    const [validFrom, setValidFrom] = useState('');
-    const [validUntil, setValidUntil] = useState('');
+    const [validFrom, setValidFrom] = useState(editData?.valid_from ? new Date(editData.valid_from).toISOString().slice(0, 16) : '');
+    const [validUntil, setValidUntil] = useState(editData?.valid_until ? new Date(editData.valid_until).toISOString().slice(0, 16) : '');
+    const [isActive, setIsActive] = useState(editData?.is_active ?? true);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -142,7 +144,7 @@ export default function CreateCouponPage({ onBack }: { onBack: () => void }) {
     const selectAllUsers = () => setUserIds(users.map(u => u.id));
     const clearUsers = () => setUserIds([]);
 
-    const handleCreate = async () => {
+    const handleSave = async () => {
         setError('');
         setSuccess('');
         if (!code.trim()) { setError('Coupon code is required'); return; }
@@ -151,7 +153,7 @@ export default function CreateCouponPage({ onBack }: { onBack: () => void }) {
 
         setLoading(true);
         try {
-            await adminApi.createCoupon({
+            const payload = {
                 code: code.trim().toUpperCase(),
                 description: description.trim() || undefined,
                 category: category,
@@ -161,19 +163,28 @@ export default function CreateCouponPage({ onBack }: { onBack: () => void }) {
                 valid_until: new Date(validUntil).toISOString(),
                 max_uses: maxUses ? Number(maxUses) : 0,
                 user_ids: userIds.length > 0 ? userIds : undefined,
-            });
-            setSuccess(`Coupon "${code.toUpperCase()}" created!`);
-            setCode(''); setDescription(''); setDiscount(''); setMaxUses(''); setUserIds([]); setValidFrom(''); setValidUntil('');
+                is_active: isActive,
+            };
+
+            if (editData) {
+                await adminApi.updateCoupon(editData.id, payload);
+                setSuccess('Coupon updated successfully!');
+                setTimeout(() => onBack(), 1500);
+            } else {
+                await adminApi.createCoupon(payload);
+                setSuccess(`Coupon "${code.toUpperCase()}" created!`);
+                setCode(''); setDescription(''); setDiscount(''); setMaxUses(''); setUserIds([]); setValidFrom(''); setValidUntil('');
+            }
         } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : 'Failed to create coupon');
+            setError(e instanceof Error ? e.message : `Failed to ${editData ? 'update' : 'create'} coupon`);
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="bg-white rounded-[32px] p-10 md:p-12 lg:p-14 min-h-[480px] flex items-center justify-center gap-12">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-16 gap-y-8 w-full">
+        <div className="bg-white rounded-[32px] p-10 md:p-12 lg:p-14 min-h-[480px] flex items-center justify-center gap-12 relative overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-16 gap-y-8 w-full mt-[-40px]">
                 {/* Left Column */}
                 <div className="space-y-8">
                     {/* Code */}
@@ -311,21 +322,47 @@ export default function CreateCouponPage({ onBack }: { onBack: () => void }) {
                             />
                         </div>
                     </div>
+
+                    {/* Status Toggle (only for editing) */}
+                    {editData && (
+                        <div className="flex items-center gap-3">
+                            <label className="text-gray-600 text-[16px] font-medium block" style={{ fontFamily: 'Anek Latin' }}>Coupon Status</label>
+                            <button
+                                type="button"
+                                onClick={() => setIsActive(!isActive)}
+                                className={`w-14 h-7 rounded-full transition-colors relative ${isActive ? 'bg-[#B5E4B8]' : 'bg-[#FFCDD2]'}`}
+                            >
+                                <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all ${isActive ? 'right-1' : 'left-1 shadow-sm'}`} />
+                            </button>
+                            <span className="text-[14px] font-bold uppercase tracking-tight">{isActive ? 'Active' : 'Inactive'}</span>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* Feedback & Create */}
-            <div className="absolute bottom-14 left-14 flex flex-col gap-2">
+            {/* Feedback & Actions */}
+            <div className="absolute bottom-14 left-14 flex flex-col items-end gap-2 w-full pr-28">
                 {error && <p className="text-red-500 text-[13px] font-medium">{error}</p>}
                 {success && <p className="text-green-600 text-[13px] font-bold">{success}</p>}
-                <button
-                    className="w-[80px] h-[48px] bg-[#000000] text-white rounded-[14px] text-[16px] font-bold disabled:opacity-40"
-                    style={{ fontFamily: 'Anek Latin' }}
-                    onClick={handleCreate}
-                    disabled={loading}
-                >
-                    {loading ? '...' : 'Create'}
-                </button>
+
+                <div className="flex gap-3">
+                    <button
+                        type="button"
+                        onClick={onBack}
+                        className="w-[80px] h-[48px] bg-white border border-black text-black rounded-[14px] text-[16px] font-bold"
+                        style={{ fontFamily: 'Anek Latin' }}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        className="w-[120px] h-[48px] bg-[#000000] text-white rounded-[14px] text-[16px] font-bold disabled:opacity-40"
+                        style={{ fontFamily: 'Anek Latin' }}
+                        onClick={handleSave}
+                        disabled={loading}
+                    >
+                        {loading ? '...' : editData ? 'Update' : 'Create'}
+                    </button>
+                </div>
             </div>
         </div>
     );

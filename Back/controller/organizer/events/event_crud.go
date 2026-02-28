@@ -24,7 +24,6 @@ func CreateOrganizerEvent(c *fiber.Ctx) error {
 			"error": "invalid request body: " + err.Error(),
 		})
 	}
-	// Always set from JWT — never trust client-supplied organizer_id
 	event.OrganizerID = orgObjID
 
 	if event.Name == "" {
@@ -37,7 +36,6 @@ func CreateOrganizerEvent(c *fiber.Ctx) error {
 			"error": "category is required",
 		})
 	}
-	// sub_category is optional — not all categories have sub-categories
 	if event.City == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "city is required",
@@ -61,17 +59,8 @@ func GetOrganizerEvents(c *fiber.Ctx) error {
 	if !ok || authOrgID == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
 	}
-	organizerID := c.Params("organizer_id")
-	if organizerID == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "organizer_id is required",
-		})
-	}
-	if authOrgID != organizerID {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "forbidden: you can only view your own events"})
-	}
 
-	events, err := eventservice.GetByOrganizer(organizerID)
+	events, err := eventservice.GetByOrganizer(authOrgID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": err.Error(),
@@ -93,7 +82,6 @@ func UpdateOrganizerEvent(c *fiber.Ctx) error {
 			"error": "invalid request body: " + err.Error(),
 		})
 	}
-	// Always use JWT value — strip any client-supplied organizer_id
 	body.OrganizerID = primitive.NilObjectID
 
 	if err := eventservice.Update(eventID, authOrgID, &body); err != nil {

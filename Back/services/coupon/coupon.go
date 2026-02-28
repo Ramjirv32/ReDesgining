@@ -26,7 +26,6 @@ func Create(c *models.Coupon) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Ensure unique code
 	var existing models.Coupon
 	err := col.FindOne(ctx, bson.M{"code": c.Code}).Decode(&existing)
 	if err == nil {
@@ -54,10 +53,6 @@ func GetAll() ([]models.Coupon, error) {
 	return coupons, nil
 }
 
-// GetByCategory returns active coupons for a specific category.
-// If userID is non-empty the result includes global coupons AND coupons
-// restricted to that specific user.  Without a userID only global coupons
-// (empty user_ids) are returned so restricted coupons are never exposed.
 func GetByCategory(category string, userID string) ([]models.Coupon, error) {
 	col := config.GetDB().Collection("coupons")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -71,7 +66,6 @@ func GetByCategory(category string, userID string) ([]models.Coupon, error) {
 		"valid_until": bson.M{"$gte": now},
 	}
 
-	// Add usage limit check: only show if MaxUses is 0 OR UsedCount < MaxUses
 	usageFilter := bson.M{
 		"$or": bson.A{
 			bson.M{"max_uses": 0},
@@ -83,7 +77,6 @@ func GetByCategory(category string, userID string) ([]models.Coupon, error) {
 	if userID != "" {
 		userObjID, err := primitive.ObjectIDFromHex(userID)
 		if err == nil {
-			// Return global coupons (user_ids empty/null) OR ones that include this user
 			filter = bson.M{
 				"$and": bson.A{
 					base,
@@ -96,7 +89,6 @@ func GetByCategory(category string, userID string) ([]models.Coupon, error) {
 				},
 			}
 		} else {
-			// Invalid user_id — fall back to global only
 			filter = bson.M{
 				"$and": bson.A{
 					base,
@@ -109,7 +101,6 @@ func GetByCategory(category string, userID string) ([]models.Coupon, error) {
 			}
 		}
 	} else {
-		// No user — only show global (unrestricted) coupons
 		filter = bson.M{
 			"$and": bson.A{
 				base,
@@ -134,13 +125,11 @@ func GetByCategory(category string, userID string) ([]models.Coupon, error) {
 	return coupons, nil
 }
 
-// ValidateResult is returned on successful coupon validation
 type ValidateResult struct {
 	Coupon         *models.Coupon
 	DiscountAmount float64
 }
 
-// Validate checks if a coupon code is valid for a given event and order amount
 func Validate(code string, eventID string, orderAmount float64, userID string) (*ValidateResult, error) {
 	code = strings.ToUpper(strings.TrimSpace(code))
 	if code == "" {
@@ -169,7 +158,6 @@ func Validate(code string, eventID string, orderAmount float64, userID string) (
 		return nil, errors.New("coupon usage limit reached")
 	}
 
-	// If coupon is user-specific, verify the user is in the allowed list
 	if len(c.UserIDs) > 0 {
 		if userID == "" {
 			return nil, errors.New("this coupon is restricted and requires a logged-in user")
@@ -203,8 +191,6 @@ func Validate(code string, eventID string, orderAmount float64, userID string) (
 	return &ValidateResult{Coupon: &c, DiscountAmount: discount}, nil
 }
 
-// IncrementUsage increments the used_count of a coupon if it hasn't exceeded maxUses.
-// Returns an error if the coupon was not found, the limit was reached, or the update failed.
 func IncrementUsage(couponID primitive.ObjectID, maxUses int) error {
 	col := config.GetDB().Collection("coupons")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -212,9 +198,8 @@ func IncrementUsage(couponID primitive.ObjectID, maxUses int) error {
 
 	filter := bson.M{"_id": couponID}
 	if maxUses > 0 {
-		// Only increment if used_count < maxUses
 		filter["$or"] = bson.A{
-			bson.M{"used_count": bson.M{"$exists": false}}, // handle cases where field is missing
+			bson.M{"used_count": bson.M{"$exists": false}},
 			bson.M{"$expr": bson.M{"$lt": bson.A{"$used_count", maxUses}}},
 		}
 	}
@@ -227,4 +212,45 @@ func IncrementUsage(couponID primitive.ObjectID, maxUses int) error {
 		return errors.New("coupon limit reached or invalid coupon")
 	}
 	return nil
+}
+
+func Update(id string, c *models.Coupon) error {
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+	col := config.GetDB().Collection("coupons")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	update := bson.M{
+		"$set": bson.M{
+			"code":           strings.ToUpper(strings.TrimSpace(c.Code)),
+			"description":    c.Description,
+			"category":       c.Category,
+			"discount_type":  c.DiscountType,
+			"discount_value": c.DiscountValue,
+			"user_ids":       c.UserIDs,
+			"valid_from":     c.ValidFrom,
+			"valid_until":    c.ValidUntil,
+			"max_uses":       c.MaxUses,
+			"is_active":      c.IsActive,
+		},
+	}
+
+	_, err = col.UpdateOne(ctx, bson.M{"_id": objID}, update)
+	return err
+}
+
+func Delete(id string) error {
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+	col := config.GetDB().Collection("coupons")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err = col.DeleteOne(ctx, bson.M{"_id": objID})
+	return err
 }

@@ -85,6 +85,7 @@ export default function LoginPage() {
                                 placeholder="Email address"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
                                 className="w-full px-6 py-4 border-[1.5px] border-[#AEAEAE] rounded-[20px] text-[#AEAEAE] placeholder-[#AEAEAE] focus:outline-none focus:border-black transition-colors"
                                 style={{ height: '65px' }}
                             />
@@ -100,6 +101,7 @@ export default function LoginPage() {
                                 placeholder="Password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
                                 className="w-full px-6 py-4 border-[1.5px] border-[#AEAEAE] rounded-[20px] text-[#AEAEAE] placeholder-[#AEAEAE] focus:outline-none focus:border-black transition-colors"
                                 style={{ height: '65px' }}
                             />
@@ -114,7 +116,7 @@ export default function LoginPage() {
                         className="bg-black text-white px-8 py-4 rounded-[15px] flex items-center gap-2 font-medium transition-all active:scale-95 disabled:opacity-60"
                         style={{ fontSize: '20px', lineHeight: '22px', width: 'fit-content' }}
                     >
-                        {loading ? 'Please wait...' : 'Log in'} <ChevronRight size={20} />
+                        {loading ? 'Please wait...' : 'Continue'} <ChevronRight size={20} />
                     </button>
                 </div>
             </main>

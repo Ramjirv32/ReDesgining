@@ -28,7 +28,8 @@ export default function SignupPage() {
         setLoading(true); setError('');
         try {
             await diningApi.signin(email, password);
-            router.push(`/list-your-dining/otp?email=${encodeURIComponent(email)}`);
+            sessionStorage.setItem('otp_pending_email', email);
+            router.push(`/list-your-dining/otp`);
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : 'Signup failed';
             if (msg === 'email_exists') {
@@ -57,13 +58,16 @@ export default function SignupPage() {
                     <div className="grid grid-cols-2 gap-8 mb-8">
                         <div>
                             <label className="block font-medium text-[#686868] mb-4" style={{ fontSize: '20px', lineHeight: '22px' }}>Enter your email</label>
-                            <input type="email" placeholder="Email address" value={email} onChange={e => setEmail(e.target.value)}
+                            <input type="email" placeholder="Email address" value={email}
+                                onChange={e => setEmail(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleSignup()}
                                 className="w-full px-6 py-4 border-[1.5px] border-[#AEAEAE] rounded-[20px] text-[#AEAEAE] placeholder-[#AEAEAE] focus:outline-none focus:border-black transition-colors"
                                 style={{ height: '65px' }} />
                         </div>
                         <div>
                             <label className="block font-medium text-[#686868] mb-4" style={{ fontSize: '20px', lineHeight: '22px' }}>Create your password</label>
-                            <input type="password" placeholder="Password (min 8 chars)" value={password} onChange={e => setPassword(e.target.value)}
+                            <input type="password" placeholder="Password (min 8 chars)" value={password}
+                                onChange={e => setPassword(e.target.value)}
                                 onKeyDown={e => e.key === 'Enter' && handleSignup()}
                                 className="w-full px-6 py-4 border-[1.5px] border-[#AEAEAE] rounded-[20px] text-[#AEAEAE] placeholder-[#AEAEAE] focus:outline-none focus:border-black transition-colors"
                                 style={{ height: '65px' }} />
@@ -83,7 +87,7 @@ export default function SignupPage() {
                     <button onClick={handleSignup} disabled={loading}
                         className="bg-black text-white px-8 py-4 rounded-[15px] flex items-center gap-2 font-medium transition-all active:scale-95 disabled:opacity-60"
                         style={{ fontSize: '20px', lineHeight: '22px', width: 'fit-content' }}>
-                        {loading ? 'Please wait...' : 'Sign up'} <ChevronRight size={20} />
+                        {loading ? 'Please wait...' : 'Continue'} <ChevronRight size={20} />
                     </button>
                 </div>
             </main>

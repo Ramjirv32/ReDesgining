@@ -24,7 +24,6 @@ func CreatePlay(b *models.PlayBooking) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	
 	var play models.Play
 	errPlay := config.GetDB().Collection("play").FindOne(ctx, bson.M{"_id": b.PlayID}).Decode(&play)
 	if errPlay == nil {
@@ -35,7 +34,6 @@ func CreatePlay(b *models.PlayBooking) error {
 		b.OrganizerID = adminID
 	}
 
-	// Duplicate check
 	var existing models.PlayBooking
 	err := col.FindOne(ctx, bson.M{"play_id": b.PlayID, "user_email": b.UserEmail, "date": b.Date, "slot": b.Slot}).Decode(&existing)
 	if err == nil {

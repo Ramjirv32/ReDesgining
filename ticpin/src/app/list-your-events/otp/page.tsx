@@ -39,6 +39,9 @@ function EventsOTPContent() {
         if (e.key === 'Backspace' && !otp[index] && index > 0) {
             inputRefs.current[index - 1]?.focus();
         }
+        if (e.key === 'Enter') {
+            handleVerify();
+        }
     };
 
     const handlePaste = (e: React.ClipboardEvent) => {
@@ -134,7 +137,7 @@ function EventsOTPContent() {
                             className="bg-black text-white px-8 py-4 rounded-[15px] flex items-center gap-2 font-medium transition-all active:scale-95 disabled:opacity-60"
                             style={{ fontSize: '20px', lineHeight: '22px' }}
                         >
-                            {loading ? 'Verifying...' : 'Verify'} <ChevronRight size={20} />
+                            {loading ? 'Verifying...' : 'Continue'} <ChevronRight size={20} />
                         </button>
                         <button
                             onClick={handleResend}

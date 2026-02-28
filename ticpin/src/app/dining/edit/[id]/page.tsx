@@ -61,7 +61,7 @@ export default function EditDiningPage() {
             const session = getOrganizerSession();
             if (!session) { router.replace('/'); return; }
             try {
-                const d = await diningApi.getById(session.id, id) as Record<string, unknown>;
+                const d = await diningApi.getById(id) as Record<string, unknown>;
                 setDiningName((d.name as string) ?? '');
                 if (editorRef.current) editorRef.current.innerHTML = (d.description as string) ?? '';
                 setHasContent(!!d.description);
@@ -141,7 +141,7 @@ export default function EditDiningPage() {
         if (!portraitUrl || !landscapeUrl) { setSubmitMsg('Please upload both portrait and landscape images.'); return; }
         setSubmitLoading(true); setSubmitMsg('');
         try {
-            await diningApi.update(id, session.id, {
+            await diningApi.update(id, {
                 name: diningName.trim(),
                 description: editorRef.current?.innerHTML ?? '',
                 category: selections.category,

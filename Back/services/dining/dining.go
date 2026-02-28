@@ -23,7 +23,6 @@ func Create(d *models.Dining) error {
 	if !org.IsVerified {
 		return errors.New("organizer is not verified")
 	}
-	// Check admin approval via CategoryStatus (set by admin via UpdateCategoryStatus)
 	if org.CategoryStatus["dining"] != "approved" {
 		return errors.New("organizer is not approved for the dining category")
 	}
@@ -101,7 +100,6 @@ func Update(id string, organizerID string, update *models.Dining) error {
 		return err
 	}
 	col := config.GetDB().Collection("dinings")
-	// Fetch original to preserve immutable fields (ownership + createdAt)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	var original models.Dining
@@ -109,8 +107,8 @@ func Update(id string, organizerID string, update *models.Dining) error {
 		return errors.New("dining not found or not owned by this organizer")
 	}
 	update.UpdatedAt = time.Now()
-	update.OrganizerID = orgID            // never allow organizer_id to change
-	update.CreatedAt = original.CreatedAt // never overwrite creation timestamp
+	update.OrganizerID = orgID
+	update.CreatedAt = original.CreatedAt
 	ctx2, cancel2 := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel2()
 	_, err = col.UpdateOne(

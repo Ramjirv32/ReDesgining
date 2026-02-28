@@ -320,7 +320,7 @@ function AdminEventsContent() {
       const data = await adminApi.listEvents();
       setEvents(Array.isArray(data) ? data : []);
     } catch (e) {
-      console.error(e);
+      // error suppressed
     } finally {
       setLoading(false);
     }
@@ -329,7 +329,11 @@ function AdminEventsContent() {
   useEffect(() => { load(); }, [load]);
 
   const getId = (item: AdminListing) => item.id || item._id || '';
-  const filtered = events.filter(l => l.status === activeTab);
+  const filtered = events.filter(l =>
+    activeTab === 'pending'
+      ? (l.status === 'pending' || l.status === 'draft')
+      : l.status === activeTab
+  );
   const preview = detailId ? events.find(l => getId(l) === detailId) : null;
 
   const handleStatus = async (id: string, status: ListingStatus) => {
@@ -341,8 +345,7 @@ function AdminEventsContent() {
     try {
       await adminApi.updateEventStatus(id, status);
       setEvents(prev => prev.map(item => (getId(item) === id ? { ...item, status } : item)));
-      // If we are in detail view, we might need to refresh the preview object or the router
-      // But since preview is derived from events state, it should auto-update.
+   
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Update failed');
     } finally {
@@ -469,7 +472,12 @@ function AdminEventsContent() {
                     </div>
 
                     <button
-                      onClick={() => router.push(`?id=${id}`)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const idx = filtered.findIndex(l => getId(l) === id);
+                        const nextItem = filtered[idx + 1] ?? filtered[0];
+                        router.push(`?id=${getId(nextItem)}`);
+                      }}
                       className="absolute -right-7 top-1/2 -translate-y-1/2 w-[57px] h-[57px] bg-black rounded-full flex items-center justify-center text-white shadow-xl hover:scale-110 active:scale-95 transition-transform z-10"
                     >
                       <ChevronRight size={30} />

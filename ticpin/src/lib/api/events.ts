@@ -58,11 +58,11 @@ export const eventsApi = {
       body: JSON.stringify(payload),
     }),
 
-  list: (organizerId: string) =>
-    request(`/organizer/events/${organizerId}/list`),
+  list: () =>
+    request(`/organizer/events/list`),
 
-  getById: async (organizerId: string, id: string) => {
-    const items = await request<Record<string, unknown>[]>(`/organizer/events/${organizerId}/list`);
+  getById: async (id: string) => {
+    const items = await request<Record<string, unknown>[]>(`/organizer/events/list`);
     const found = Array.isArray(items) ? items.find((i) => i.id === id) : null;
     if (!found) throw new Error('Event not found');
     return found;
@@ -72,14 +72,14 @@ export const eventsApi = {
   getEventDirect: (id: string) =>
     request<Record<string, unknown>>(`/events/${id}`),
 
-  update: (id: string, organizerId: string, payload: Record<string, unknown>) =>
+  update: (id: string, payload: Record<string, unknown>) =>
     request(`/organizer/events/${id}`, {
       method: 'PUT',
-      body: JSON.stringify({ organizer_id: organizerId, ...payload }),
+      body: JSON.stringify(payload),
     }),
 
-  delete: (id: string, organizerId: string) =>
-    request(`/organizer/events/${id}?organizer_id=${organizerId}`, {
+  delete: (id: string) =>
+    request(`/organizer/events/${id}`, {
       method: 'DELETE',
     }),
 };

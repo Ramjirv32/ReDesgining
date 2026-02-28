@@ -256,7 +256,7 @@ function AdminDiningContent() {
       const data = await adminApi.listDining();
       setListings(Array.isArray(data) ? data : []);
     } catch (e) {
-      console.error(e);
+
     } finally {
       setLoading(false);
     }

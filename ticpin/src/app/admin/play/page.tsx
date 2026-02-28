@@ -23,6 +23,7 @@ function DetailViewPanel({ ev, onStatus, updating, onUpdate, onNext, currentInde
   const id = ev.id || ev._id || '';
   const [editedEv, setEditedEv] = useState<AdminListing>({ ...ev });
   const [isSaving, setIsSaving] = useState(false);
+  const [step, setStep] = useState(1);
 
   useEffect(() => {
     setEditedEv({ ...ev });
@@ -99,75 +100,133 @@ function DetailViewPanel({ ev, onStatus, updating, onUpdate, onNext, currentInde
         </div>
 
         <div className="w-2/3 flex flex-col relative h-full pt-10">
-          <div className="grid grid-cols-2 gap-x-12 gap-y-6 pr-4 overflow-y-auto max-h-[600px] scrollbar-hide">
-            {detailRows.map((row, i) => (
-              <div key={i} className="flex flex-col">
-                <div className="flex items-center justify-between border-b-[1px] border-[#AEAEAE] pb-1">
-                  <span className="text-[18px] font-medium text-[#686868]" style={{ fontFamily: 'var(--font-anek-latin)' }}>{row.label}</span>
-                  {row.readOnly ? (
-                    <span className="text-[18px] font-medium text-black">{"{"}{row.value}{"}"}</span>
-                  ) : (
-                    <input
-                      type={row.type === 'number' ? 'number' : 'text'}
-                      value={row.value}
-                      onChange={(e) => {
-                        const val = row.type === 'number' ? Number(e.target.value) : e.target.value;
-                        handleChange(row.field!, val);
-                      }}
-                      className="text-[18px] font-medium text-black bg-transparent border-none focus:outline-none text-right w-1/2"
-                      placeholder={`{${row.label}}`}
-                      style={{ fontFamily: 'var(--font-anek-latin)' }}
-                    />
-                  )}
-                </div>
+          {step === 1 ? (
+            <>
+              <div className="grid grid-cols-2 gap-x-12 gap-y-6 pr-4 overflow-y-auto max-h-[600px] scrollbar-hide">
+                {detailRows.map((row, i) => (
+                  <div key={i} className="flex flex-col">
+                    <div className="flex items-center justify-between border-b-[1px] border-[#AEAEAE] pb-1">
+                      <span className="text-[18px] font-medium text-[#686868]" style={{ fontFamily: 'var(--font-anek-latin)' }}>{row.label}</span>
+                      {row.readOnly ? (
+                        <span className="text-[18px] font-medium text-black truncate max-w-[200px] text-right">{"{"}{row.value}{"}"}</span>
+                      ) : (
+                        <input
+                          type={row.type === 'number' ? 'number' : 'text'}
+                          value={row.value}
+                          onChange={(e) => {
+                            const val = row.type === 'number' ? Number(e.target.value) : e.target.value;
+                            handleChange(row.field!, val);
+                          }}
+                          className="text-[18px] font-medium text-black bg-transparent border-none focus:outline-none text-right w-1/2"
+                          placeholder={`{${row.label}}`}
+                          style={{ fontFamily: 'var(--font-anek-latin)' }}
+                        />
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-
-          <div className="mt-auto pb-10 flex items-center justify-between border-t border-zinc-100 pt-8">
-            <div className="flex gap-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className={`w-2.5 h-2.5 rounded-full ${i === (currentIndex % 3) ? 'bg-[#686868]' : 'bg-[#D9D9D9]'}`}></div>
-              ))}
-            </div>
-
-            <div className="flex gap-4">
-              <button
-                onClick={(e) => { e.stopPropagation(); if (confirm('Delete this listing?')) onDelete(id); }}
-                className="px-6 py-2 rounded-xl border border-red-200 text-red-600 font-bold hover:bg-red-50 transition-all"
-              >
-                Delete
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="px-8 py-2 rounded-xl bg-black text-white font-bold hover:bg-zinc-800 transition-all disabled:opacity-50"
-              >
-                {isSaving ? 'Saving...' : 'Save Changes'}
-              </button>
-              <button
-                onClick={() => onStatus(id, 'approved')}
-                disabled={ev.status === 'approved' || updating === id}
-                className="px-8 py-2 rounded-xl bg-[#D1FAE5] text-[#065F46] font-bold hover:scale-105 transition-all"
-              >
-                Approve
-              </button>
-              <button
-                onClick={() => onStatus(id, 'rejected')}
-                disabled={ev.status === 'rejected' || updating === id}
-                className="px-8 py-2 rounded-xl bg-red-100 text-red-700 font-bold hover:scale-105 transition-all"
-              >
-                Reject
-              </button>
-            </div>
-
-            <button
-              onClick={onNext}
-              className="bg-black text-white rounded-[15px] px-10 h-[45px] flex items-center justify-center text-[20px] font-medium shadow-md hover:scale-105 transition-transform"
-            >
-              Next
-            </button>
-          </div>
+              <div className="mt-auto pb-10 flex items-center justify-between border-t border-zinc-100 pt-8">
+                <div className="flex gap-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className={`w-2.5 h-2.5 rounded-full ${i === (currentIndex % 3) ? 'bg-[#686868]' : 'bg-[#D9D9D9]'}`}></div>
+                  ))}
+                </div>
+                <div className="flex gap-4">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); if (confirm('Delete this listing?')) onDelete(id); }}
+                    className="px-6 py-2 rounded-xl border border-red-200 text-red-600 font-bold hover:bg-red-50 transition-all"
+                  >
+                    Delete
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="px-8 py-2 rounded-xl bg-black text-white font-bold hover:bg-zinc-800 transition-all disabled:opacity-50"
+                  >
+                    {isSaving ? 'Saving...' : 'Save Changes'}
+                  </button>
+                  <button
+                    onClick={() => onStatus(id, 'approved')}
+                    disabled={ev.status === 'approved' || updating === id}
+                    className="px-8 py-2 rounded-xl bg-[#D1FAE5] text-[#065F46] font-bold hover:scale-105 transition-all"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => onStatus(id, 'rejected')}
+                    disabled={ev.status === 'rejected' || updating === id}
+                    className="px-8 py-2 rounded-xl bg-red-100 text-red-700 font-bold hover:scale-105 transition-all"
+                  >
+                    Reject
+                  </button>
+                </div>
+                <button
+                  onClick={() => setStep(2)}
+                  className="bg-black text-white rounded-[15px] px-10 h-[45px] flex items-center justify-center text-[20px] font-medium shadow-md hover:scale-105 transition-transform"
+                >
+                  Next
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="overflow-y-auto max-h-[600px] scrollbar-hide pr-4">
+                <h3 className="text-xl font-semibold mb-2">Additional Details</h3>
+                {/* Amenities */}
+                {editedEv.guide?.facilities && editedEv.guide.facilities.length > 0 && (
+                  <div className="mb-2"><strong>Amenities:</strong> {editedEv.guide.facilities.join(', ')}</div>
+                )}
+                {/* Payment object */}
+                {editedEv.payment && (
+                  <div className="mb-2"><strong>Payment Info:</strong>
+                    <ul className="list-disc ml-6 mt-1">
+                      <li>GSTIN: {editedEv.payment.gstin || 'N/A'}</li>
+                      <li>Account: {editedEv.payment.account_number || 'N/A'}</li>
+                      <li>IFSC: {editedEv.payment.ifsc || 'N/A'}</li>
+                    </ul>
+                  </div>
+                )}
+                <div className="mb-2"><strong>Status:</strong> {editedEv.status}</div>
+                <div className="mb-2"><strong>Description:</strong> {editedEv.description || 'N/A'}</div>
+              </div>
+              <div className="mt-auto pb-10 flex items-center justify-between border-t border-zinc-100 pt-8">
+                <div className="flex gap-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className={`w-2.5 h-2.5 rounded-full ${i === (currentIndex % 3) ? 'bg-[#686868]' : 'bg-[#D9D9D9]'}`}></div>
+                  ))}
+                </div>
+                <div className="flex gap-4">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); if (confirm('Delete?')) onDelete(id); }}
+                    className="px-6 py-2 rounded-xl border border-red-200 text-red-600 font-bold hover:bg-red-50"
+                  >
+                    Delete
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="px-8 py-2 rounded-xl bg-black text-white font-bold"
+                  >
+                    {isSaving ? 'Saving...' : 'Save Changes'}
+                  </button>
+                  <button
+                    onClick={() => onStatus(id, 'approved')}
+                    disabled={ev.status === 'approved' || updating === id}
+                    className="px-8 py-2 rounded-xl bg-[#D1FAE5] text-[#065F46] font-bold"
+                  >
+                    Approve
+                  </button>
+                </div>
+                <button
+                  onClick={() => setStep(1)}
+                  className="bg-black text-white rounded-[15px] px-10 h-[45px] flex items-center justify-center text-[20px] font-medium"
+                >
+                  Previous
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -194,7 +253,7 @@ function AdminPlayContent() {
       const data = await adminApi.listPlay();
       setListings(Array.isArray(data) ? data : []);
     } catch (e) {
-      console.error(e);
+
     } finally {
       setLoading(false);
     }
@@ -239,7 +298,7 @@ function AdminPlayContent() {
 
   if (preview) {
     return (
-      <div className="min-h-screen relative overflow-x-hidden flex flex-col" style={{ background: '#FFFFFF' }}>
+      <div className="min-h-screen relative overflow-x-hidden flex flex-col" style={{ background: '#FFFCED' }}>
         <DetailViewPanel
           ev={preview}
           onStatus={handleStatus}
@@ -263,7 +322,7 @@ function AdminPlayContent() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-x-hidden flex flex-col" style={{ background: 'rgba(255, 241, 168, 0.1)' }}>
+    <div className="min-h-screen relative overflow-x-hidden flex flex-col" style={{ background: '#FFFCED' }}>
       {/* Hero Section */}
       <header className="w-full h-[114px] bg-white border-b border-zinc-100 flex items-center justify-between px-[37px] sticky top-0 z-50">
         <div className="flex items-center gap-4">
@@ -288,14 +347,14 @@ function AdminPlayContent() {
             <div className="flex w-[600px] h-[52px] rounded-[14px] overflow-hidden">
               <button
                 onClick={() => setActiveTab('pending')}
-                className={`flex-1 text-[25px] font-medium transition-all ${activeTab === 'pending' ? 'bg-[rgba(255,241,168,0.9)]' : 'bg-[rgba(255,241,168,0.15)] opacity-50'} text-black border-r border-[#FFFFFF]`}
+                className={`flex-1 text-[25px] font-medium transition-all ${activeTab === 'pending' ? 'bg-[#FFF7C2]' : 'bg-[#FFFCEC] opacity-50'} text-black border-r border-[#FFFFFF]`}
                 style={{ fontFamily: 'var(--font-anek-latin)' }}
               >
                 Needs Approval
               </button>
               <button
                 onClick={() => setActiveTab('approved')}
-                className={`flex-1 text-[25px] font-medium transition-all ${activeTab === 'approved' ? 'bg-[rgba(255,241,168,0.5)]' : 'bg-[rgba(255,241,168,0.15)] opacity-50'} text-black`}
+                className={`flex-1 text-[25px] font-medium transition-all ${activeTab === 'approved' ? 'bg-[#FFF7C2]' : 'bg-[#FFFCEC] opacity-50'} text-black`}
                 style={{ fontFamily: 'var(--font-anek-latin)' }}
               >
                 Approved
@@ -317,7 +376,7 @@ function AdminPlayContent() {
                   <div key={id} className="relative group">
                     <div
                       onClick={() => router.push(`?id=${id}`)}
-                      className="bg-[rgba(255,241,168,0.3)] rounded-[19px] p-12 flex items-center gap-16 border border-white hover:shadow-md transition-shadow cursor-pointer"
+                      className="bg-[#FFFCE4] rounded-[19px] p-12 flex items-center gap-16 border border-white hover:shadow-md transition-shadow cursor-pointer"
                     >
                       <div className="w-[320px] h-[180px] bg-white rounded-[15px] flex-shrink-0 flex items-center justify-center overflow-hidden p-2">
                         {thumb ? <img src={thumb} alt={item.name} className="w-full h-full object-cover rounded-[10px]" />
@@ -331,7 +390,7 @@ function AdminPlayContent() {
                         <p className="text-[25px] font-medium text-[#686868] uppercase mt-2">{"{"}{item.payment?.organizer_name || 'BUSINESS OWNER'}{"}"}</p>
                       </div>
 
-                      <div className="bg-[#F9C9A9] rounded-[16px] px-6 py-2">
+                      <div className="bg-[#FFF7C2] rounded-[16px] px-6 py-2">
                         <span className="text-[20px] font-medium text-black capitalize">{item.status}</span>
                       </div>
                     </div>

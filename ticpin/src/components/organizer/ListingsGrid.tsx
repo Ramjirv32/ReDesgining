@@ -7,7 +7,6 @@ import ListingCard, { type Listing } from './ListingCard';
 import { eventsApi } from '@/lib/api/events';
 import { diningApi } from '@/lib/api/dining';
 import { playApi } from '@/lib/api/play';
-import { getOrganizerSession } from '@/lib/auth/organizer';
 
 interface ListingsGridProps {
     vertical: 'events' | 'dining' | 'play';
@@ -30,13 +29,11 @@ export default function ListingsGrid({ vertical, createPath, createLabel, accent
     const [errorMsg, setErrorMsg] = useState('');
 
     const fetchListings = useCallback(async () => {
-        const session = getOrganizerSession();
-        if (!session) return;
         setLoadingListings(true);
         setErrorMsg('');
         try {
             const api = VERTICAL_APIS[vertical];
-            const data = await api.list(session.id) as Listing[];
+            const data = await api.list() as Listing[];
             setListings(Array.isArray(data) ? data : []);
         } catch (err) {
             setErrorMsg(err instanceof Error ? err.message : 'Failed to load listings');
@@ -50,10 +47,8 @@ export default function ListingsGrid({ vertical, createPath, createLabel, accent
     }, [fetchListings]);
 
     const handleDelete = async (id: string) => {
-        const session = getOrganizerSession();
-        if (!session) return;
         const api = VERTICAL_APIS[vertical];
-        await api.delete(id, session.id);
+        await api.delete(id);
         setListings(prev => prev.filter(l => l.id !== id));
     };
 
