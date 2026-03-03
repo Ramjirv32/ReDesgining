@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { adminApi, AdminListing, ListingStatus } from '@/lib/api/admin';
 import {
@@ -88,7 +89,7 @@ function DetailViewPanel({ ev, onStatus, updating, onUpdate, onNext, currentInde
           <div className="bg-[rgba(255,241,168,0.3)] rounded-[19px] flex-1 flex flex-col items-center justify-center p-8 overflow-hidden relative border border-white">
             <div className="bg-white w-full h-[149px] rounded-[15px] flex items-center justify-center overflow-hidden mb-2 shadow-sm">
               {thumb ? (
-                <img src={thumb} alt={editedEv.name} className="w-full h-full object-cover" />
+                <Image src={thumb} alt={editedEv.name || 'Play'} fill className="object-cover" />
               ) : (
                 <div className="text-center">
                   <p className="text-[17px] font-medium text-black">{"{PLAY IMAGE}"}</p>
@@ -378,8 +379,8 @@ function AdminPlayContent() {
                       onClick={() => router.push(`?id=${id}`)}
                       className="bg-[#FFFCE4] rounded-[19px] p-12 flex items-center gap-16 border border-white hover:shadow-md transition-shadow cursor-pointer"
                     >
-                      <div className="w-[320px] h-[180px] bg-white rounded-[15px] flex-shrink-0 flex items-center justify-center overflow-hidden p-2">
-                        {thumb ? <img src={thumb} alt={item.name} className="w-full h-full object-cover rounded-[10px]" />
+                      <div className="w-[320px] h-[180px] bg-white rounded-[15px] flex-shrink-0 flex items-center justify-center overflow-hidden p-2 relative">
+                        {thumb ? <Image src={thumb} alt={item.name || 'Play'} fill className="object-cover rounded-[10px]" />
                           : <div className="text-center"><p className="text-[17px] font-bold uppercase mb-1 leading-tight">{"{PLAY IMAGE}"}</p><p className="text-[12px] opacity-50">16:9 aspect ratio</p></div>}
                       </div>
 

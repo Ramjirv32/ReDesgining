@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 
 export default function Footer() {
@@ -33,9 +34,11 @@ export default function Footer() {
                 <div className="flex flex-col md:flex-row items-center justify-between gap-8 md:gap-8 mb-8 md:mb-8">
                     {/* Brand Logo */}
                     <div className="flex-shrink-0">
-                        <img
+                        <Image
                             src="/ticpin-logo-black.png"
                             alt="TICPIN"
+                            width={120}
+                            height={32}
                             className="h-6 md:h-8 w-auto invert brightness-0"
                         />
                     </div>
@@ -85,27 +88,27 @@ export default function Footer() {
                             {
                                 name: 'WhatsApp',
                                 href: 'https://whatsapp.com/channel/0029Vb8KoCH3mFY1M9gR4412',
-                                icon: <img src="/social icons/whatsapp.svg" alt="WhatsApp" className="w-8 h-8" />
+                                icon: <Image src="/social icons/whatsapp.svg" alt="WhatsApp" width={32} height={32} className="w-8 h-8" />
                             },
                             {
                                 name: 'Facebook',
                                 href: 'https://www.facebook.com/profile.php?id=61579518933930#',
-                                icon: <img src="/social icons/facebook.svg" alt="Facebook" className="w-8 h-8" />
+                                icon: <Image src="/social icons/facebook.svg" alt="Facebook" width={32} height={32} className="w-8 h-8" />
                             },
                             {
                                 name: 'Instagram',
                                 href: 'https://www.instagram.com/ticpinindia/',
-                                icon: <img src="/social icons/instagram.svg" alt="Instagram" className="w-8 h-8" />
+                                icon: <Image src="/social icons/instagram.svg" alt="Instagram" width={32} height={32} className="w-8 h-8" />
                             },
                             {
                                 name: 'X',
                                 href: 'https://x.com/ticpin',
-                                icon: <img src="/social icons/x.svg" alt="X" className="w-8 h-8" />
+                                icon: <Image src="/social icons/x.svg" alt="X" width={32} height={32} className="w-8 h-8" />
                             },
                             {
                                 name: 'YouTube',
                                 href: 'https://www.youtube.com/channel/UCrGSN3cv3q1x3yI5q7LILtw',
-                                icon: <img src="/social icons/youtube.svg" alt="YouTube" className="w-8 h-8" />
+                                icon: <Image src="/social icons/youtube.svg" alt="YouTube" width={32} height={32} className="w-8 h-8" />
                             }
                         ].map((social) => (
                             <Link

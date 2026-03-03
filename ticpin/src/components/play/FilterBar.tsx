@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import Image from 'next/image';
 import FilterModal from '../modals/FilterModal';
 
 interface FilterBarProps {
@@ -27,9 +28,9 @@ export default function FilterBar({ filters, activeFilter, onFilterChange, onApp
                     borderRadius: '22px'
                 }}
             >
-                <img src="/filter 1.png" alt="Filter" className="w-[18px] h-[18px] object-contain" />
+                <Image src="/filter 1.png" alt="Filter" width={18} height={18} className="object-contain" />
                 <span>Filters</span>
-                <img src="/filter arrow.svg" alt="arrow" className={`w-[10px] h-[6px] ml-1 transition-transform ${isFilterModalOpen ? 'rotate-180' : ''}`} />
+                <Image src="/filter arrow.svg" alt="arrow" width={10} height={6} className={`ml-1 transition-transform ${isFilterModalOpen ? 'rotate-180' : ''}`} />
             </button>
 
             <FilterModal

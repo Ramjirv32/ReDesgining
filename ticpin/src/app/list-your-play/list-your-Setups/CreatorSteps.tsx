@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 
 const stepsContent = {
     play: [
@@ -53,11 +54,12 @@ export default function CreatorSteps({ type = 'play', category = 'play' }: Creat
             {steps.map((step) => (
                 <div key={step.number} className="flex items-center gap-8 md:gap-12 group">
                     {/* Fixed width container for number ensures horizontal alignment of text */}
-                    <div className="flex-shrink-0 w-[65px] md:w-[85px] lg:w-[100px] flex items-center justify-center">
-                        <img
+                    <div className="flex-shrink-0 w-[65px] md:w-[85px] lg:w-[100px] h-16 md:h-20 lg:h-24 relative">
+                        <Image
                             src={`/list your events/${step.number}${isPlay ? '' : step.number.charAt(1)}.svg`}
                             alt={step.number}
-                            className="h-16 md:h-20 lg:h-24 w-auto object-contain"
+                            fill
+                            className="object-contain"
                         />
                     </div>
 

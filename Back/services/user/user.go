@@ -30,8 +30,19 @@ func Login(phone string) (*models.User, error) {
 	defer cancel()
 
 	var u models.User
-	if err := collection.FindOne(ctx, bson.M{"phone": phone}).Decode(&u); err != nil {
-		return nil, errors.New("user not found")
+	err := collection.FindOne(ctx, bson.M{"phone": phone}).Decode(&u)
+	if err == nil {
+		return &u, nil
+	}
+
+	u = models.User{
+		ID:        primitive.NewObjectID(),
+		Phone:     phone,
+		CreatedAt: time.Now(),
+	}
+	_, err = collection.InsertOne(ctx, u)
+	if err != nil {
+		return nil, err
 	}
 	return &u, nil
 }

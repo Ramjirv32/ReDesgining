@@ -37,7 +37,9 @@ func CreateDining(b *models.DiningBooking) error {
 	var existing models.DiningBooking
 	err := col.FindOne(ctx, bson.M{"dining_id": b.DiningID, "user_email": b.UserEmail, "date": b.Date, "time_slot": b.TimeSlot}).Decode(&existing)
 	if err == nil {
-		isAdmin := b.UserEmail == "23cs139@kpriet.ac.in"
+
+		adminEmail := config.GetAdminEmail()
+		isAdmin := b.UserEmail == adminEmail
 		if !isAdmin {
 			orgCol := config.GetDB().Collection("organizers")
 			var org models.Organizer

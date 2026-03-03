@@ -21,10 +21,12 @@ func OrganizerRoutes(app *fiber.App) {
 	profileGrp.Put("/:id", orgprofile.UpdateProfile)
 
 	verGrp := app.Group("/api/organizer/verification", middleware.RequireAuth)
-	verGrp.Get("/:id", orgver.GetVerificationStatus)
+	verGrp.Get("/:id", middleware.RequireSelfOrAdmin, orgver.GetVerificationStatus)
+	verGrp.Post("/verify-pan", orgver.VerifyPANHandler)
+	verGrp.Get("/fetch-gst", orgver.FetchGSTHandler)
 
-	app.Get("/api/organizer/:id/status", middleware.RequireAuth, orgver.GetCategoryStatus)
-	app.Get("/api/organizer/:id/existing-setup", middleware.RequireAuth, orgver.GetExistingSetupHandler)
+	app.Get("/api/organizer/:id/status", middleware.RequireAuth, middleware.RequireSelfOrAdmin, orgver.GetCategoryStatus)
+	app.Get("/api/organizer/:id/existing-setup", middleware.RequireAuth, middleware.RequireSelfOrAdmin, orgver.GetExistingSetupHandler)
 
 	app.Post("/api/organizer/upload-pan", middleware.RequireAuth, orgmedia.UploadPANCard)
 	app.Post("/api/organizer/upload-media", middleware.RequireAuth, orgmedia.UploadMedia)

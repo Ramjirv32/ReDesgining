@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { ChevronDown, ChevronUp, PlusCircle, Upload, Search, ArrowLeft } from 'lucide-react';
 import { CATEGORIES, CITIES, CATEGORY_DATA } from '@/app/play/create/data';
 import { useRouter, useParams } from 'next/navigation';
 import { getOrganizerSession } from '@/lib/auth/organizer';
 import { uploadMedia } from '@/lib/api/admin';
 import { playApi } from '@/lib/api/play';
+import { organizerApi } from '@/lib/api/organizer';
 
 export default function EditPlayPage() {
     const router = useRouter();
@@ -27,6 +29,7 @@ export default function EditPlayPage() {
     const [openingTime, setOpeningTime] = useState('');
     const [portraitUrl, setPortraitUrl] = useState('');
     const [landscapeUrl, setLandscapeUrl] = useState('');
+    const [secondaryBannerUrl, setSecondaryBannerUrl] = useState('');
     const [videoUrl, setVideoUrl] = useState('');
     const [galleryUrls, setGalleryUrls] = useState<string[]>([]);
     const [facilities, setFacilities] = useState('');
@@ -46,11 +49,17 @@ export default function EditPlayPage() {
     const [newProhibitedItem, setNewProhibitedItem] = useState('');
     const [faqs, setFaqs] = useState<{ question: string; answer: string }[]>([]);
     const [newFaq, setNewFaq] = useState({ question: '', answer: '' });
+
+    // Courts State
+    const [courts, setCourts] = useState<{ name: string; type: string; price: string; image_url: string }[]>([]);
+    const [newCourt, setNewCourt] = useState({ name: '', type: '', price: '', image_url: '' });
+
     const [uploading, setUploading] = useState<Record<string, boolean>>({});
     const [submitLoading, setSubmitLoading] = useState(false);
     const [submitMsg, setSubmitMsg] = useState('');
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
     const [selections, setSelections] = useState({ category: 'Select Sport', subCategory: 'Select Court Type', city: 'Select City' });
+    const [paymentVerified, setPaymentVerified] = useState(false);
 
     useEffect(() => {
         const load = async () => {
@@ -67,19 +76,42 @@ export default function EditPlayPage() {
                 setOpeningTime((d.time as string) ?? '');
                 setPortraitUrl((d.portrait_image_url as string) ?? '');
                 setLandscapeUrl((d.landscape_image_url as string) ?? '');
+                setSecondaryBannerUrl((d.secondary_banner_url as string) ?? '');
                 setVideoUrl((d.card_video_url as string) ?? '');
                 setGalleryUrls((d.gallery_urls as string[]) ?? []);
                 const g = (d.guide as Record<string, unknown>) ?? {};
                 setFacilities(((g.facilities as string[]) ?? [])[0] ?? '');
                 setPetFriendly((g.is_pet_friendly as boolean) ? 'Yes' : 'No');
                 const p = (d.payment as Record<string, unknown>) ?? {};
-                setPayment({
+                const loadedPayment = {
                     organizerName: (p.organizer_name as string) ?? '',
                     gstin: (p.gstin as string) ?? '',
                     accountNumber: (p.account_number as string) ?? '',
                     ifsc: (p.ifsc as string) ?? '',
                     accountType: (p.account_type as string) ?? '',
-                });
+                };
+                // If existing payment data is present, show as verified
+                const hasExistingPayment = !!(loadedPayment.accountNumber || loadedPayment.ifsc || loadedPayment.gstin);
+                if (hasExistingPayment) {
+                    setPayment(loadedPayment);
+                    setPaymentVerified(true);
+                } else {
+                    // Try fetching from verified organizer setup
+                    try {
+                        const setup = await organizerApi.getExistingSetup(session.id, 'play');
+                        const hasSetup = !!(setup.bankAccountNo || setup.bankIfsc || setup.gstNumber || setup.pan);
+                        setPayment({
+                            organizerName: setup.accountHolder || setup.panName || loadedPayment.organizerName || session.email.split('@')[0],
+                            gstin: setup.gstNumber || setup.pan || '',
+                            accountNumber: setup.bankAccountNo || '',
+                            ifsc: setup.bankIfsc || '',
+                            accountType: loadedPayment.accountType,
+                        });
+                        setPaymentVerified(hasSetup);
+                    } catch {
+                        setPayment(loadedPayment);
+                    }
+                }
                 setPocs(((d.points_of_contact as { name: string; email: string; mobile: string }[]) ?? []));
                 setSalesNotifs(((d.sales_notifications as { email: string; mobile: string }[]) ?? []));
                 const instructions = (d.event_instructions as string) ?? '';
@@ -98,6 +130,14 @@ export default function EditPlayPage() {
                     subCategory: sub || 'Select Court Type',
                     city: city || 'Select City',
                 });
+
+                const courtsData = (d.courts as { name: string; type: string; price: number; image_url?: string }[]) ?? [];
+                setCourts(courtsData.map(c => ({
+                    name: c.name,
+                    type: c.type,
+                    price: c.price.toString(),
+                    image_url: c.image_url ?? ''
+                })));
             } catch (err) {
                 setSubmitMsg(err instanceof Error ? err.message : 'Failed to load listing');
             } finally {
@@ -114,14 +154,16 @@ export default function EditPlayPage() {
             if (multi && key === 'gallery') setGalleryUrls(prev => [...prev, url]);
             else if (key === 'portrait') setPortraitUrl(url);
             else if (key === 'landscape') setLandscapeUrl(url);
+            else if (key === 'secondary_banner') setSecondaryBannerUrl(url);
             else if (key === 'video') setVideoUrl(url);
+            else if (key === 'court_image') setNewCourt(prev => ({ ...prev, image_url: url }));
         } catch { alert('Upload failed. Try again.'); }
         finally { setUploading(u => ({ ...u, [key]: false })); }
     };
 
     const makeUploadInput = (key: string, accept: string, multi = false) => (
         <input type="file" accept={accept} className="hidden" id={`upload-${key}`}
-            onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(key, f, multi); }} />
+            onChange={e => { const f = e.target.files?.[0]; if (f) { handleUpload(key, f, multi); e.target.value = ''; } }} />
     );
 
     const handleSubmit = async () => {
@@ -130,6 +172,7 @@ export default function EditPlayPage() {
         if (!venueName.trim()) { setSubmitMsg('Venue name is required.'); return; }
         if (selections.category === 'Select Sport') { setSubmitMsg('Please select a sport.'); return; }
         if (!portraitUrl || !landscapeUrl) { setSubmitMsg('Please upload both portrait and landscape images.'); return; }
+        if (galleryUrls.length < 3) { setSubmitMsg('Please upload at least 3 gallery images.'); return; }
         setSubmitLoading(true); setSubmitMsg('');
         try {
             await playApi.update(id, {
@@ -145,6 +188,7 @@ export default function EditPlayPage() {
                 instagram_link: instagramLink,
                 portrait_image_url: portraitUrl,
                 landscape_image_url: landscapeUrl,
+                secondary_banner_url: secondaryBannerUrl,
                 card_video_url: videoUrl,
                 gallery_urls: galleryUrls,
                 guide: {
@@ -162,6 +206,13 @@ export default function EditPlayPage() {
                     ifsc: payment.ifsc,
                     account_type: payment.accountType,
                 },
+                courts: courts.map(c => ({
+                    name: c.name,
+                    type: c.type,
+                    price: parseFloat(c.price),
+                    image_url: c.image_url
+                })),
+                price_starts_from: courts.length > 0 ? Math.min(...courts.map(c => parseFloat(c.price))) : 0,
                 points_of_contact: pocs,
                 sales_notifications: salesNotifs,
             });
@@ -226,8 +277,10 @@ export default function EditPlayPage() {
 
                     {makeUploadInput('portrait', 'image/*')}
                     {makeUploadInput('landscape', 'image/*')}
+                    {makeUploadInput('secondary_banner', 'image/*')}
                     {makeUploadInput('video', 'video/*')}
                     {makeUploadInput('gallery', 'image/*,video/*', true)}
+                    {makeUploadInput('court_image', 'image/*')}
 
                     {/* Venue Name */}
                     <div className="mb-12">
@@ -243,9 +296,9 @@ export default function EditPlayPage() {
                             <h2 className="text-[30px] font-medium text-black mb-6">Venue Description <span style={{ color: accentColor }}>*</span></h2>
                             <div className="w-full h-[1px] bg-[#AEAEAE] mb-6" />
                             <div className="flex gap-1 mb-4">
-                                <button onClick={() => handleFormat('bold')} className={`p-2 rounded ${isBold ? 'bg-gray-200' : ''}`}><img src="/create event/bold.svg" alt="Bold" className="w-[40px] h-[40px]" /></button>
-                                <button onClick={() => handleFormat('italic')} className={`p-2 rounded ${isItalic ? 'bg-gray-200' : ''}`}><img src="/create event/italic.svg" alt="Italic" className="w-[40px] h-[40px]" /></button>
-                                <button onClick={() => handleFormat('underline')} className={`p-2 rounded ${isUnderline ? 'bg-gray-200' : ''}`}><img src="/create event/underline.svg" alt="Underline" className="w-[40px] h-[40px]" /></button>
+                                <button onClick={() => handleFormat('bold')} className={`p-2 rounded ${isBold ? 'bg-gray-200' : ''}`}><Image src="/create event/bold.svg" alt="Bold" width={40} height={40} /></button>
+                                <button onClick={() => handleFormat('italic')} className={`p-2 rounded ${isItalic ? 'bg-gray-200' : ''}`}><Image src="/create event/italic.svg" alt="Italic" width={40} height={40} /></button>
+                                <button onClick={() => handleFormat('underline')} className={`p-2 rounded ${isUnderline ? 'bg-gray-200' : ''}`}><Image src="/create event/underline.svg" alt="Underline" width={40} height={40} /></button>
                             </div>
                             <div className="border border-[#AEAEAE] rounded-[10px] p-6 min-h-[260px] relative">
                                 <div ref={editorRef} contentEditable onInput={e => setHasContent(e.currentTarget.innerText.length > 0)}
@@ -338,7 +391,7 @@ export default function EditPlayPage() {
                                     <span className="text-[25px] font-medium text-black">Pet-friendly? <span style={{ color: accentColor }}>*</span></span>
                                     <div className="relative border border-[#686868] rounded-[10px] h-[64px] w-[840px] flex items-center px-6">
                                         <select value={petFriendly} onChange={e => setPetFriendly(e.target.value)} className="w-full appearance-none bg-transparent outline-none text-[25px]">
-                                            {['Yes','No'].map(o => <option key={o} value={o}>{o}</option>)}
+                                            {['Yes', 'No'].map(o => <option key={o} value={o}>{o}</option>)}
                                         </select>
                                         <ChevronDown size={24} className="absolute right-6" />
                                     </div>
@@ -352,6 +405,104 @@ export default function EditPlayPage() {
                             </div>
                         </section>
 
+                        {/* Available Courts Section */}
+                        <section className="bg-white rounded-[15px] p-8">
+                            <h2 className="text-[30px] font-medium text-black mb-2">Available Courts <span style={{ color: accentColor }}>*</span></h2>
+                            <p className="text-[20px] font-medium text-[#AEAEAE] mb-6">List the specific courts or spaces available at your venue.</p>
+                            <div className="w-full h-[1px] bg-[#AEAEAE] mb-8"></div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-6">
+                                <div className="space-y-2">
+                                    <label className="text-[20px] font-medium text-[#686868]">Court Name</label>
+                                    <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
+                                        <input type="text" value={newCourt.name} onChange={e => setNewCourt({ ...newCourt, name: e.target.value })} placeholder="e.g. Court 1" className="w-full bg-transparent outline-none text-[22px] text-black placeholder-[#AEAEAE]" />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[20px] font-medium text-[#686868]">Court Type</label>
+                                    <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
+                                        <input type="text" value={newCourt.type} onChange={e => setNewCourt({ ...newCourt, type: e.target.value })} placeholder="e.g. Indoor Synthetic" className="w-full bg-transparent outline-none text-[22px] text-black placeholder-[#AEAEAE]" />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[20px] font-medium text-[#686868]">Price per Hour</label>
+                                    <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
+                                        <input type="number" value={newCourt.price} onChange={e => setNewCourt({ ...newCourt, price: e.target.value })} placeholder="e.g. 500" className="w-full bg-transparent outline-none text-[22px] text-black placeholder-[#AEAEAE]" />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[20px] font-medium text-[#686868]">Court Image</label>
+                                    <div className="flex items-center gap-4">
+                                        <label htmlFor="upload-court_image" className="cursor-pointer flex-1">
+                                            <div className="border border-[#AEAEAE] border-dashed rounded-[10px] h-[64px] flex items-center justify-center px-6 hover:bg-zinc-50 transition-colors">
+                                                {uploading.court_image ? (
+                                                    <span className="text-[18px] text-zinc-400 animate-pulse">Uploading...</span>
+                                                ) : newCourt.image_url ? (
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="relative w-[40px] h-[40px] rounded-[6px] overflow-hidden">
+                                                            <Image src={newCourt.image_url} alt="Court preview" fill className="object-cover" />
+                                                        </div>
+                                                        <span className="text-[18px] text-green-600 font-semibold uppercase italic">✓ Image Set</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center gap-2">
+                                                        <Upload size={20} className="text-[#AEAEAE]" />
+                                                        <span className="text-[18px] text-[#AEAEAE]">Upload image</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex justify-end mb-8">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (newCourt.name && newCourt.type && newCourt.price && newCourt.image_url) {
+                                            setCourts([...courts, newCourt]);
+                                            setNewCourt({ name: '', type: '', price: '', image_url: '' });
+                                        } else if (!newCourt.image_url) {
+                                            alert('Please upload an image for the court.');
+                                        }
+                                    }}
+                                    className="bg-black text-white rounded-[15px] h-[54px] px-8 flex items-center gap-2"
+                                >
+                                    <span className="text-[20px] font-medium uppercase">Add Court</span>
+                                    <PlusCircle size={22} />
+                                </button>
+                            </div>
+
+                            {courts.length > 0 && (
+                                <div className="space-y-4">
+                                    {courts.map((c, i) => (
+                                        <div key={i} className="flex items-center justify-between bg-[#F5F5F5] rounded-[15px] p-6 border border-zinc-200">
+                                            <div className="flex gap-10">
+                                                {c.image_url && (
+                                                    <div className="relative w-[80px] h-[80px] rounded-[12px] overflow-hidden border border-zinc-300">
+                                                        <Image src={c.image_url} alt={c.name} fill className="object-cover" />
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <p className="text-[14px] text-[#686868] uppercase font-bold tracking-wider">Name</p>
+                                                    <p className="text-[22px] font-semibold text-black">{c.name}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[14px] text-[#686868] uppercase font-bold tracking-wider">Type</p>
+                                                    <p className="text-[22px] font-semibold text-black">{c.type}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[14px] text-[#686868] uppercase font-bold tracking-wider">Price</p>
+                                                    <p className="text-[22px] font-semibold text-black">₹{c.price} / hr</p>
+                                                </div>
+                                            </div>
+                                            <button type="button" onClick={() => setCourts(courts.filter((_, idx) => idx !== i))} className="text-red-500 font-bold uppercase tracking-tight text-[16px]">Remove</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </section>
+
                         {/* Images */}
                         <section className="bg-white rounded-[15px] p-8">
                             <h2 className="text-[30px] font-medium text-black mb-2">Card images <span style={{ color: accentColor }}>*</span></h2>
@@ -363,7 +514,11 @@ export default function EditPlayPage() {
                                             <p className="text-[20px] font-semibold text-[#686868]">{label}</p>
                                             <p className="text-[18px] text-black">{size}</p>
                                         </div>
-                                        {url && <img src={url} alt={label} className="w-[60px] h-[60px] object-cover rounded-[8px] border border-[#AEAEAE]" />}
+                                        {url && (
+                                            <div className="relative w-[60px] h-[60px] rounded-[8px] overflow-hidden border border-[#AEAEAE]">
+                                                <Image src={url} alt={label} fill className="object-cover" />
+                                            </div>
+                                        )}
                                         <label htmlFor={`upload-${key}`} className="cursor-pointer">
                                             <div className="flex items-center border border-[#686868] rounded-[5px] h-[35px] overflow-hidden bg-white">
                                                 <span className="px-5 text-[15px] font-medium text-black">{uploading[key] ? 'Uploading...' : url ? 'Replace' : 'Upload'}</span>
@@ -372,6 +527,28 @@ export default function EditPlayPage() {
                                         </label>
                                     </div>
                                 ))}
+                                {/* Secondary Banner */}
+                                <div className="bg-[#EBEBEB] rounded-[10px] py-3 px-6 flex items-center justify-between gap-6">
+                                    <div className="flex-1">
+                                        <p className="text-[20px] font-semibold text-[#686868]">Secondary Banner</p>
+                                        <p className="text-[18px] text-black">16:9 aspect ratio (1600px by 900px)</p>
+                                    </div>
+                                    <div className="flex items-center gap-4 text-[#686868]">
+                                        <span className="text-[17px] font-medium">optional</span>
+                                        <p className="text-[18px] text-black">Max 1.5MB</p>
+                                    </div>
+                                    {secondaryBannerUrl && (
+                                        <div className="relative w-[60px] h-[60px] rounded-[8px] overflow-hidden border border-[#AEAEAE]">
+                                            <Image src={secondaryBannerUrl} alt="Secondary Banner" fill className="object-cover" />
+                                        </div>
+                                    )}
+                                    <label htmlFor="upload-secondary_banner" className="cursor-pointer">
+                                        <div className="flex items-center border border-[#686868] rounded-[5px] h-[35px] overflow-hidden bg-white">
+                                            <span className="px-5 text-[15px] font-medium text-black">{uploading['secondary_banner'] ? 'Uploading...' : secondaryBannerUrl ? 'Replace' : 'Upload'}</span>
+                                            <div className="w-[41px] h-full flex items-center justify-center border-l border-[#686868]" style={{ background: accentColor }}><Upload size={20} className="text-black" /></div>
+                                        </div>
+                                    </label>
+                                </div>
                             </div>
                         </section>
 
@@ -391,23 +568,30 @@ export default function EditPlayPage() {
                                     </label>
                                 </div>
                                 <div>
-                                    <p className="text-[20px] font-semibold text-[#686868] mb-3">Gallery ({galleryUrls.length})</p>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <p className="text-[20px] font-semibold text-[#686868]">Gallery ({galleryUrls.length}) <span className="text-[#E7C200] text-[16px]">* min 3</span></p>
+                                        <label htmlFor="upload-gallery" className="cursor-pointer inline-flex">
+                                            <div className="flex items-center border border-[#686868] rounded-[5px] h-[35px] overflow-hidden bg-[#EBEBEB]">
+                                                <span className="px-5 text-[15px] font-medium text-black">{uploading.gallery ? 'Uploading...' : '+ Add Image'}</span>
+                                                <div className="w-[41px] h-full flex items-center justify-center border-l border-[#686868]" style={{ background: accentColor }}><Upload size={20} className="text-black" /></div>
+                                            </div>
+                                        </label>
+                                    </div>
                                     {galleryUrls.length > 0 && (
                                         <div className="flex flex-wrap gap-3 mb-4">
                                             {galleryUrls.map((u, i) => (
                                                 <div key={i} className="relative w-[80px] h-[80px]">
-                                                    <img src={u} alt="" className="w-full h-full object-cover rounded-[8px] border border-[#AEAEAE]" />
+                                                    <div className="relative w-[full] h-full rounded-[8px] overflow-hidden border border-[#AEAEAE]">
+                                                        <Image src={u} alt="" fill className="object-cover" />
+                                                    </div>
                                                     <button onClick={() => setGalleryUrls(prev => prev.filter((_, idx) => idx !== i))} className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-[12px] flex items-center justify-center">×</button>
                                                 </div>
                                             ))}
                                         </div>
                                     )}
-                                    <label htmlFor="upload-gallery" className="cursor-pointer inline-flex">
-                                        <div className="flex items-center border border-[#686868] rounded-[5px] h-[35px] overflow-hidden bg-[#EBEBEB]">
-                                            <span className="px-5 text-[15px] font-medium text-black">{uploading.gallery ? 'Uploading...' : 'Add more'}</span>
-                                            <div className="w-[41px] h-full flex items-center justify-center border-l border-[#686868]" style={{ background: accentColor }}><Upload size={20} className="text-black" /></div>
-                                        </div>
-                                    </label>
+                                    {galleryUrls.length < 3 && (
+                                        <p className="text-[14px] text-red-500 font-medium mt-1">Please upload at least {3 - galleryUrls.length} more image{3 - galleryUrls.length > 1 ? 's' : ''}.</p>
+                                    )}
                                 </div>
                             </div>
                         </section>
@@ -491,28 +675,99 @@ export default function EditPlayPage() {
                         {/* Payment */}
                         <h2 className="text-[30px] font-medium text-black mb-6 ml-[25px]">Confirm your payment and contact details</h2>
                         <section className="bg-white rounded-[15px] p-8">
+                            {paymentVerified && (
+                                <div className="flex items-center justify-between mb-6 px-4 py-2 bg-green-50 border border-green-200 rounded-[10px]">
+                                    <span className="text-green-600 text-[15px] font-semibold">✓ Verified details loaded from your play setup</span>
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            const session = getOrganizerSession();
+                                            if (!session) return;
+                                            try {
+                                                const setup = await organizerApi.getExistingSetup(session.id, 'play');
+                                                setPayment(p => ({
+                                                    ...p,
+                                                    organizerName: setup.accountHolder || setup.panName || p.organizerName,
+                                                    gstin: setup.gstNumber || setup.pan || p.gstin,
+                                                    accountNumber: setup.bankAccountNo || p.accountNumber,
+                                                    ifsc: setup.bankIfsc || p.ifsc,
+                                                }));
+                                                setPaymentVerified(true);
+                                            } catch { /* silent */ }
+                                        }}
+                                        className="text-[14px] font-medium text-green-700 underline"
+                                    >
+                                        Refresh from setup
+                                    </button>
+                                </div>
+                            )}
+                            {!paymentVerified && (
+                                <div className="flex items-center justify-between mb-6 px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-[10px]">
+                                    <span className="text-[15px] text-zinc-500">No verified details loaded yet</span>
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            const session = getOrganizerSession();
+                                            if (!session) return;
+                                            try {
+                                                const setup = await organizerApi.getExistingSetup(session.id, 'play');
+                                                const hasSetup = !!(setup.bankAccountNo || setup.bankIfsc || setup.gstNumber || setup.pan);
+                                                setPayment(p => ({
+                                                    ...p,
+                                                    organizerName: setup.accountHolder || setup.panName || p.organizerName,
+                                                    gstin: setup.gstNumber || setup.pan || p.gstin,
+                                                    accountNumber: setup.bankAccountNo || p.accountNumber,
+                                                    ifsc: setup.bankIfsc || p.ifsc,
+                                                }));
+                                                setPaymentVerified(hasSetup);
+                                            } catch { /* silent */ }
+                                        }}
+                                        className="text-[14px] font-medium text-[#E7C200] underline"
+                                    >
+                                        Fetch from verified setup
+                                    </button>
+                                </div>
+                            )}
                             <div className="space-y-8">
                                 <div className="space-y-2">
                                     <label className="text-[20px] font-medium text-[#686868]">Organiser *</label>
-                                    <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
+                                    <div className={`border rounded-[10px] h-[64px] flex items-center px-6 mt-[10px] ${paymentVerified && payment.organizerName ? 'border-green-300 bg-green-50/40' : 'border-[#686868]'}`}>
                                         <input type="text" placeholder="Organiser Name" value={payment.organizerName} onChange={e => setPayment({ ...payment, organizerName: e.target.value })} className="w-full bg-transparent outline-none text-[20px] placeholder-[#AEAEAE]" />
+                                        {paymentVerified && payment.organizerName && <span className="text-green-500 text-[18px] ml-2 shrink-0">✓</span>}
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[20px] font-medium text-[#686868]">GSTIN:</label>
-                                    <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
-                                        <input type="text" placeholder="GSTIN" value={payment.gstin} onChange={e => setPayment({ ...payment, gstin: e.target.value })} className="w-full bg-transparent outline-none text-[20px] placeholder-[#AEAEAE]" />
+                                    <label className="text-[20px] font-medium text-[#686868]">GSTIN / PAN:</label>
+                                    <div className={`border rounded-[10px] h-[64px] flex items-center px-6 mt-[10px] ${paymentVerified && payment.gstin ? 'border-green-300 bg-green-50/40' : 'border-[#686868]'}`}>
+                                        <input type="text" placeholder="GSTIN or PAN" value={payment.gstin} readOnly={paymentVerified && !!payment.gstin} onChange={e => setPayment({ ...payment, gstin: e.target.value })} className={`w-full bg-transparent outline-none text-[20px] placeholder-[#AEAEAE] ${paymentVerified && payment.gstin ? 'cursor-default' : ''}`} />
+                                        {paymentVerified && payment.gstin && <span className="text-green-500 text-[18px] ml-2 shrink-0">✓</span>}
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-3 gap-8">
-                                    {[['Account Number', 'accountNumber', 'Account Number'], ['IFSC', 'ifsc', 'IFSC Code'], ['Account Type', 'accountType', 'e.g. Current, Savings']].map(([label, key, ph]) => (
-                                        <div key={key} className="space-y-2">
-                                            <label className="text-[20px] font-medium text-[#686868]">{label}:</label>
-                                            <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
-                                                <input type="text" placeholder={ph} value={payment[key as keyof typeof payment]} onChange={e => setPayment({ ...payment, [key]: e.target.value })} className="w-full bg-transparent outline-none text-[20px] placeholder-[#AEAEAE]" />
-                                            </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[20px] font-medium text-[#686868]">Account Number:</label>
+                                        <div className={`border rounded-[10px] h-[64px] flex items-center px-6 mt-[10px] ${paymentVerified && payment.accountNumber ? 'border-green-300 bg-green-50/40' : 'border-[#686868]'}`}>
+                                            <input type="text" placeholder="Account Number" value={payment.accountNumber} readOnly={paymentVerified && !!payment.accountNumber} onChange={e => setPayment({ ...payment, accountNumber: e.target.value })} className={`w-full bg-transparent outline-none text-[20px] placeholder-[#AEAEAE] ${paymentVerified && payment.accountNumber ? 'cursor-default' : ''}`} />
+                                            {paymentVerified && payment.accountNumber && <span className="text-green-500 text-[18px] ml-2 shrink-0">✓</span>}
                                         </div>
-                                    ))}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[20px] font-medium text-[#686868]">IFSC:</label>
+                                        <div className={`border rounded-[10px] h-[64px] flex items-center px-6 mt-[10px] ${paymentVerified && payment.ifsc ? 'border-green-300 bg-green-50/40' : 'border-[#686868]'}`}>
+                                            <input type="text" placeholder="IFSC Code" value={payment.ifsc} readOnly={paymentVerified && !!payment.ifsc} onChange={e => setPayment({ ...payment, ifsc: e.target.value })} className={`w-full bg-transparent outline-none text-[20px] placeholder-[#AEAEAE] ${paymentVerified && payment.ifsc ? 'cursor-default' : ''}`} />
+                                            {paymentVerified && payment.ifsc && <span className="text-green-500 text-[18px] ml-2 shrink-0">✓</span>}
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[20px] font-medium text-[#686868]">Account Type:</label>
+                                        <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
+                                            <select value={payment.accountType} onChange={e => setPayment({ ...payment, accountType: e.target.value })} className="w-full bg-transparent outline-none text-[20px]">
+                                                <option value="">Select type</option>
+                                                <option value="Savings">Savings</option>
+                                                <option value="Current">Current</option>
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </section>

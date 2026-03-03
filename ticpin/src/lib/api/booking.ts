@@ -16,6 +16,8 @@ export interface CreateBookingPayload {
     coupon_code?: string;
     offer_id?: string;
     user_id?: string;
+    payment_id?: string;
+    payment_gateway?: string;
 }
 
 export interface CreateDiningPayload {
@@ -30,6 +32,8 @@ export interface CreateDiningPayload {
     coupon_code?: string;
     offer_id?: string;
     user_id?: string;
+    payment_id?: string;
+    payment_gateway?: string;
 }
 
 export interface CreatePlayPayload {
@@ -44,6 +48,23 @@ export interface CreatePlayPayload {
     coupon_code?: string;
     offer_id?: string;
     user_id?: string;
+    payment_id?: string;
+    payment_gateway?: string;
+}
+
+export interface PaymentOrderRequest {
+    amount: number;
+    customer_id?: string;
+    customer_email?: string;
+    customer_phone: string;
+    return_url?: string;
+}
+
+export interface PaymentOrderResponse {
+    gateway: 'cashfree' | 'razorpay';
+    order_id: string;
+    payment_session_id?: string; // Cashfree
+    razorpay_key?: string;       // Razorpay
 }
 
 export interface BookingResult {
@@ -78,6 +99,18 @@ export interface AvailabilityResult {
 }
 
 export const bookingApi = {
+    /** Create a payment order (picks Cashfree or Razorpay via traffic weight) */
+    createPaymentOrder: async (payload: PaymentOrderRequest): Promise<PaymentOrderResponse> => {
+        const res = await fetch(`${BASE}/payment/create-order`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? 'Payment order creation failed');
+        return data as PaymentOrderResponse;
+    },
+
     /** Create an event booking (no auth required) */
     createEventBooking: async (payload: CreateBookingPayload): Promise<BookingResult> => {
         const res = await fetch(`${BASE}/bookings/events`, {

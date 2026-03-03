@@ -1,5 +1,4 @@
-'use client';
-
+import Image from 'next/image';
 import React from 'react';
 
 export default function TermsAndConditionsComponent() {
@@ -7,7 +6,14 @@ export default function TermsAndConditionsComponent() {
         <div className="min-h-screen bg-white font-[family-name:var(--font-anek-latin)]">
             {/* Header / Logo Section */}
             <header className="w-full h-20 flex items-center justify-center border-b border-[#D9D9D9]">
-                <img src="/ticpin-logo-black.png" alt="TICPIN" className="h-8 md:h-9 object-contain" />
+                <div className="relative h-8 md:h-9 w-[159px]">
+                    <Image
+                        src="/ticpin-logo-black.png"
+                        alt="TICPIN"
+                        fill
+                        className="object-contain"
+                    />
+                </div>
             </header>
 
             <main className="max-w-[1100px] mx-auto px-6 py-16 mt-[-px]">

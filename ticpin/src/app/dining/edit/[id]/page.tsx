@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { ChevronDown, ChevronUp, PlusCircle, Upload, Search, ArrowLeft } from 'lucide-react';
 import { CATEGORIES, CITIES, CATEGORY_DATA } from '@/app/dining/create/data';
 import { useRouter, useParams } from 'next/navigation';
@@ -256,9 +257,9 @@ export default function EditDiningPage() {
                             <h2 className="text-[30px] font-medium text-black mb-6">Dining Description <span style={{ color: accentColor }}>*</span></h2>
                             <div className="w-full h-[1px] bg-[#AEAEAE] mb-6" />
                             <div className="flex gap-1 mb-4">
-                                <button onClick={() => handleFormat('bold')} className={`p-2 rounded ${isBold ? 'bg-gray-200' : ''}`}><img src="/create event/bold.svg" alt="Bold" className="w-[40px] h-[40px]" /></button>
-                                <button onClick={() => handleFormat('italic')} className={`p-2 rounded ${isItalic ? 'bg-gray-200' : ''}`}><img src="/create event/italic.svg" alt="Italic" className="w-[40px] h-[40px]" /></button>
-                                <button onClick={() => handleFormat('underline')} className={`p-2 rounded ${isUnderline ? 'bg-gray-200' : ''}`}><img src="/create event/underline.svg" alt="Underline" className="w-[40px] h-[40px]" /></button>
+                                <button onClick={() => handleFormat('bold')} className={`p-2 rounded ${isBold ? 'bg-gray-200' : ''}`}><Image src="/create event/bold.svg" alt="Bold" width={40} height={40} /></button>
+                                <button onClick={() => handleFormat('italic')} className={`p-2 rounded ${isItalic ? 'bg-gray-200' : ''}`}><Image src="/create event/italic.svg" alt="Italic" width={40} height={40} /></button>
+                                <button onClick={() => handleFormat('underline')} className={`p-2 rounded ${isUnderline ? 'bg-gray-200' : ''}`}><Image src="/create event/underline.svg" alt="Underline" width={40} height={40} /></button>
                             </div>
                             <div className="border border-[#AEAEAE] rounded-[10px] p-6 min-h-[260px] relative">
                                 <div ref={editorRef} contentEditable onInput={e => setHasContent(e.currentTarget.innerText.length > 0)}
@@ -368,12 +369,12 @@ export default function EditDiningPage() {
                                         <div className="relative border border-[#686868] rounded-[10px] h-[64px] w-[840px] flex items-center px-6">
                                             {type === 'age' && (
                                                 <select value={minAge} onChange={e => setMinAge(e.target.value)} className="w-full appearance-none bg-transparent outline-none text-[25px]">
-                                                    {[0,5,10,12,14,16,18,21].map(a => <option key={a} value={a}>{a}</option>)}
+                                                    {[0, 5, 10, 12, 14, 16, 18, 21].map(a => <option key={a} value={a}>{a}</option>)}
                                                 </select>
                                             )}
                                             {type === 'bool' && (
                                                 <select value={petFriendly} onChange={e => setPetFriendly(e.target.value)} className="w-full appearance-none bg-transparent outline-none text-[25px]">
-                                                    {['Yes','No'].map(o => <option key={o} value={o}>{o}</option>)}
+                                                    {['Yes', 'No'].map(o => <option key={o} value={o}>{o}</option>)}
                                                 </select>
                                             )}
                                             <ChevronDown size={24} className="absolute right-6" />
@@ -394,13 +395,20 @@ export default function EditDiningPage() {
                             <h2 className="text-[30px] font-medium text-black mb-2">Card images <span style={{ color: accentColor }}>*</span></h2>
                             <div className="w-full h-[1px] bg-[#AEAEAE] mb-8" />
                             <div className="space-y-6">
-                                {[{ key: 'portrait', label: 'Portrait', size: '3:4 (900×1200px)', url: portraitUrl }, { key: 'landscape', label: 'Landscape', size: '16:9 (1600×900px)', url: landscapeUrl }].map(({ key, label, size, url }) => (
+                                {[
+                                    { key: 'portrait', label: 'Portrait', size: '3:4 (900×1200px)', url: portraitUrl },
+                                    { key: 'landscape', label: 'Landscape', size: '16:9 (1600×900px)', url: landscapeUrl }
+                                ].map(({ key, label, size, url }) => (
                                     <div key={key} className="bg-[#EBEBEB] rounded-[10px] py-3 px-6 flex items-center justify-between gap-6">
                                         <div>
                                             <p className="text-[20px] font-semibold text-[#686868]">{label}</p>
                                             <p className="text-[18px] text-black">{size}</p>
                                         </div>
-                                        {url && <img src={url} alt={label} className="w-[60px] h-[60px] object-cover rounded-[8px] border border-[#AEAEAE]" />}
+                                        {url && (
+                                            <div className="relative w-[60px] h-[60px] rounded-[8px] overflow-hidden border border-[#AEAEAE]">
+                                                <Image src={url} alt={label} fill className="object-cover" />
+                                            </div>
+                                        )}
                                         <label htmlFor={`upload-${key}`} className="cursor-pointer">
                                             <div className="flex items-center border border-[#686868] rounded-[5px] h-[35px] overflow-hidden bg-white">
                                                 <span className="px-5 text-[15px] font-medium text-black">{uploading[key] ? 'Uploading...' : url ? 'Replace' : 'Upload'}</span>
@@ -434,7 +442,9 @@ export default function EditDiningPage() {
                                         <div className="flex flex-wrap gap-3 mb-4">
                                             {galleryUrls.map((u, i) => (
                                                 <div key={i} className="relative w-[80px] h-[80px]">
-                                                    <img src={u} alt="" className="w-full h-full object-cover rounded-[8px] border border-[#AEAEAE]" />
+                                                    <div className="relative w-full h-full rounded-[8px] overflow-hidden border border-[#AEAEAE]">
+                                                        <Image src={u} alt="" fill className="object-cover" />
+                                                    </div>
                                                     <button onClick={() => setGalleryUrls(prev => prev.filter((_, idx) => idx !== i))} className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-[12px] flex items-center justify-center">×</button>
                                                 </div>
                                             ))}
@@ -454,7 +464,9 @@ export default function EditDiningPage() {
                                         <div className="flex flex-wrap gap-3 mb-4">
                                             {menuUrls.map((u, i) => (
                                                 <div key={i} className="relative w-[80px] h-[80px]">
-                                                    <img src={u} alt="" className="w-full h-full object-cover rounded-[8px] border border-[#AEAEAE]" />
+                                                    <div className="relative w-full h-full rounded-[8px] overflow-hidden border border-[#AEAEAE]">
+                                                        <Image src={u} alt="" fill className="object-cover" />
+                                                    </div>
                                                     <button onClick={() => setMenuUrls(prev => prev.filter((_, idx) => idx !== i))} className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-[12px] flex items-center justify-center">×</button>
                                                 </div>
                                             ))}

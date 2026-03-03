@@ -4,6 +4,21 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, CheckCircle, Loader2 } from 'lucide-react';
 import { useUserSession } from '@/lib/auth/user';
+import { bookingApi } from '@/lib/api/booking';
+
+const PASS_AMOUNT = 999;
+
+/** Dynamically load a third-party payment SDK script (idempotent). */
+function loadScript(src: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+        if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+        document.head.appendChild(s);
+    });
+}
 
 export default function PassCheckoutPage() {
     const router = useRouter();
@@ -28,7 +43,56 @@ export default function PassCheckoutPage() {
             setName(session.name || '');
             setPhone(session.phone || '');
         }
+
+        // Handle Cashfree redirect return
+        const urlParams = new URLSearchParams(window.location.search);
+        const cfOrderId = urlParams.get('order_id');
+        if (cfOrderId && cfOrderId.startsWith('TICPIN_')) {
+            const pending = sessionStorage.getItem('ticpin_pending_pass');
+            if (pending) {
+                try {
+                    const p = JSON.parse(pending);
+                    window.history.replaceState(null, '', window.location.pathname);
+                    setLoading(true);
+                    setName(p.name || '');
+                    setPhone(p.phone || '');
+                    confirmPassPurchase(cfOrderId, p);
+                } catch (e) {
+                    console.error('Cashfree pass return parse error', e);
+                }
+            }
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [session]);
+
+    const confirmPassPurchase = async (paymentId: string, data: any) => {
+        try {
+            const res = await fetch('/backend/api/pass/apply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    user_id: data.userId,
+                    payment_id: paymentId,
+                    name: data.name,
+                    phone: data.phone,
+                    address: data.address,
+                    state: data.state,
+                    district: data.district,
+                    country: data.country,
+                }),
+            });
+            const resData = await res.json();
+            if (!res.ok) throw new Error(resData.error || 'Purchase failed');
+            sessionStorage.removeItem('ticpin_pending_pass');
+            setSuccess(true);
+            setTimeout(() => router.push('/my-pass'), 2000);
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : 'Something went wrong');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handlePurchase = async () => {
         if (!session) return;
@@ -36,33 +100,76 @@ export default function PassCheckoutPage() {
         setError('');
         setLoading(true);
 
-        // In production: integrate Razorpay here and pass the real order ID as payment_id
-        const mockPaymentId = `PAY_${Date.now()}`;
-
         try {
-            const res = await fetch('/backend/api/pass/apply', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({
-                    user_id: session.id,
-                    payment_id: mockPaymentId,
-                    name,
-                    phone,
-                    address,
-                    state,
-                    district,
-                    country,
-                }),
+            // Step 1: Create a real payment order
+            const orderRes = await bookingApi.createPaymentOrder({
+                amount: PASS_AMOUNT,
+                customer_phone: phone || session.phone,
+                customer_email: `user_${session.phone}@ticpin.in`,
+                customer_id: session.id,
+                return_url: `${window.location.origin}${window.location.pathname}`,
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Purchase failed');
-            setSuccess(true);
-            setTimeout(() => router.push('/my-pass'), 2000);
+
+            // Step 2: Store pending pass data for after redirect (Cashfree)
+            sessionStorage.setItem('ticpin_pending_pass', JSON.stringify({
+                userId: session.id,
+                name,
+                phone,
+                address,
+                state,
+                district,
+                country,
+            }));
+
+            if (orderRes.gateway === 'cashfree') {
+                await loadScript('https://sdk.cashfree.com/js/v3/cashfree.js');
+                const cashfree = (window as any).Cashfree({
+                    mode: process.env.NEXT_PUBLIC_CASHFREE_ENV === 'production' ? 'production' : 'sandbox',
+                });
+                cashfree.checkout({
+                    paymentSessionId: orderRes.payment_session_id,
+                    redirectTarget: '_self',
+                });
+                // Page will redirect — don't set loading false here
+            } else {
+                // Razorpay inline modal
+                await loadScript('https://checkout.razorpay.com/v1/checkout.js');
+                const options = {
+                    key: orderRes.razorpay_key,
+                    amount: PASS_AMOUNT * 100,
+                    currency: 'INR',
+                    order_id: orderRes.order_id,
+                    name: 'Ticpin',
+                    description: 'Ticpin Pass (3 months)',
+                    prefill: {
+                        name,
+                        contact: phone,
+                    },
+                    theme: { color: '#7B2FF7' },
+                    handler: async (response: { razorpay_payment_id: string }) => {
+                        await confirmPassPurchase(response.razorpay_payment_id, {
+                            userId: session.id,
+                            name,
+                            phone,
+                            address,
+                            state,
+                            district,
+                            country,
+                        });
+                    },
+                    modal: {
+                        ondismiss: () => {
+                            sessionStorage.removeItem('ticpin_pending_pass');
+                            setLoading(false);
+                            setError('Payment was cancelled. Please try again.');
+                        },
+                    },
+                };
+                new (window as any).Razorpay(options).open();
+            }
         } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : 'Something went wrong');
-        } finally {
             setLoading(false);
+            setError(e instanceof Error ? e.message : 'Payment initiation failed. Please try again.');
         }
     };
 

@@ -1,10 +1,12 @@
 'use client';
 
-import { X, MapPin, Search } from 'lucide-react';
+import { X } from 'lucide-react';
+import { useState } from 'react';
 
 interface LocationModalProps {
     isOpen: boolean;
     onClose: () => void;
+    onSelect?: (city: string) => void;
 }
 
 const popularCities = [
@@ -12,8 +14,60 @@ const popularCities = [
     'Chennai', 'Kolkata', 'Surat', 'Pune', 'Jaipur'
 ];
 
-export default function LocationModal({ isOpen, onClose }: LocationModalProps) {
+export default function LocationModal({ isOpen, onClose, onSelect }: LocationModalProps) {
+    const [search, setSearch] = useState('');
+    const [gpsLoading, setGpsLoading] = useState(false);
+    const [gpsError, setGpsError] = useState('');
+
     if (!isOpen) return null;
+
+    const handleSelect = (city: string) => {
+        onSelect?.(city);
+        onClose();
+    };
+
+    const handleCurrentLocation = () => {
+        if (!navigator.geolocation) {
+            setGpsError('Geolocation not supported');
+            return;
+        }
+        setGpsLoading(true);
+        setGpsError('');
+        navigator.geolocation.getCurrentPosition(
+            async ({ coords }) => {
+                try {
+                    const res = await fetch(
+                        `https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`,
+                        { headers: { 'Accept-Language': 'en' } }
+                    );
+                    const data = await res.json();
+                    const city =
+                        data.address?.city ||
+                        data.address?.town ||
+                        data.address?.village ||
+                        data.address?.county ||
+                        '';
+                    if (city) {
+                        handleSelect(city);
+                    } else {
+                        setGpsError('Could not detect city');
+                    }
+                } catch {
+                    setGpsError('Failed to fetch location');
+                } finally {
+                    setGpsLoading(false);
+                }
+            },
+            () => {
+                setGpsError('Permission denied');
+                setGpsLoading(false);
+            }
+        );
+    };
+
+    const filtered = search.trim()
+        ? popularCities.filter(c => c.toLowerCase().includes(search.trim().toLowerCase()))
+        : popularCities;
 
     return (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -35,13 +89,19 @@ export default function LocationModal({ isOpen, onClose }: LocationModalProps) {
                     <div className="relative">
                         <input
                             type="text"
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
                             placeholder="Search city or area"
                             className="w-full h-[77px] px-8 bg-white border border-[#686868] rounded-[15px] text-[28px] font-medium text-black placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-[#5331EA]/20 transition-all"
                         />
                     </div>
 
                     {/* Use Current Location */}
-                    <button className="flex items-center gap-3 text-[#5331EA] hover:opacity-80 transition-all group">
+                    <button
+                        onClick={handleCurrentLocation}
+                        disabled={gpsLoading}
+                        className="flex items-center gap-3 text-[#5331EA] hover:opacity-80 transition-all group disabled:opacity-50"
+                    >
                         <div className="relative w-[29px] h-[29px] flex items-center justify-center">
                             <div className="absolute w-full h-full border-2 border-[#5331EA] rounded-full" />
                             <div className="w-[10px] h-[10px] bg-[#5331EA] rounded-full" />
@@ -50,24 +110,32 @@ export default function LocationModal({ isOpen, onClose }: LocationModalProps) {
                             <div className="absolute h-[2px] w-[6px] bg-[#5331EA] -left-1 top-1/2 -translate-y-1/2" />
                             <div className="absolute h-[2px] w-[6px] bg-[#5331EA] -right-1 top-1/2 -translate-y-1/2" />
                         </div>
-                        <span className="text-[20px] font-medium">Use Current Location</span>
+                        <span className="text-[20px] font-medium">
+                            {gpsLoading ? 'Detecting...' : 'Use Current Location'}
+                        </span>
                     </button>
+                    {gpsError && <p className="text-red-500 text-sm -mt-4">{gpsError}</p>}
 
                     {/* Popular Cities */}
                     <div className="space-y-6 pt-2">
                         <h3 className="text-[30px] font-medium text-[#686868]">Popular Cities</h3>
-                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-6">
-                            {popularCities.map((city) => (
-                                <button
-                                    key={city}
-                                    className="aspect-square bg-[rgba(189,177,243,0.30)] rounded-[25px] flex items-center justify-center p-4 hover:bg-[rgba(189,177,243,0.45)] transition-all group active:scale-95"
-                                >
-                                    <span className="text-[18px] font-semibold text-[#5331EA] uppercase text-center leading-tight group-hover:scale-105 transition-transform">
-                                        {city}
-                                    </span>
-                                </button>
-                            ))}
-                        </div>
+                        {filtered.length === 0 ? (
+                            <p className="text-zinc-400 text-lg">No cities match your search</p>
+                        ) : (
+                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-6">
+                                {filtered.map((city) => (
+                                    <button
+                                        key={city}
+                                        onClick={() => handleSelect(city)}
+                                        className="aspect-square bg-[rgba(189,177,243,0.30)] rounded-[25px] flex items-center justify-center p-4 hover:bg-[rgba(189,177,243,0.45)] transition-all group active:scale-95"
+                                    >
+                                        <span className="text-[18px] font-semibold text-[#5331EA] uppercase text-center leading-tight group-hover:scale-105 transition-transform">
+                                            {city}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

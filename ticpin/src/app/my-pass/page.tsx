@@ -5,6 +5,18 @@ import { useRouter } from 'next/navigation';
 import { MapPin, Utensils, Ticket, RefreshCw, CheckCircle2, XCircle, Clock, ArrowLeft, Loader2 } from 'lucide-react';
 import { useUserSession } from '@/lib/auth/user';
 import Footer from '@/components/layout/Footer';
+import { bookingApi } from '@/lib/api/booking';
+
+function loadScript(src: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+        if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+        document.head.appendChild(s);
+    });
+}
 
 interface PassBenefits {
     turf_bookings: { total: number; used: number; remaining: number };
@@ -54,18 +66,34 @@ export default function MyPassPage() {
             })
             .then(d => { if (d) { setPass(d); setLoading(false); } })
             .catch(() => { setError('no_pass'); setLoading(false); });
+
+        // Handle Cashfree redirect return for renewal
+        const urlParams = new URLSearchParams(window.location.search);
+        const cfOrderId = urlParams.get('order_id');
+        if (cfOrderId && cfOrderId.startsWith('TICPIN_')) {
+            const pending = sessionStorage.getItem('ticpin_pending_renew');
+            if (pending) {
+                try {
+                    const p = JSON.parse(pending);
+                    window.history.replaceState(null, '', window.location.pathname);
+                    sessionStorage.removeItem('ticpin_pending_renew');
+                    setRenewLoading(true);
+                    confirmRenew(p.passId, cfOrderId);
+                } catch (e) {
+                    console.error('Cashfree renew return error', e);
+                }
+            }
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [session]);
 
-    const handleRenew = async () => {
-        if (!pass || !session) return;
-        setRenewLoading(true);
-        const mockPaymentId = `REN_${Date.now()}`;
+    const confirmRenew = async (passId: string, paymentId: string) => {
         try {
-            const res = await fetch(`/backend/api/pass/${pass.id}/renew`, {
+            const res = await fetch(`/backend/api/pass/${passId}/renew`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ payment_id: mockPaymentId }),
+                body: JSON.stringify({ payment_id: paymentId }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
@@ -76,6 +104,51 @@ export default function MyPassPage() {
             alert('Renewal failed. Please try again.');
         } finally {
             setRenewLoading(false);
+        }
+    };
+
+    const handleRenew = async () => {
+        if (!pass || !session) return;
+        setRenewLoading(true);
+        try {
+            const orderRes = await bookingApi.createPaymentOrder({
+                amount: pass.price || 999,
+                customer_phone: session.phone,
+                customer_email: `user_${session.phone}@ticpin.in`,
+                customer_id: session.id,
+            });
+
+            if (orderRes.gateway === 'cashfree') {
+                await loadScript('https://sdk.cashfree.com/js/v3/cashfree.js');
+                sessionStorage.setItem('ticpin_pending_renew', JSON.stringify({ passId: pass.id, orderId: orderRes.order_id }));
+                const cashfree = (window as any).Cashfree({
+                    mode: process.env.NEXT_PUBLIC_CASHFREE_ENV === 'production' ? 'production' : 'sandbox',
+                });
+                cashfree.checkout({ paymentSessionId: orderRes.payment_session_id, redirectTarget: '_self' });
+            } else {
+                await loadScript('https://checkout.razorpay.com/v1/checkout.js');
+                new (window as any).Razorpay({
+                    key: orderRes.razorpay_key,
+                    amount: (pass.price || 999) * 100,
+                    currency: 'INR',
+                    order_id: orderRes.order_id,
+                    name: 'Ticpin',
+                    description: 'Pass Renewal',
+                    theme: { color: '#7B2FF7' },
+                    handler: async (response: { razorpay_payment_id: string }) => {
+                        await confirmRenew(pass.id, response.razorpay_payment_id);
+                    },
+                    modal: {
+                        ondismiss: () => {
+                            setRenewLoading(false);
+                            alert('Payment was cancelled.');
+                        },
+                    },
+                }).open();
+            }
+        } catch {
+            setRenewLoading(false);
+            alert('Payment initiation failed. Please try again.');
         }
     };
 

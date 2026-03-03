@@ -1,9 +1,10 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { ChevronRight, Trash2, X, Tag, CheckCircle2, ChevronDown } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import { bookingApi, OfferItem } from '@/lib/api/booking';
+import { bookingApi, OfferItem, PaymentOrderResponse } from '@/lib/api/booking';
 import Link from 'next/link';
 import { useUserSession } from '@/lib/auth/user';
 
@@ -21,13 +22,24 @@ interface CartData {
     slot?: string;
 }
 
+/** Dynamically load a third-party payment SDK script (idempotent). */
+function loadScript(src: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+        if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+        document.head.appendChild(s);
+    });
+}
+
 export default function ReviewBookingPage() {
     const router = useRouter();
     const params = useParams();
     const id = params?.id as string;
     const session = useUserSession();
     const billingRef = useRef<HTMLDivElement>(null);
-
     const [cart, setCart] = useState<CartData | null>(null);
 
 
@@ -105,6 +117,45 @@ export default function ReviewBookingPage() {
                 billingRef.current?.scrollIntoView({ behavior: 'instant' });
             }, 100);
         }
+
+        // ── Cashfree redirect return ───────────────────────────────────
+        // Cashfree redirects back to this page with ?order_id=TICPIN_xxx&order_token=xxx
+        // Detect that and auto-complete the booking using stored pending data.
+        const urlParams = new URLSearchParams(window.location.search);
+        const cfOrderId = urlParams.get('order_id');
+        if (cfOrderId && cfOrderId.startsWith('TICPIN_')) {
+            const pending = sessionStorage.getItem('ticpin_pending_payment');
+            if (pending) {
+                try {
+                    const p = JSON.parse(pending);
+                    if (p.cart) {
+                        setCart(p.cart);
+                        setStep('billing');
+                        setBookingLoading(true);
+                        // Clear the URL params without reload
+                        window.history.replaceState(null, '', window.location.pathname);
+                        // Small delay so React state settles before calling API
+                        setTimeout(() => {
+                            completeBookingWithData(
+                                p.orderID,
+                                'cashfree',
+                                p.cart,
+                                p.email,
+                                p.sessionId,
+                                p.orderAmount,
+                                p.bookingFee,
+                                p.grandTotal,
+                                p.appliedCoupon || '',
+                                p.offerId,
+                            );
+                        }, 200);
+                    }
+                } catch (e) {
+                    console.error('Cashfree return parse error', e);
+                }
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Also pre-fill with session data if available and state is empty
@@ -245,6 +296,93 @@ export default function ReviewBookingPage() {
         }, 100);
     };
 
+    /** Called after payment succeeds (Razorpay callback or Cashfree redirect return).
+     *  Accepts all data explicitly so it works even after a page redirect. */
+    const completeBookingWithData = async (
+        paymentId: string,
+        paymentGateway: string,
+        cartData: CartData,
+        emailData: string,
+        sessionId: string | undefined,
+        oAmt: number,
+        bFee: number,
+        gTotal: number,
+        coupon: string,
+        offerId: string | undefined,
+    ) => {
+        setBookingLoading(true);
+        setBookingError('');
+        try {
+            let result;
+            if (cartData.type === 'dining') {
+                result = await bookingApi.createDiningBooking({
+                    user_email: emailData,
+                    dining_id: cartData.eventId,
+                    venue_name: cartData.eventName,
+                    date: cartData.date || '',
+                    time_slot: cartData.timeSlot || '',
+                    guests: cartData.guests || 1,
+                    order_amount: oAmt,
+                    booking_fee: bFee,
+                    coupon_code: coupon || undefined,
+                    offer_id: offerId,
+                    user_id: sessionId,
+                    payment_id: paymentId,
+                    payment_gateway: paymentGateway,
+                });
+            } else if (cartData.type === 'play') {
+                result = await bookingApi.createPlayBooking({
+                    user_email: emailData,
+                    play_id: cartData.eventId,
+                    venue_name: cartData.eventName,
+                    date: cartData.date || '',
+                    slot: cartData.slot || '',
+                    tickets: cartData.tickets.map(t => ({
+                        category: t.name,
+                        price: t.price,
+                        quantity: t.quantity,
+                    })),
+                    order_amount: oAmt,
+                    booking_fee: bFee,
+                    coupon_code: coupon || undefined,
+                    offer_id: offerId,
+                    user_id: sessionId,
+                    payment_id: paymentId,
+                    payment_gateway: paymentGateway,
+                });
+            } else {
+                result = await bookingApi.createEventBooking({
+                    user_email: emailData,
+                    event_id: cartData.eventId,
+                    event_name: cartData.eventName,
+                    tickets: cartData.tickets.map(t => ({
+                        category: t.name,
+                        price: t.price,
+                        quantity: t.quantity,
+                    })),
+                    order_amount: oAmt,
+                    booking_fee: bFee,
+                    coupon_code: coupon || undefined,
+                    offer_id: offerId,
+                    user_id: sessionId,
+                    payment_id: paymentId,
+                    payment_gateway: paymentGateway,
+                });
+            }
+            setBookingId(result.booking_id);
+            sessionStorage.removeItem('ticpin_cart');
+            sessionStorage.removeItem('ticpin_billing_email');
+            sessionStorage.removeItem('ticpin_billing_data');
+            sessionStorage.removeItem('ticpin_booking_step');
+            sessionStorage.removeItem('ticpin_pending_payment');
+            setStep('success');
+        } catch (err: unknown) {
+            setBookingError(err instanceof Error ? err.message : 'Booking failed. Please try again.');
+        } finally {
+            setBookingLoading(false);
+        }
+    };
+
     const handlePayNow = async () => {
         if (!billing.name.trim()) { setBookingError('Please enter your full name'); return; }
         if (!email.trim() || !email.includes('@')) { setBookingError('Please enter a valid email address'); return; }
@@ -259,67 +397,85 @@ export default function ReviewBookingPage() {
         if (!cart) return;
         setBookingLoading(true);
         setBookingError('');
+
         try {
-            let result;
-            if (cart.type === 'dining') {
-                result = await bookingApi.createDiningBooking({
-                    user_email: email,
-                    dining_id: cart.eventId,
-                    venue_name: cart.eventName,
-                    date: cart.date || '',
-                    time_slot: cart.timeSlot || '',
-                    guests: cart.guests || 1,
-                    order_amount: orderAmount,
-                    booking_fee: bookingFee,
-                    coupon_code: appliedCoupon || undefined,
-                    offer_id: appliedOffer?.id || undefined,
-                    user_id: session?.id || undefined,
+            // Step 1: Create a payment order (picks Cashfree or Razorpay via traffic weight)
+            const orderRes: PaymentOrderResponse = await bookingApi.createPaymentOrder({
+                amount: grandTotal,
+                customer_phone: billing.phone,
+                customer_email: email || `user_${billing.phone}@ticpin.in`,
+                customer_id: session?.id || `phone_${billing.phone}`,
+                return_url: `${window.location.origin}${window.location.pathname}`,
+            });
+
+            // Step 2: Store pending booking data so we can complete after redirect (Cashfree)
+            sessionStorage.setItem('ticpin_pending_payment', JSON.stringify({
+                gateway: orderRes.gateway,
+                orderID: orderRes.order_id,
+                cart,
+                email,
+                sessionId: session?.id,
+                orderAmount,
+                bookingFee,
+                grandTotal,
+                appliedCoupon,
+                offerId: appliedOffer?.id,
+            }));
+
+            if (orderRes.gateway === 'cashfree') {
+                // Cashfree — load SDK and redirect to hosted payment page
+                await loadScript('https://sdk.cashfree.com/js/v3/cashfree.js');
+                const cashfree = (window as any).Cashfree({
+                    mode: process.env.NEXT_PUBLIC_CASHFREE_ENV === 'production' ? 'production' : 'sandbox',
                 });
-            } else if (cart.type === 'play') {
-                result = await bookingApi.createPlayBooking({
-                    user_email: email,
-                    play_id: cart.eventId,
-                    venue_name: cart.eventName,
-                    date: cart.date || '',
-                    slot: cart.slot || '',
-                    tickets: cart.tickets.map(t => ({
-                        category: t.name,
-                        price: t.price,
-                        quantity: t.quantity,
-                    })),
-                    order_amount: orderAmount,
-                    booking_fee: bookingFee,
-                    coupon_code: appliedCoupon || undefined,
-                    offer_id: appliedOffer?.id || undefined,
-                    user_id: session?.id || undefined,
+                cashfree.checkout({
+                    paymentSessionId: orderRes.payment_session_id,
+                    redirectTarget: '_self',
                 });
+                // Page will redirect — do NOT set loading false here
             } else {
-                result = await bookingApi.createEventBooking({
-                    user_email: email,
-                    event_id: cart.eventId,
-                    event_name: cart.eventName,
-                    tickets: cart.tickets.map(t => ({
-                        category: t.name,
-                        price: t.price,
-                        quantity: t.quantity,
-                    })),
-                    order_amount: orderAmount,
-                    booking_fee: bookingFee,
-                    coupon_code: appliedCoupon || undefined,
-                    offer_id: appliedOffer?.id || undefined,
-                    user_id: session?.id || undefined,
-                });
+                // Razorpay — inline modal, no redirect needed
+                await loadScript('https://checkout.razorpay.com/v1/checkout.js');
+                const options = {
+                    key: orderRes.razorpay_key,
+                    amount: grandTotal * 100,
+                    currency: 'INR',
+                    order_id: orderRes.order_id,
+                    name: 'Ticpin',
+                    description: cart.eventName,
+                    prefill: {
+                        name: billing.name,
+                        email,
+                        contact: billing.phone,
+                    },
+                    theme: { color: '#5331EA' },
+                    handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string }) => {
+                        await completeBookingWithData(
+                            response.razorpay_payment_id,
+                            'razorpay',
+                            cart,
+                            email,
+                            session?.id,
+                            orderAmount,
+                            bookingFee,
+                            grandTotal,
+                            appliedCoupon,
+                            appliedOffer?.id,
+                        );
+                    },
+                    modal: {
+                        ondismiss: () => {
+                            sessionStorage.removeItem('ticpin_pending_payment');
+                            setBookingLoading(false);
+                            setBookingError('Payment was cancelled. Please try again.');
+                        },
+                    },
+                };
+                new (window as any).Razorpay(options).open();
             }
-            setBookingId(result.booking_id);
-            sessionStorage.removeItem('ticpin_cart');
-            sessionStorage.removeItem('ticpin_billing_email');
-            sessionStorage.removeItem('ticpin_billing_data');
-            sessionStorage.removeItem('ticpin_booking_step');
-            setStep('success');
         } catch (err: unknown) {
-            setBookingError(err instanceof Error ? err.message : 'Booking failed. Please try again.');
-        } finally {
             setBookingLoading(false);
+            setBookingError(err instanceof Error ? err.message : 'Payment initiation failed. Please try again.');
         }
     };
 
@@ -362,7 +518,7 @@ export default function ReviewBookingPage() {
             {/* Header */}
             <header className="w-full h-[60px] md:h-[80px] bg-white flex items-center justify-between px-6 md:px-10 border-b border-[#FFFFFF] shadow-sm relative z-10">
                 <div className="flex-shrink-0 cursor-pointer" onClick={() => router.push('/')}>
-                    <img src="/ticpin-logo-black.png" alt="TICPIN" className="h-[20px] md:h-[25px] w-auto" />
+                    <Image src="/ticpin-logo-black.png" alt="TICPIN" width={159} height={25} className="h-[20px] md:h-[25px] w-auto object-contain" />
                 </div>
                 <h1 className="text-[18px] md:text-[24px] font-semibold text-black" style={{ fontFamily: 'var(--font-anek-latin)' }}>
                     {step === 'billing' ? 'Billing Details' : 'Review your booking'}
@@ -387,7 +543,7 @@ export default function ReviewBookingPage() {
                             <div>
                                 <div className="flex items-center gap-4 mb-4 mt-[-20px]">
                                     <h3 style={{ color: 'black', fontSize: '25px', fontFamily: 'Anek Tamil Condensed, var(--font-anek-latin)', fontWeight: 100, lineHeight: '60px' }} className="uppercase">
-                                        {cart?.type === 'dining' ? 'RESERVATION' : cart?.type === 'play' ? 'ACTIVITY' : 'TICKETS'}
+                                        {cart?.type === 'dining' ? 'RESERVATION' : cart?.type === 'play' ? 'SLOTS' : 'TICKETS'}
                                     </h3>
                                     <div className="flex-grow h-[1px] bg-[#AEAEAE]" />
                                 </div>
@@ -402,11 +558,19 @@ export default function ReviewBookingPage() {
 
                                             {/* Details for Dining/Play */}
                                             {(cart.type === 'dining' || cart.type === 'play') && (
-                                                <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
-                                                    {cart.date && <p className="text-[13px] text-zinc-600">Date: <span className="text-black font-semibold">{cart.date} Feb</span></p>}
-                                                    {cart.timeSlot && <p className="text-[13px] text-zinc-600">Time: <span className="text-black font-semibold">{cart.timeSlot}</span></p>}
-                                                    {cart.slot && <p className="text-[13px] text-zinc-600">Slot: <span className="text-black font-semibold">{cart.slot}</span></p>}
-                                                    {cart.guests && <p className="text-[13px] text-zinc-600">Guests: <span className="text-black font-semibold">{cart.guests}</span></p>}
+                                                <div className="flex flex-col gap-1 mt-2">
+                                                    {cart.date && (
+                                                        <p className="text-[15px] text-[#686868] font-medium uppercase">
+                                                            {cart.type === 'play' ? `${cart.slot} Feb` : `${cart.date} Feb`}
+                                                            {cart.timeSlot && ` • ${cart.timeSlot}`}
+                                                            {cart.slot && cart.type !== 'play' && ` • ${cart.slot}`}
+                                                        </p>
+                                                    )}
+                                                    {cart.type === 'play' && (
+                                                        <p className="text-[13px] text-[#AEAEAE] font-medium uppercase tracking-wider italic">
+                                                            {ticket.name}
+                                                        </p>
+                                                    )}
                                                 </div>
                                             )}
 
@@ -537,8 +701,8 @@ export default function ReviewBookingPage() {
                                             onClick={() => toggleSection('coupons')}
                                         >
                                             <div className="flex items-center gap-4">
-                                                <div className="w-6 h-6 flex items-center justify-center">
-                                                    <img src="/events/cupon.svg" alt="Coupons" className="w-[40px] h-auto" />
+                                                <div className="w-6 h-6 flex items-center justify-center relative">
+                                                    <Image src="/events/cupon.svg" alt="Coupons" fill className="object-contain" />
                                                 </div>
                                                 <span style={{ color: 'black', fontSize: '20px', fontFamily: 'var(--font-anek-latin)', fontWeight: 500 }}>
                                                     {appliedCoupon ? `Code applied: ${appliedCoupon}` : 'View coupon codes'}

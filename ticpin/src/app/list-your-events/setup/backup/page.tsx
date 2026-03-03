@@ -11,11 +11,24 @@ export default function BackupContactPage() {
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
     const [showOtp, setShowOtp] = useState(false);
     const [email, setEmail] = useState('');
+    const [prefilled, setPrefilled] = useState(false);
     const [loading, setLoading] = useState(false);
     const [verifying, setVerifying] = useState(false);
     const [error, setError] = useState('');
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
     const router = useRouter();
+
+    React.useEffect(() => {
+        const saved = JSON.parse(sessionStorage.getItem('setup_events') ?? '{}');
+        if (saved.backupEmail) {
+            setEmail(saved.backupEmail);
+            if (saved.prefilled) setPrefilled(true);
+        }
+    }, []);
+
+    const handleSkipVerification = () => {
+        router.push('/list-your-events/setup/agreement');
+    };
 
     const handleSendOTP = async () => {
         setError('');
@@ -140,13 +153,24 @@ export default function BackupContactPage() {
                                 </div>
 
                                 {!showOtp ? (
-                                    <button
-                                        onClick={handleSendOTP}
-                                        disabled={loading}
-                                        className="bg-black text-white h-[48px] px-8 rounded-[15px] text-[15px] font-medium flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-60"
-                                    >
-                                        {loading ? 'Sending...' : 'Send OTP'} <ChevronRight size={18} />
-                                    </button>
+                                    <div className="flex gap-4">
+                                        <button
+                                            onClick={handleSendOTP}
+                                            disabled={loading}
+                                            className="bg-black text-white h-[48px] px-8 rounded-[15px] text-[15px] font-medium flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-60"
+                                        >
+                                            {loading ? 'Sending...' : 'Send OTP'} <ChevronRight size={18} />
+                                        </button>
+
+                                        {prefilled && (
+                                            <button
+                                                onClick={handleSkipVerification}
+                                                className="bg-white border border-black/30 text-black h-[48px] px-8 rounded-[15px] text-[15px] font-medium flex items-center justify-center gap-2 transition-all active:scale-95"
+                                            >
+                                                Use verified email <ChevronRight size={18} />
+                                            </button>
+                                        )}
+                                    </div>
                                 ) : (
                                     <div className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
                                         <p className="text-[14px] text-[#686868] font-medium" style={{ fontFamily: 'Anek Latin' }}>

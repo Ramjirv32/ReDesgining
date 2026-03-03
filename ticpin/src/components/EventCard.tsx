@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { MapPin, Calendar, Star } from 'lucide-react';
 
 interface EventCardProps {
@@ -42,10 +43,11 @@ export default function EventCard({
                 )}
 
                 {image ? (
-                    <img 
-                        src={image} 
-                        alt={title || 'Event'} 
-                        className="w-full h-full object-cover"
+                    <Image
+                        src={image}
+                        alt={title || 'Event'}
+                        fill
+                        className="object-cover"
                     />
                 ) : (
                     <div className="flex flex-col items-center gap-2 text-zinc-300">

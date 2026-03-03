@@ -11,7 +11,7 @@ type Notification struct {
 	Title        string             `bson:"title" json:"title"`
 	Description  string             `bson:"description" json:"description"`
 	ImageURL     string             `bson:"image_url" json:"image_url"`
-	TargetType   string             `bson:"target_type" json:"target_type"` // "all_users", "all_organizers", "selected_users", "selected_organizers", "both"
+	TargetType   string             `bson:"target_type" json:"target_type"`
 	RecipientIDs []string           `bson:"recipient_ids,omitempty" json:"recipient_ids,omitempty"`
 	CreatedAt    time.Time          `bson:"created_at" json:"created_at"`
 }

@@ -97,8 +97,17 @@ func GetOrganizer(c *fiber.Ctx) error {
 }
 
 func PlaySetup(c *fiber.Ctx) error {
+
+	authOrgID, ok := c.Locals("organizerId").(string)
+	if !ok || authOrgID == "" {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	orgID, err := primitive.ObjectIDFromHex(authOrgID)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid organizerId"})
+	}
+
 	var payload struct {
-		OrganizerID   string `json:"organizerId"`
 		OrgType       string `json:"orgType"`
 		Phone         string `json:"phone"`
 		BankAccountNo string `json:"bankAccountNo"`
@@ -115,13 +124,6 @@ func PlaySetup(c *fiber.Ctx) error {
 	}
 	if err := c.BodyParser(&payload); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
-	}
-	if payload.OrganizerID == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "organizerId required"})
-	}
-	orgID, err := primitive.ObjectIDFromHex(payload.OrganizerID)
-	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid organizerId"})
 	}
 
 	setup := &models.OrganizerSetup{
@@ -141,13 +143,16 @@ func PlaySetup(c *fiber.Ctx) error {
 		BackupEmail:   payload.BackupEmail,
 		BackupPhone:   payload.BackupPhone,
 	}
-	if err := organizersvc.CheckPANDuplicate(payload.PAN, payload.OrganizerID); err != nil {
+	if err := organizersvc.CheckPANDuplicate(payload.PAN, authOrgID); err != nil {
 		if err.Error() == "pan_already_used" {
 			return c.Status(400).JSON(fiber.Map{"error": "pan_already_used"})
 		}
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	if err := organizersvc.SaveSetup(setup); err != nil {
+		if err.Error() == "pan_mismatch" {
+			return c.Status(400).JSON(fiber.Map{"error": "pan_mismatch"})
+		}
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.JSON(fiber.Map{"message": "setup saved", "status": "pending"})
@@ -184,4 +189,32 @@ func SubmitVerification(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.Status(201).JSON(fiber.Map{"message": "verification submitted"})
+}
+func GoogleAuth(c *fiber.Ctx) error {
+	var req struct {
+		Email string `json:"email"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	}
+	if req.Email == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "email required"})
+	}
+
+	org, err := organizersvc.GoogleAuth(req.Email)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	isAdmin := req.Email == config.GetAdminEmail()
+	if err := config.SetAuthCookies(c, org.ID.Hex(), org.Email, "play", isAdmin, org.CategoryStatus); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "session error"})
+	}
+
+	return c.JSON(fiber.Map{
+		"id":             org.ID,
+		"email":          org.Email,
+		"categoryStatus": org.CategoryStatus,
+		"isAdmin":        isAdmin,
+	})
 }

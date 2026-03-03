@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronRight, Pencil, Trash2, X, Clock, BarChart3, Info } from 'lucide-react';
+import Image from 'next/image';
 import { adminApi, OfferRecord } from '@/lib/api/admin';
 import CreateOfferForm from '../create/createoffer';
 import { useState, useEffect } from 'react';
@@ -96,7 +97,7 @@ export default function ViewOfferForm({ onBack }: { onBack: () => void }) {
                                     {/* Offer Image or Token */}
                                     <div className="relative flex items-center justify-center shrink-0 rounded-[12px] overflow-hidden" style={{ width: '110px', height: '110px', background: '#F5F5F5' }}>
                                         {offer.image ? (
-                                            <img src={offer.image} alt={offer.title} className="w-full h-full object-cover" />
+                                            <Image src={offer.image} alt={offer.title} fill className="object-cover" />
                                         ) : (
                                             <div className="absolute inset-0 bg-white flex items-center justify-center">
                                                 <div className="flex flex-col items-center justify-center gap-1">
@@ -163,8 +164,8 @@ export default function ViewOfferForm({ onBack }: { onBack: () => void }) {
 
                         <div className="p-8 space-y-8" style={{ fontFamily: 'var(--font-anek-latin)' }}>
                             {selectedOffer.image && (
-                                <div className="w-full h-[200px] rounded-3xl overflow-hidden bg-zinc-100">
-                                    <img src={selectedOffer.image} alt={selectedOffer.title} className="w-full h-full object-cover" />
+                                <div className="w-full h-[200px] rounded-3xl overflow-hidden bg-zinc-100 relative">
+                                    <Image src={selectedOffer.image} alt={selectedOffer.title} fill className="object-cover" />
                                 </div>
                             )}
 

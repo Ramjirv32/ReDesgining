@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { adminApi, AdminListing, ListingStatus } from '@/lib/api/admin';
 import {
@@ -88,7 +89,7 @@ function DetailViewPanel({ ev, onStatus, updating, onUpdate, onNext, currentInde
           <div className="bg-[#EEEDFC] rounded-[19px] flex-1 flex flex-col items-center justify-center p-8 overflow-hidden relative border border-white">
             <div className="bg-white w-full h-full rounded-[15px] flex items-center justify-center overflow-hidden mb-2 shadow-sm">
               {thumb ? (
-                <img src={thumb} alt={editedEv.name} className="w-full h-full object-cover" />
+                <Image src={thumb} alt={editedEv.name || 'Event'} fill className="object-cover" />
               ) : (
                 <div className="text-center">
                   <p className="text-[17px] font-medium text-black">{"{EVENT POSTER}"}</p>
@@ -195,7 +196,11 @@ function DetailViewPanel({ ev, onStatus, updating, onUpdate, onNext, currentInde
                       {typeof artist === 'object' ? (
                         <>
                           <span>{artist.name}</span>
-                          {artist.image_url && <img src={artist.image_url} alt={artist.name} className="inline-block w-8 h-8 ml-2" />}
+                          {artist.image_url && (
+                            <div className="relative inline-block w-8 h-8 ml-2">
+                              <Image src={artist.image_url} alt={artist.name || 'Artist'} fill className="object-cover rounded-full" />
+                            </div>
+                          )}
                         </>
                       ) : (
                         String(artist)
@@ -212,7 +217,11 @@ function DetailViewPanel({ ev, onStatus, updating, onUpdate, onNext, currentInde
                           <span><strong>Name:</strong> {cat.name}</span>{' '}
                           <span><strong>Price:</strong> {cat.price}</span>{' '}
                           <span><strong>Capacity:</strong> {cat.capacity}</span>{' '}
-                          {cat.image_url && <img src={cat.image_url} alt={cat.name} className="inline-block w-8 h-8 ml-2" />}
+                          {cat.image_url && (
+                            <div className="relative inline-block w-8 h-8 ml-2">
+                              <Image src={cat.image_url} alt={cat.name || 'Category'} fill className="object-cover rounded-md" />
+                            </div>
+                          )}
                         </>
                       ) : (
                         String(cat)
@@ -345,7 +354,7 @@ function AdminEventsContent() {
     try {
       await adminApi.updateEventStatus(id, status);
       setEvents(prev => prev.map(item => (getId(item) === id ? { ...item, status } : item)));
-   
+
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Update failed');
     } finally {
@@ -454,8 +463,8 @@ function AdminEventsContent() {
                       onClick={() => router.push(`?id=${id}`)}
                       className="bg-[#EEEDFC] rounded-[19px] p-12 flex items-center gap-16 border border-white hover:shadow-md transition-shadow cursor-pointer"
                     >
-                      <div className="w-[220px] h-[290px] bg-white rounded-[15px] flex-shrink-0 flex items-center justify-center overflow-hidden p-2">
-                        {thumb ? <img src={thumb} alt={item.name} className="w-full h-full object-cover rounded-[10px]" />
+                      <div className="w-[220px] h-[290px] bg-white rounded-[15px] flex-shrink-0 flex items-center justify-center overflow-hidden p-2 relative">
+                        {thumb ? <Image src={thumb} alt={item.name || 'Event'} fill className="object-cover rounded-[10px]" />
                           : <div className="text-center"><p className="text-[14px] font-bold uppercase mb-1 leading-tight">{"{EVENT POSTER}"}</p><p className="text-[11px] opacity-50">3:4 aspect ratio</p></div>}
                       </div>
 

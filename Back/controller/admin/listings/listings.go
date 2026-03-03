@@ -28,11 +28,17 @@ func deleteDoc(collection string, id string) error {
 }
 
 func ListAllEvents(c *fiber.Ctx) error {
-	events, err := eventservice.GetAll("", "")
+	limit := c.QueryInt("limit", 20)
+	after := c.Query("after")
+
+	events, nextCursor, err := eventservice.GetAll("", "", limit, after)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	return c.JSON(events)
+	return c.JSON(fiber.Map{
+		"data":        events,
+		"next_cursor": nextCursor,
+	})
 }
 
 func UpdateEventStatus(c *fiber.Ctx) error {
@@ -82,11 +88,17 @@ func UpdateEvent(c *fiber.Ctx) error {
 }
 
 func ListAllDining(c *fiber.Ctx) error {
-	dinings, err := diningservice.GetAll()
+	limit := c.QueryInt("limit", 20)
+	after := c.Query("after")
+
+	dinings, nextCursor, err := diningservice.GetAll(limit, after)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	return c.JSON(dinings)
+	return c.JSON(fiber.Map{
+		"data":        dinings,
+		"next_cursor": nextCursor,
+	})
 }
 
 func UpdateDiningStatus(c *fiber.Ctx) error {
@@ -136,11 +148,17 @@ func UpdateDining(c *fiber.Ctx) error {
 }
 
 func ListAllPlay(c *fiber.Ctx) error {
-	plays, err := playservice.GetAll("")
+	limit := c.QueryInt("limit", 20)
+	after := c.Query("after")
+
+	plays, nextCursor, err := playservice.GetAll("", limit, after)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	return c.JSON(plays)
+	return c.JSON(fiber.Map{
+		"data":        plays,
+		"next_cursor": nextCursor,
+	})
 }
 
 func UpdatePlayStatus(c *fiber.Ctx) error {

@@ -11,6 +11,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func Create(c *models.Coupon) error {
@@ -22,12 +23,12 @@ func Create(c *models.Coupon) error {
 	c.CreatedAt = time.Now()
 	c.UsedCount = 0
 
-	col := config.GetDB().Collection("coupons")
+	col := config.CouponsCol
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	var existing models.Coupon
-	err := col.FindOne(ctx, bson.M{"code": c.Code}).Decode(&existing)
+	err := col.FindOne(ctx, bson.M{"code": c.Code}, options.FindOne().SetProjection(bson.M{"_id": 1})).Decode(&existing)
 	if err == nil {
 		return errors.New("coupon code already exists")
 	}
@@ -36,21 +37,52 @@ func Create(c *models.Coupon) error {
 	return err
 }
 
-func GetAll() ([]models.Coupon, error) {
-	col := config.GetDB().Collection("coupons")
+func GetAll(limit int, after string) ([]models.Coupon, string, error) {
+	col := config.CouponsCol
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	cursor, err := col.Find(ctx, bson.M{})
+	filter := bson.M{}
+	if after != "" {
+		if oid, err := primitive.ObjectIDFromHex(after); err == nil {
+			filter["_id"] = bson.M{"$gt": oid}
+		}
+	}
+
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+
+	opts := options.Find().SetLimit(int64(limit)).SetSort(bson.M{"_id": 1})
+	opts.SetProjection(bson.M{
+		"code":           1,
+		"description":    1,
+		"category":       1,
+		"discount_type":  1,
+		"discount_value": 1,
+		"is_active":      1,
+		"valid_until":    1,
+		"used_count":     1,
+		"max_uses":       1,
+	})
+
+	cursor, err := col.Find(ctx, filter, opts)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	defer cursor.Close(ctx)
-	coupons := []models.Coupon{}
+
+	var coupons []models.Coupon
 	if err := cursor.All(ctx, &coupons); err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return coupons, nil
+
+	nextCursor := ""
+	if len(coupons) > 0 {
+		nextCursor = coupons[len(coupons)-1].ID.Hex()
+	}
+
+	return coupons, nextCursor, nil
 }
 
 func GetByCategory(category string, userID string) ([]models.Coupon, error) {
@@ -136,7 +168,7 @@ func Validate(code string, eventID string, orderAmount float64, userID string) (
 		return nil, errors.New("coupon code is required")
 	}
 
-	col := config.GetDB().Collection("coupons")
+	col := config.CouponsCol
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -192,7 +224,7 @@ func Validate(code string, eventID string, orderAmount float64, userID string) (
 }
 
 func IncrementUsage(couponID primitive.ObjectID, maxUses int) error {
-	col := config.GetDB().Collection("coupons")
+	col := config.CouponsCol
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 

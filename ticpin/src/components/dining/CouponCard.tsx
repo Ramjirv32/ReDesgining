@@ -1,4 +1,4 @@
-'use client';
+import Image from 'next/image';
 
 interface CouponCardProps {
     discount: string;
@@ -41,7 +41,7 @@ export default function CouponCard({ discount, code, image }: CouponCardProps) {
                     {image ? (
                         <div className="absolute inset-0 w-full h-full p-2">
                             <div className="relative w-full h-full rounded-[15px] overflow-hidden">
-                                <img src={image} alt={code} className="w-full h-full object-cover" />
+                                <Image src={image} alt={code} fill className="object-cover" sizes="120px" />
                                 <div className="absolute inset-0 bg-black/20 flex flex-col justify-end p-2">
                                     <span className="text-[18px] font-bold text-white truncate drop-shadow-lg">{code}</span>
                                 </div>

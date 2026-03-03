@@ -7,6 +7,7 @@ import (
 	"ticpin-backend/config"
 	"ticpin-backend/models"
 	couponsvc "ticpin-backend/services/coupon"
+	"ticpin-backend/utils"
 
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson"
@@ -15,30 +16,18 @@ import (
 
 func CreateCoupon(c *fiber.Ctx) error {
 	var input struct {
-		Code          string   `json:"code"`
+		Code          string   `json:"code" validate:"required"`
 		Description   string   `json:"description"`
-		Category      string   `json:"category"`
-		DiscountType  string   `json:"discount_type"`
-		DiscountValue float64  `json:"discount_value"`
+		Category      string   `json:"category" validate:"required,oneof=event play dining"`
+		DiscountType  string   `json:"discount_type" validate:"required,oneof=percent flat"`
+		DiscountValue float64  `json:"discount_value" validate:"required,gt=0"`
 		UserIDs       []string `json:"user_ids"`
 		ValidFrom     string   `json:"valid_from"`
 		ValidUntil    string   `json:"valid_until"`
 		MaxUses       int      `json:"max_uses"`
 	}
-	if err := c.BodyParser(&input); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid request body: " + err.Error()})
-	}
-	if input.Code == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "code is required"})
-	}
-	if input.Category != "event" && input.Category != "play" && input.Category != "dining" {
-		return c.Status(400).JSON(fiber.Map{"error": "category must be 'event', 'play', or 'dining'"})
-	}
-	if input.DiscountType != "percent" && input.DiscountType != "flat" {
-		return c.Status(400).JSON(fiber.Map{"error": "discount_type must be 'percent' or 'flat'"})
-	}
-	if input.DiscountValue <= 0 {
-		return c.Status(400).JSON(fiber.Map{"error": "discount_value must be > 0"})
+	if err := utils.ParseAndValidate(c, &input); err != nil {
+		return err
 	}
 
 	var userObjIDs []primitive.ObjectID
@@ -88,11 +77,17 @@ func CreateCoupon(c *fiber.Ctx) error {
 }
 
 func ListCoupons(c *fiber.Ctx) error {
-	coupons, err := couponsvc.GetAll()
+	limit := c.QueryInt("limit", 20)
+	after := c.Query("after")
+
+	coupons, nextCursor, err := couponsvc.GetAll(limit, after)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	return c.JSON(coupons)
+	return c.JSON(fiber.Map{
+		"data":        coupons,
+		"next_cursor": nextCursor,
+	})
 }
 
 func GetCouponsByCategory(c *fiber.Ctx) error {

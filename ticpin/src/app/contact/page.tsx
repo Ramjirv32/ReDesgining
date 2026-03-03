@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import React, { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 
@@ -28,7 +29,14 @@ export default function ContactComponent() {
         <div className="min-h-screen bg-white font-[family-name:var(--font-anek-latin)]">
             {/* Header / Logo Section */}
             <header className="w-full h-20 flex items-center justify-center border-b border-[#D9D9D9]">
-                <img src="/ticpin-logo-black.png" alt="TICPIN" className="h-8 md:h-9 object-contain" />
+                <div className="relative h-8 md:h-9 w-[159px]">
+                    <Image
+                        src="/ticpin-logo-black.png"
+                        alt="TICPIN"
+                        fill
+                        className="object-contain"
+                    />
+                </div>
             </header>
 
             <main className="w-full py-16 mt-[-10px]">

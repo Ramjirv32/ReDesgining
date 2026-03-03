@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface EventCardProps {
   id?: string;
@@ -31,13 +32,14 @@ export default function EventCard({
           border: '1px solid #686868'
         }}
       >
-        <div className="flex-shrink-0 bg-gray-100 overflow-hidden flex items-center justify-center"
+        <div className="flex-shrink-0 bg-gray-100 overflow-hidden flex items-center justify-center relative"
           style={{ height: '380px' }}
         >
-          <img
+          <Image
             src={image}
             alt={name}
-            className="w-full h-full object-contain"
+            fill
+            className="object-contain"
           />
         </div>
         <div className="p-4 flex flex-col flex-1">

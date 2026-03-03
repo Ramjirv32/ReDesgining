@@ -39,8 +39,17 @@ const anekTamilCondensed = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Ticpin - Explore Dining, Events, Play",
-  description: "Your gateway to world-class sports and entertainment.",
+  title: "Ticpin | Explore Dining, Events, & Play Venues",
+  description: "Your ultimate gateway to world-class sports, entertainment, and dining. Book events, find sports venues, and discover the best dining experiences on Ticpin.",
+  keywords: ["Ticpin", "Dining", "Events", "Sports", "Booking", "Entertainment"],
+  authors: [{ name: "Ticpin Team" }],
+  openGraph: {
+    title: "Ticpin | Explore Dining, Events, & Play Venues",
+    description: "Your ultimate gateway to world-class sports, entertainment, and dining.",
+    url: "https://ticpin.com",
+    siteName: "Ticpin",
+    type: "website",
+  }
 };
 
 export default function RootLayout({

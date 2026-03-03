@@ -1,12 +1,14 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface SportCategoryCardProps {
     name: string;
     image: string;
     href?: string;
+    priority?: boolean;
 }
 
-export default function SportCategoryCard({ name, image, href }: SportCategoryCardProps) {
+export default function SportCategoryCard({ name, image, href, priority }: SportCategoryCardProps) {
     const content = (
         <div
             className="w-[172px] h-[235px] rounded-[30px] border border-transparent p-4 flex flex-col items-center justify-between cursor-pointer shadow-sm group mx-auto"
@@ -18,10 +20,13 @@ export default function SportCategoryCard({ name, image, href }: SportCategoryCa
                 {name}
             </span>
             <div className="relative w-full aspect-square flex items-center justify-center">
-                <img
+                <Image
                     src={image}
                     alt={name}
-                    className="w-[120px] h-[100px] object-contain drop-shadow-md scale-150"
+                    width={180}
+                    height={150}
+                    className="object-contain drop-shadow-md scale-150"
+                    priority={priority}
                 />
             </div>
         </div>

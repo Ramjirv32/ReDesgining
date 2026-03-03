@@ -1,0 +1,13 @@
+package paymentroutes
+
+import (
+	paymentctrl "ticpin-backend/controller/payment"
+	"ticpin-backend/middleware"
+
+	"github.com/gofiber/fiber/v2"
+)
+
+func PaymentRoutes(app *fiber.App) {
+
+	app.Post("/api/payment/create-order", middleware.RequireUserAuth, paymentctrl.CreateOrderHandler)
+}

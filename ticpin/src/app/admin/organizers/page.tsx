@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { adminApi, OrganizerListItem, OrganizerDetail, ListingStatus } from '@/lib/api/admin';
 import {
@@ -85,14 +86,61 @@ function OrganizerDetailView({ organizerId, onClose, onStatusChange }: {
                 <div className="flex-1 bg-white rounded-[40px] shadow-sm p-12 flex gap-10 overflow-hidden">
                     {/* Left: Identity */}
                     <div className="w-1/4 flex flex-col">
-                        <div className="bg-[#EEEDFC] rounded-[30px] flex-1 flex flex-col items-center justify-center p-10 shadow-inner">
-                            <div className="w-36 h-36 bg-white rounded-full flex items-center justify-center shadow-lg mb-6">
-                                <User size={72} className="text-[#AC9BF7]" />
+                        <div className="bg-[#EEEDFC] rounded-[30px] flex-1 flex flex-col items-center p-10 shadow-inner overflow-y-auto custom-scrollbar">
+                            <div className="w-36 h-36 bg-white rounded-full flex items-center justify-center shadow-lg mb-6 overflow-hidden flex-shrink-0">
+                                {detail.profile?.profilePhoto ? (
+                                    <Image src={detail.profile.profilePhoto} alt="Profile" fill className="object-cover" />
+                                ) : (
+                                    <User size={72} className="text-[#AC9BF7]" />
+                                )}
                             </div>
-                            <h3 className="text-[24px] font-bold text-black text-center break-all px-4 leading-tight">
-                                {detail.organizer.email}
+                            <h3 className="text-[22px] font-bold text-black text-center break-words w-full leading-tight">
+                                {detail.profile?.name || 'NAME NOT SET'}
                             </h3>
-                            <p className="text-[18px] text-[#686868] mt-2 font-medium">ID: {detail.organizer.id.slice(-8).toUpperCase()}</p>
+                            <p className="text-[16px] text-[#686868] mt-1 break-all text-center w-full">{detail.organizer.email}</p>
+                            <p className="text-[14px] text-[#686868] mt-2 font-medium bg-white/50 px-3 py-1 rounded-full border border-[#AC9BF7]/20">
+                                ID: {detail.organizer.id.toUpperCase()}
+                            </p>
+
+                            {/* Additional Profile Info */}
+                            <div className="mt-8 pt-8 border-t border-black/10 w-full space-y-5">
+                                <div className="flex flex-col">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Phone size={16} className="text-[#AC9BF7]" />
+                                        <span className="text-[14px] font-medium text-[#686868]">Phone</span>
+                                    </div>
+                                    <span className="text-[16px] font-bold text-black">{detail.profile?.phone || 'N/A'}</span>
+                                </div>
+
+                                <div className="flex flex-col">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Calendar size={16} className="text-[#AC9BF7]" />
+                                        <span className="text-[14px] font-medium text-[#686868]">Member Since</span>
+                                    </div>
+                                    <span className="text-[16px] font-bold text-black">
+                                        {detail.organizer.createdAt ? new Date(detail.organizer.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
+                                    </span>
+                                </div>
+
+                                <div className="flex flex-col">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Hash size={16} className="text-[#AC9BF7]" />
+                                        <span className="text-[14px] font-medium text-[#686868]">Location</span>
+                                    </div>
+                                    <span className="text-[16px] font-bold text-black leading-tight">
+                                        {[detail.profile?.district, detail.profile?.state, detail.profile?.country]
+                                            .filter(Boolean).join(', ') || 'N/A'}
+                                    </span>
+                                </div>
+
+                                <div className="flex flex-col">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <div className="w-4 h-4 rounded-full border-2 border-[#AC9BF7]" />
+                                        <span className="text-[14px] font-medium text-[#686868]">Address</span>
+                                    </div>
+                                    <p className="text-[14px] font-bold text-black leading-relaxed">{detail.profile?.address || 'N/A'}</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -113,6 +161,8 @@ function OrganizerDetailView({ organizerId, onClose, onStatusChange }: {
                                     <div className="grid grid-cols-2 gap-x-10 gap-y-4">
                                         {[
                                             { label: 'Org Type', value: setup.orgType },
+                                            { label: 'Phone', value: setup.phone },
+                                            { label: 'GST Number', value: setup.gstNumber },
                                             { label: 'PAN Card', value: setup.pan },
                                             { label: 'PAN Name', value: setup.panName },
                                             { label: 'DOB', value: setup.panDOB },
@@ -125,7 +175,7 @@ function OrganizerDetailView({ organizerId, onClose, onStatusChange }: {
                                         ].map((row, i) => (
                                             <div key={i} className="flex flex-col border-b border-[#AEAEAE] pb-1.5">
                                                 <span className="text-[16px] font-medium text-[#686868]">{row.label}</span>
-                                                <span className="text-[18px] font-bold text-black mt-0.5">{"{"}{row.value || 'N/A'}{"}"}</span>
+                                                <span className="text-[18px] font-bold text-black mt-0.5">{row.value || 'N/A'}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -230,15 +280,17 @@ function OrganizerModerationContent() {
     const fetchOrganizers = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await adminApi.listOrganizers(page, 50);
-            setOrganizers(data.organizers);
-            setTotalPages(data.pages);
+            // Map 'all' to empty string for backend, 'pending'/'approved' as is.
+            const statusFilter = activeTab === 'all' ? undefined : activeTab;
+            const data = await adminApi.listOrganizers(page, 50, statusFilter);
+            setOrganizers(data.organizers || []);
+            setTotalPages(data.pages || 1);
         } catch (err) {
             // error suppressed
         } finally {
             setLoading(false);
         }
-    }, [page]);
+    }, [page, activeTab]);
 
     useEffect(() => { if (authChecked) fetchOrganizers(); }, [fetchOrganizers, authChecked]);
 
@@ -254,17 +306,8 @@ function OrganizerModerationContent() {
 
     if (!authChecked) return null;
 
-    const filtered = organizers.filter(org => {
-        const statuses = Object.entries(org.categoryStatus || {});
-        if (activeTab === 'all') return true;
-
-        // Hide organizers with NO APPLICATIONS if in Pending or Approved tabs
-        if (statuses.length === 0) return false;
-
-        if (activeTab === 'pending') return statuses.some(([_, s]) => s === 'pending');
-        if (activeTab === 'approved') return statuses.some(([_, s]) => s === 'approved');
-        return true;
-    });
+    // Server-side filtering rendered client-side filtering redundant
+    const filtered = organizers || [];
 
     return (
         <div className="min-h-screen relative overflow-x-hidden flex flex-col" style={{ background: 'rgba(255, 241, 168, 0.1)', zoom: 0.85 }}>

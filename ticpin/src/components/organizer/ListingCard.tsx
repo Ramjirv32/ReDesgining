@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Pencil, Trash2, Clock, CheckCircle, XCircle, AlertCircle, ImageOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 export interface Listing {
     id: string;
@@ -59,10 +60,11 @@ export default function ListingCard({ listing, vertical, onDelete, accentColor }
             {/* Image */}
             <div className="relative w-full aspect-[3/2] bg-zinc-100 overflow-hidden">
                 {listing.portrait_image_url || listing.landscape_image_url ? (
-                    <img
-                        src={listing.landscape_image_url || listing.portrait_image_url}
+                    <Image
+                        src={listing.landscape_image_url || listing.portrait_image_url || ''}
                         alt={listing.name}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        fill
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                 ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-zinc-300">

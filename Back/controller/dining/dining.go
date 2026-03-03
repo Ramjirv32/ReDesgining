@@ -7,11 +7,17 @@ import (
 )
 
 func GetAllDinings(c *fiber.Ctx) error {
-	dinings, err := diningservice.GetAll()
+	limit := c.QueryInt("limit", 20)
+	after := c.Query("after")
+
+	dinings, nextCursor, err := diningservice.GetAll(limit, after)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	return c.JSON(dinings)
+	return c.JSON(fiber.Map{
+		"data":        dinings,
+		"next_cursor": nextCursor,
+	})
 }
 
 func GetDiningByID(c *fiber.Ctx) error {

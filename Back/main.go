@@ -1,7 +1,12 @@
 package main
 
 import (
-	"log"
+	"context"
+	stdlog "log"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"ticpin-backend/config"
 	adminroutes "ticpin-backend/routes/admin"
@@ -13,27 +18,42 @@ import (
 	organizerEvents "ticpin-backend/routes/organizer/events"
 	organizerplay "ticpin-backend/routes/organizer/play"
 	passroutes "ticpin-backend/routes/pass"
+	paymentroutes "ticpin-backend/routes/payment"
 	playroutes "ticpin-backend/routes/play"
 	"ticpin-backend/routes/profile"
 	"ticpin-backend/routes/user"
+	"ticpin-backend/worker"
 
+	"github.com/go-playground/validator/v10"
 	json "github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v2/middleware/limiter"
 	fiberRecover "github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/joho/godotenv"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
+
+var validate = validator.New()
 
 func main() {
 	godotenv.Load()
 
+	worker.Init(5, 100)
+
 	if err := config.ConnectDB(); err != nil {
-		log.Fatal("MongoDB:", err)
+		stdlog.Fatal("MongoDB:", err)
 	}
 
 	if err := config.InitCloudinary(); err != nil {
-		log.Fatal("Cloudinary:", err)
+		stdlog.Fatal("Cloudinary:", err)
+	}
+
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	if os.Getenv("ENV") != "production" {
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	}
 
 	app := fiber.New(fiber.Config{
@@ -41,15 +61,48 @@ func main() {
 		JSONDecoder: json.Unmarshal,
 	})
 
-	app.Use(logger.New())
-	app.Use(fiberRecover.New())
+	app.Use(func(c *fiber.Ctx) error {
+		start := time.Now()
+		err := c.Next()
+		stop := time.Now()
 
+		log.Info().
+			Str("method", c.Method()).
+			Str("path", c.Path()).
+			Int("status", c.Response().StatusCode()).
+			Dur("latency", stop.Sub(start)).
+			Str("ip", c.IP()).
+			Msg("HTTP Request")
+
+		return err
+	})
+	app.Use(fiberRecover.New())
+	app.Use(compress.New(compress.Config{Level: compress.LevelDefault}))
+
+	app.Use(limiter.New(limiter.Config{
+		Max:        60,
+		Expiration: 1 * time.Minute,
+		LimitReached: func(c *fiber.Ctx) error {
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+				"error": "rate limit exceeded, please try again later",
+			})
+		},
+	}))
+
+	corsOrigins := os.Getenv("CORS_ORIGINS")
+	if corsOrigins == "" {
+		corsOrigins = "http://localhost:3000,http://localhost:9000"
+	}
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "http://localhost:3000,http://localhost:9000",
+		AllowOrigins:     corsOrigins,
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
 		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
 		AllowCredentials: true,
 	}))
+
+	app.Get("/health", func(c *fiber.Ctx) error {
+		return c.Status(200).JSON(fiber.Map{"status": "ok"})
+	})
 
 	organizer.OrganizerRoutes(app)
 	organizerplay.PlayRoutes(app)
@@ -65,10 +118,44 @@ func main() {
 
 	adminroutes.AdminRoutes(app)
 	bookingroutes.BookingRoutes(app)
+	paymentroutes.PaymentRoutes(app)
 
-	app.Get("/api/debug/routes", func(c *fiber.Ctx) error {
-		return c.JSON(app.Stack())
+	app.Get("/api/health", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{"status": "ok"})
 	})
 
-	log.Fatal(app.Listen(":9000"))
+	if os.Getenv("ENV") == "development" {
+		app.Get("/api/debug/routes", func(c *fiber.Ctx) error {
+			return c.JSON(app.Stack())
+		})
+	}
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "9000"
+	}
+
+	go func() {
+		if err := app.Listen(":" + port); err != nil {
+			log.Printf("Listen: %v", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	<-quit
+
+	log.Info().Msg("Shutting down server...")
+	if err := app.ShutdownWithTimeout(10 * time.Second); err != nil {
+		stdlog.Printf("Shutdown: %v", err)
+	}
+
+	if config.MongoClient != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := config.MongoClient.Disconnect(ctx); err != nil {
+			stdlog.Printf("MongoDB Disconnect: %v", err)
+		}
+	}
+	log.Info().Msg("Server exited")
 }

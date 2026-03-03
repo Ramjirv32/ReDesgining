@@ -1,3 +1,5 @@
+import Image from 'next/image';
+
 interface FilterButtonProps {
   label: string;
   active?: boolean;
@@ -18,11 +20,11 @@ export default function FilterButton({ label, active = false, onClick }: FilterB
       }}
     >
       {label === 'Filters' && (
-        <img src="/filter 1.png" alt="Filter" className="w-[18px] h-[18px] object-contain" />
+        <Image src="/filter 1.png" alt="Filter" width={18} height={18} className="object-contain" />
       )}
       {label}
       {label === 'Filters' && (
-        <img src="/filter arrow.svg" alt="arrow" className="w-[10px] h-[6px] ml-1" />
+        <Image src="/filter arrow.svg" alt="arrow" width={10} height={6} className="ml-1" />
       )}
     </button>
   );

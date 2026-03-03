@@ -6,23 +6,33 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+type Court struct {
+	ID       primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	Name     string             `bson:"name" json:"name"`
+	Type     string             `bson:"type" json:"type"`
+	Price    float64            `bson:"price" json:"price"`
+	ImageURL string             `bson:"image_url" json:"image_url"`
+}
+
 type Play struct {
 	ID                 primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	OrganizerID        primitive.ObjectID `bson:"organizer_id" json:"organizer_id"`
-	Name               string             `bson:"name" json:"name"`
-	Description        string             `bson:"description" json:"description"`
-	Category           string             `bson:"category" json:"category"`
+	Name               string             `bson:"name" json:"name" validate:"required"`
+	Description        string             `bson:"description" json:"description" validate:"required"`
+	Category           string             `bson:"category" json:"category" validate:"required"`
 	SubCategory        string             `bson:"sub_category" json:"sub_category"`
-	Date               time.Time          `bson:"date" json:"date"`
-	Time               string             `bson:"time" json:"time"`
+	Date               time.Time          `bson:"date" json:"date" validate:"required"`
+	Time               string             `bson:"time" json:"time" validate:"required"`
 	Duration           string             `bson:"duration" json:"duration"`
-	City               string             `bson:"city" json:"city"`
-	VenueName          string             `bson:"venue_name" json:"venue_name"`
-	VenueAddress       string             `bson:"venue_address" json:"venue_address"`
+	Courts             []Court            `bson:"courts" json:"courts" validate:"required,min=1"`
+	City               string             `bson:"city" json:"city" validate:"required"`
+	VenueName          string             `bson:"venue_name" json:"venue_name" validate:"required"`
+	VenueAddress       string             `bson:"venue_address" json:"venue_address" validate:"required"`
 	GoogleMapLink      string             `bson:"google_map_link" json:"google_map_link"`
 	InstagramLink      string             `bson:"instagram_link" json:"instagram_link"`
 	PortraitImageURL   string             `bson:"portrait_image_url" json:"portrait_image_url"`
 	LandscapeImageURL  string             `bson:"landscape_image_url" json:"landscape_image_url"`
+	SecondaryBannerURL string             `bson:"secondary_banner_url" json:"secondary_banner_url"`
 	CardVideoURL       string             `bson:"card_video_url" json:"card_video_url"`
 	GalleryURLs        []string           `bson:"gallery_urls" json:"gallery_urls"`
 	Guide              EventGuide         `bson:"guide" json:"guide"`

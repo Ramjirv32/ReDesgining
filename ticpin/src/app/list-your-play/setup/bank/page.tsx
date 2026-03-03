@@ -25,7 +25,7 @@ function BankDetailsContent() {
     useEffect(() => {
         const session = getOrganizerSession();
         if (!session) { router.replace('/list-your-play/Login'); return; }
-        organizerApi.getExistingSetup(session.id)
+        organizerApi.getExistingSetup(session.id, 'play')
             .then(setup => {
                 if (setup?.bankAccountNo) {
                     setAccountHolder(setup.accountHolder ?? '');

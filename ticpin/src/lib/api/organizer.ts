@@ -24,6 +24,7 @@ export interface ExistingSetup {
   bankIfsc?: string;
   bankName?: string;
   accountHolder?: string;
+  gstNumber?: string;
   backupEmail?: string;
   backupPhone?: string;
 }
@@ -51,8 +52,8 @@ export const organizerApi = {
     request<CategoryStatusResponse>(`/organizer/${organizerId}/status`),
 
   /** GET /api/organizer/:id/existing-setup — returns PAN+bank from any existing vertical setup */
-  getExistingSetup: (organizerId: string) =>
-    request<ExistingSetup>(`/organizer/${organizerId}/existing-setup`),
+  getExistingSetup: (organizerId: string, category: 'events' | 'dining' | 'play') =>
+    request<ExistingSetup>(`/organizer/${organizerId}/existing-setup?category=${category}`),
 
   /** GET /api/organizer/profile/:id — returns organizer profile */
   getProfile: (organizerId: string) =>
@@ -81,6 +82,17 @@ export const organizerApi = {
     if (!res.ok) throw new Error(data.error ?? 'Upload failed');
     return data.url as string;
   },
+
+  /** POST /api/organizer/verification/verify-pan — verifies PAN card details */
+  verifyPAN: (pan: string, name: string, dob: string) =>
+    request<{ status: string; message: string; data: any }>('/organizer/verification/verify-pan', {
+      method: 'POST',
+      body: JSON.stringify({ pan, name, dob }),
+    }),
+
+  /** GET /api/organizer/verification/fetch-gst — fetches associated GSTINs for a PAN */
+  fetchGST: (pan: string) =>
+    request<{ status: string; data: { gstin_list: any[] } }>(`/organizer/verification/fetch-gst?pan=${pan}`),
 
   /** POST /api/organizer/send-backup-otp — sends OTP to the backup email */
   sendBackupOTP: (organizerId: string, email: string, category: string) =>

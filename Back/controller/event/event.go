@@ -9,11 +9,21 @@ import (
 func GetAllEvents(c *fiber.Ctx) error {
 	category := c.Query("category")
 	artist := c.Query("artist")
-	events, err := eventservice.GetAll(category, artist)
+	limit, _ := c.ParamsInt("limit", 20)
+	if l := c.QueryInt("limit"); l > 0 {
+		limit = l
+	}
+	after := c.Query("after")
+
+	events, nextCursor, err := eventservice.GetAll(category, artist, limit, after)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	return c.JSON(events)
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"data":        events,
+		"next_cursor": nextCursor,
+	})
 }
 
 func GetEventByID(c *fiber.Ctx) error {

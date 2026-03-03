@@ -1,11 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { X } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
-import AuthModal from '@/components/modals/AuthModal';
-import LocationModal from '@/components/modals/LocationModal';
+import dynamic from 'next/dynamic';
+const AuthModal = dynamic(() => import('@/components/modals/AuthModal'), { ssr: false });
+const LocationModal = dynamic(() => import('@/components/modals/LocationModal'), { ssr: false });
 import { getOrganizerSession, clearOrganizerSession } from '@/lib/auth/organizer';
 import type { OrganizerSession } from '@/lib/auth/organizer';
 import { useUserSession, clearUserSession } from '@/lib/auth/user';
@@ -15,9 +17,59 @@ export default function Navbar() {
     const router = useRouter();
     const [isAuthOpen, setIsAuthOpen] = useState(false);
     const [isLocationOpen, setIsLocationOpen] = useState(false);
-    const [currentLocation, setCurrentLocation] = useState('Location Name');
+    const [currentLocation, setCurrentLocation] = useState('');
     const [isSearchVisible, setIsSearchVisible] = useState(false);
     const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+
+    const saveLocation = (loc: string) => {
+        setCurrentLocation(loc);
+        localStorage.setItem('ticpin_location', loc);
+        window.dispatchEvent(new CustomEvent('location-change', { detail: loc }));
+    };
+
+    const clearLocation = () => {
+        setCurrentLocation('');
+        localStorage.removeItem('ticpin_location');
+        window.dispatchEvent(new CustomEvent('location-change', { detail: '' }));
+    };
+
+    useEffect(() => {
+        // 1. Check if user already selected a city manually
+        const saved = localStorage.getItem('ticpin_location');
+        if (saved) {
+            setCurrentLocation(saved);
+            return;
+        }
+        // 2. Otherwise auto-detect via GPS
+        if (!navigator.geolocation) {
+            setCurrentLocation('');
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            async ({ coords }) => {
+                try {
+                    const res = await fetch(
+                        `https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`,
+                        { headers: { 'Accept-Language': 'en' } }
+                    );
+                    const data = await res.json();
+                    const city =
+                        data.address?.city ||
+                        data.address?.town ||
+                        data.address?.village ||
+                        data.address?.county ||
+                        '';
+                    const state = data.address?.state || '';
+                    const label = city && state ? `${city}, ${state}` : (city || state || '');
+                    if (label) saveLocation(label);
+                } catch {
+                    // silently fail
+                }
+            },
+            () => { /* permission denied */ }
+        );
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
     const [authView, setAuthView] = useState<'number' | 'otp' | 'profile' | 'location'>('number');
     const [session, setSession] = useState<OrganizerSession | null>(null);
     const userSession = useUserSession();
@@ -101,11 +153,14 @@ export default function Navbar() {
                 {/* Left: Logo, Explore and Tabs */}
                 <div className="flex items-center gap-3 md:gap-8 min-w-max">
                     <div className="flex items-center gap-3 md:gap-6 relative">
-                        <Link href="/dining" className={isListingPage ? "flex items-center" : "border-r border-zinc-200 pr-3 md:pr-6 flex items-center"}>
-                            <img
+                        <Link href="/" className={isListingPage ? "flex items-center" : "border-r border-zinc-200 pr-3 md:pr-6 flex items-center"}>
+                            <Image
                                 src="/ticpin-logo-black.png"
                                 alt="TicPin Logo"
+                                width={120}
+                                height={28}
                                 className="h-4 md:h-7 w-auto object-contain"
+                                priority
                             />
                         </Link>
                     </div>
@@ -121,11 +176,10 @@ export default function Navbar() {
                                         href={item.href}
                                         className="px-4 py-1 text-[18px] font-medium transition-all duration-300 whitespace-nowrap"
                                         style={isActive ? {
-                                            fontFamily: 'Anek Latin',
                                             background: item.name === 'Play' ? 'rgba(231, 194, 0, 0.15)' : 'rgba(83, 49, 234, 0.15)',
                                             color: 'black',
                                             borderRadius: '30px'
-                                        } : { fontFamily: 'Anek Latin', color: 'black' }}
+                                        } : { color: 'black' }}
                                     >
                                         {item.name}
                                     </Link>
@@ -139,14 +193,25 @@ export default function Navbar() {
                 <div className="flex items-center gap-3 md:gap-6 justify-end">
                     {!isListingPage && !isOrganizerDashboard && !isSearchVisible ? (
                         <>
-                            <div
-                                onClick={() => setIsLocationOpen(true)}
-                                className="hidden lg:flex items-center gap-2 cursor-pointer hover:text-primary transition-colors min-w-max"
-                            >
-                                <img src="/loc icon.svg" alt="Location" className="w-4.5 h-4.5 object-contain" />
-                                <span className="text-[16px] font-medium text-black" style={{ fontFamily: 'Anek Latin' }}>
-                                    {currentLocation}
-                                </span>
+                            <div className="hidden lg:flex items-center gap-1 min-w-max">
+                                <div
+                                    onClick={() => setIsLocationOpen(true)}
+                                    className="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors"
+                                >
+                                    <Image src="/loc icon.svg" alt="Location" width={18} height={18} className="w-4.5 h-4.5 object-contain" />
+                                    <span className="text-[16px] font-medium text-black">
+                                        {currentLocation || 'Set Location'}
+                                    </span>
+                                </div>
+                                {currentLocation && (
+                                    <button
+                                        onClick={e => { e.stopPropagation(); clearLocation(); }}
+                                        className="ml-1 p-0.5 rounded-full hover:bg-zinc-100 text-zinc-400 hover:text-zinc-700 transition-colors"
+                                        aria-label="Clear location"
+                                    >
+                                        <X size={13} />
+                                    </button>
+                                )}
                             </div>
                             <div
                                 onClick={() => setIsSearchVisible(true)}
@@ -204,13 +269,13 @@ export default function Navbar() {
                                     {userSession.name?.charAt(0) || 'U'}
                                 </span>
                             ) : (
-                                <img src="/profile icon.svg" alt="Profile" className="w-5 h-5 md:w-6 md:h-6 object-contain" />
+                                <Image src="/profile icon.svg" alt="Profile" width={24} height={24} className="w-5 h-5 md:w-6 md:h-6 object-contain" />
                             )}
                         </div>
 
                         {/* User dropdown */}
                         {!session && userSession && isProfileMenuOpen && (
-                            <div className="absolute right-0 top-[calc(100%+8px)] w-52 bg-white border border-zinc-200 rounded-[16px] shadow-xl z-50 py-2 font-[family-name:var(--font-anek-latin)]">
+                            <div className="absolute right-0 top-[calc(100%+8px)] w-52 bg-white border border-zinc-200 rounded-[16px] shadow-xl z-50 py-2">
                                 <div className="px-4 py-2 border-b border-zinc-100">
                                     <p className="text-[13px] font-semibold text-black truncate">{userSession.name || 'Member'}</p>
                                     <p className="text-[12px] text-[#686868] truncate">{userSession.phone}</p>
@@ -283,7 +348,11 @@ export default function Navbar() {
                 onClose={() => setIsAuthOpen(false)}
                 initialView={authView}
             />
-            <LocationModal isOpen={isLocationOpen} onClose={() => setIsLocationOpen(false)} />
+            <LocationModal
+                isOpen={isLocationOpen}
+                onClose={() => setIsLocationOpen(false)}
+                onSelect={(city) => saveLocation(city)}
+            />
         </header>
     );
 }

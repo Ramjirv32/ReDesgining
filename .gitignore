@@ -1,17 +1,18 @@
 # Backend
-Backend/bin/
-Backend/.env
-Backend/.env.local
-Backend/vendor/
+Back/bin/
+Back/.env
+Back/.env.local
+Back/vendor/
+Secure key API.txt
 
 # Frontend
-ticpindemo/node_modules/
-ticpindemo/.next/
-ticpindemo/.env.local
-ticpindemo/out/
-ticpindemo/build/
-ticpindemo/.env*.local
-ticpindemo/dist/
+ticpin/node_modules/
+ticpin/.next/
+ticpin/.env.local
+ticpin/out/
+ticpin/build/
+ticpin/.env*.local
+ticpin/dist/
 
 # IDE
 .vscode/

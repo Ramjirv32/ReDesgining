@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { ChevronDown, X, Check } from 'lucide-react';
 import { adminApi, AdminListing, OfferRecord } from '@/lib/api/admin';
 
@@ -341,7 +342,9 @@ export default function CreateOfferForm({ onBack, editData }: { onBack: () => vo
                             className="w-full h-[100px] border-2 border-dashed border-[#D9D9D9] rounded-2xl flex items-center justify-center gap-3 hover:border-purple-300 transition-all bg-[#F9F9F9]"
                         >
                             {imagePreview ? (
-                                <img src={imagePreview} alt="Preview" className="max-h-[90px] max-w-[90px] object-contain rounded" />
+                                <div className="relative w-full h-full p-2">
+                                    <Image src={imagePreview} alt="Preview" fill className="object-contain" />
+                                </div>
                             ) : (
                                 <div className="text-center">
                                     <div className="text-[13px] text-gray-500">Click to upload image</div>

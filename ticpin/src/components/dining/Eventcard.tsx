@@ -1,7 +1,5 @@
-'use client';
-
-import { useState } from 'react';
 import { MapPin, Calendar, Star } from 'lucide-react';
+import Image from 'next/image';
 
 interface EventCardProps {
     image?: string;
@@ -24,8 +22,6 @@ export default function EventCard({
     subText,
     rating,
 }: EventCardProps) {
-    const [imgLoaded, setImgLoaded] = useState(false);
-
     return (
         <div
             className={`group relative overflow-hidden rounded-[15px] border border-[#686868] bg-white 
@@ -37,12 +33,11 @@ export default function EventCard({
             {/* Image Placeholder Area */}
             <div className="relative h-[252px] bg-zinc-100 overflow-hidden">
                 {image ? (
-                    <img
+                    <Image
                         src={image}
                         alt={title || 'Event'}
-                        className={`h-full w-full object-cover transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'
-                            }`}
-                        onLoad={() => setImgLoaded(true)}
+                        fill
+                        className="object-cover"
                     />
                 ) : (
                     <div className="flex h-full w-full items-center justify-center bg-zinc-100">

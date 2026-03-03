@@ -38,6 +38,9 @@ type OrganizerSetup struct {
 	PANCardURL    string             `bson:"panCardUrl" json:"panCardUrl"`
 	BackupEmail   string             `bson:"backupEmail" json:"backupEmail"`
 	BackupPhone   string             `bson:"backupPhone" json:"backupPhone"`
+	PANVerified   bool               `bson:"panVerified" json:"panVerified"`
+	VerifiedName  string             `bson:"verifiedName" json:"verifiedName"`
+	GSTList       []string           `bson:"gstList" json:"gstList"`
 	CreatedAt     time.Time          `bson:"createdAt" json:"createdAt"`
 	UpdatedAt     time.Time          `bson:"updatedAt" json:"updatedAt"`
 }

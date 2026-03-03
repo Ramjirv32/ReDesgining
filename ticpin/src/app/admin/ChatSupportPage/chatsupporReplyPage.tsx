@@ -47,18 +47,19 @@ const ChatSupportReplyContent = () => {
                 <div className="absolute top-[155px] left-[39px] w-[1363px] h-[510px] bg-[#F0F0F0] rounded-[30px]">
 
                     {/* Assistant Avatar Background (Ellipse 29) */}
-                    <div className="absolute left-[94px] top-[72px] w-[38px] h-[38px] bg-[#E5E0FC] rounded-full flex items-center justify-center overflow-hidden">
-                        <img src="/admin panel/chatSupport/Ellipse 29.svg" alt="" className="w-full h-full object-cover" />
+                    <div className="absolute left-[94px] top-[72px] w-[38px] h-[38px] bg-[#E5E0FC] rounded-full flex items-center justify-center overflow-hidden relative">
+                        <Image src="/admin panel/chatSupport/Ellipse 29.svg" alt="" fill className="object-cover" />
                     </div>
 
                     {/* Message Bubble Container - Aligned to match the 188px selection box below */}
                     <div className="absolute left-[138px] top-[72px] flex items-stretch">
                         {/* Bubble Left Part (The Tail/Tip) */}
                         <div className="relative w-[13px] flex flex-col items-end">
-                            <img
+                            <Image
                                 src="/admin panel/chatSupport/bubble-whole-left-icon.svg"
                                 alt=""
-                                className="w-[13px] h-full object-cover"
+                                fill
+                                className="object-cover"
                             />
                         </div>
 
@@ -101,11 +102,11 @@ const ChatSupportReplyContent = () => {
                     {/* Input Area Group (Rectangle 284) - Shifted down for the taller container */}
                     <div className="absolute left-[120px] top-[440px] flex items-center gap-[18px]">
                         {/* Plus Icon Container (x in CSS) */}
-                        <div className="w-[18px] h-[18px] flex items-center justify-center cursor-pointer transform rotate-90">
-                            <img
+                        <div className="w-[18px] h-[18px] flex items-center justify-center cursor-pointer transform rotate-90 relative">
+                            <Image
                                 src="/admin panel/chatSupport/plus-icon.svg"
                                 alt="Add"
-                                className="w-full h-full"
+                                fill
                             />
                         </div>
 
@@ -119,11 +120,12 @@ const ChatSupportReplyContent = () => {
                         </div>
 
                         {/* Send Button (Ellipse 30 & send) */}
-                        <div className="w-[44px] h-[44px] bg-[#D9D9D9] rounded-full flex items-center justify-center cursor-pointer hover:bg-zinc-300 transition-colors">
-                            <img
+                        <div className="w-[44px] h-[44px] bg-[#D9D9D9] rounded-full flex items-center justify-center cursor-pointer hover:bg-zinc-300 transition-colors relative">
+                            <Image
                                 src="/admin panel/chatSupport/send-icon.svg"
                                 alt="Send"
-                                className="w-[24px] h-[24px]"
+                                width={24}
+                                height={24}
                             />
                         </div>
                     </div>
@@ -131,10 +133,11 @@ const ChatSupportReplyContent = () => {
 
                 {/* Bottom Info Banner (Rectangle 211) - Balanced position at top-[700px] */}
                 <div className="absolute top-[700px] left-1/2 -translate-x-1/2 w-[760px] h-[38px] bg-[rgba(83,49,234,0.15)] border border-[#5331EA] rounded-[10px] flex items-center px-[16px] gap-[10px]">
-                    <img
+                    <Image
                         src="/admin panel/chatSupport/info-circle-icon.svg"
                         alt=""
-                        className="w-[24px] h-[24px]"
+                        width={24}
+                        height={24}
                     />
                     <p className="text-[15px] font-medium leading-[16px] text-black whitespace-nowrap">
                         Can’t find an option that properly describes your issue? Email{" "}

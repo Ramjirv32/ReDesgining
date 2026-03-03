@@ -14,6 +14,7 @@ func EventsRoutes(app *fiber.App) {
 	events.Post("/signin", ctrl.EventsSignin)
 	events.Post("/verify", ctrl.VerifyOTP)
 	events.Post("/resend-otp", ctrl.ResendOTP)
+	events.Post("/google-auth", ctrl.GoogleAuth)
 
 	events.Post("/setup", middleware.RequireAuth, ctrl.EventsSetup)
 	events.Post("/submit-verification", middleware.RequireAuth, ctrl.SubmitVerification)

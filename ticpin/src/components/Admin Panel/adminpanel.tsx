@@ -89,7 +89,7 @@ export default function AdminPanel() {
                     <Card title="Push Notification" iconSrc="/admin panel/notification-icon.svg" href="/admin/push-notification" />
                     <Card title="Offers / Coupons" iconSrc="/admin panel/pricetag-icon.svg" href="/admin/offers" />
                     <Card title="Ticket" iconSrc="/admin panel/ticket-icon.svg" />
-                    <Card title="Organizer Approval" iconSrc="/admin panel/user-plus-icon.svg" href="/admin/organizer" />
+                    <Card title="Organizer Approval" iconSrc="/admin panel/user-plus-icon.svg" href="/admin/organizers" />
                 </div>
             </div>
 

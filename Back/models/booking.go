@@ -25,6 +25,8 @@ type Booking struct {
 	CouponCode     string             `bson:"coupon_code" json:"coupon_code"`
 	OfferID        primitive.ObjectID `bson:"offer_id,omitempty" json:"offer_id,omitempty"`
 	GrandTotal     float64            `bson:"grand_total" json:"grand_total"`
+	PaymentID      string             `bson:"payment_id,omitempty" json:"payment_id,omitempty"`
+	PaymentGateway string             `bson:"payment_gateway,omitempty" json:"payment_gateway,omitempty"`
 	Status         string             `bson:"status" json:"status"`
 	BookedAt       time.Time          `bson:"booked_at" json:"booked_at"`
 }
@@ -44,6 +46,8 @@ type PlayBooking struct {
 	CouponCode     string             `bson:"coupon_code" json:"coupon_code"`
 	OfferID        primitive.ObjectID `bson:"offer_id,omitempty" json:"offer_id,omitempty"`
 	GrandTotal     float64            `bson:"grand_total" json:"grand_total"`
+	PaymentID      string             `bson:"payment_id,omitempty" json:"payment_id,omitempty"`
+	PaymentGateway string             `bson:"payment_gateway,omitempty" json:"payment_gateway,omitempty"`
 	Status         string             `bson:"status" json:"status"`
 	BookedAt       time.Time          `bson:"booked_at" json:"booked_at"`
 }
@@ -63,6 +67,8 @@ type DiningBooking struct {
 	CouponCode     string             `bson:"coupon_code" json:"coupon_code"`
 	OfferID        primitive.ObjectID `bson:"offer_id,omitempty" json:"offer_id,omitempty"`
 	GrandTotal     float64            `bson:"grand_total" json:"grand_total"`
+	PaymentID      string             `bson:"payment_id,omitempty" json:"payment_id,omitempty"`
+	PaymentGateway string             `bson:"payment_gateway,omitempty" json:"payment_gateway,omitempty"`
 	Status         string             `bson:"status" json:"status"`
 	BookedAt       time.Time          `bson:"booked_at" json:"booked_at"`
 }

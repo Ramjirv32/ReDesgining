@@ -30,6 +30,7 @@ export default function AgreementPage() {
                 bankIfsc: data.bankIfsc,
                 bankName: data.bankName,
                 accountHolder: data.accountHolder,
+                gstNumber: data.gstNumber ?? '',
                 backupEmail: data.backupEmail,
                 backupPhone: data.backupPhone,
             });
@@ -40,6 +41,8 @@ export default function AgreementPage() {
             const msg = err instanceof Error ? err.message : 'Something went wrong';
             if (msg === 'pan_already_used') {
                 setError('This PAN card is already registered by another account.');
+            } else if (msg === 'pan_mismatch') {
+                setError('Your PAN card number must match the one provided in your previous setup.');
             } else {
                 setError(msg);
             }

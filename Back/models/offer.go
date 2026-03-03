@@ -8,11 +8,11 @@ import (
 
 type EventOffer struct {
 	ID            primitive.ObjectID   `bson:"_id,omitempty" json:"id"`
-	Title         string               `bson:"title" json:"title"`
-	Description   string               `bson:"description" json:"description"`
+	Title         string               `bson:"title" json:"title" validate:"required"`
+	Description   string               `bson:"description" json:"description" validate:"required"`
 	Image         string               `bson:"image" json:"image"`
-	DiscountType  string               `bson:"discount_type" json:"discount_type"`
-	DiscountValue float64              `bson:"discount_value" json:"discount_value"`
+	DiscountType  string               `bson:"discount_type" json:"discount_type" validate:"required,oneof=percent flat"`
+	DiscountValue float64              `bson:"discount_value" json:"discount_value" validate:"required,gt=0"`
 	AppliesTo     string               `bson:"applies_to" json:"applies_to"`
 	EntityIDs     []primitive.ObjectID `bson:"entity_ids" json:"entity_ids"`
 	ValidUntil    time.Time            `bson:"valid_until" json:"valid_until"`

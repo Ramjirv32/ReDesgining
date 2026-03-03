@@ -8,13 +8,16 @@ import (
 	"ticpin-backend/config"
 	"ticpin-backend/models"
 
+	"ticpin-backend/worker"
+
+	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func Send(n *models.Notification) error {
-	col := config.GetDB().Collection("notifications")
+	col := config.NotificationsCol
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -26,13 +29,12 @@ func Send(n *models.Notification) error {
 		return err
 	}
 
-	// Async sending via email for all selected targets
-	go func(notif models.Notification) {
+	worker.Submit(func() {
 		emails := make(map[string]bool)
 		ctxB := context.Background()
 
-		if notif.TargetType == "all_users" || notif.TargetType == "both" {
-			cursor, _ := config.GetDB().Collection("users").Find(ctxB, bson.M{})
+		if n.TargetType == "all_users" || n.TargetType == "both" {
+			cursor, _ := config.UsersCol.Find(ctxB, bson.M{}, options.Find().SetProjection(bson.M{"phone": 1}))
 			var users []models.User
 			cursor.All(ctxB, &users)
 			for _, u := range users {
@@ -42,8 +44,8 @@ func Send(n *models.Notification) error {
 			}
 		}
 
-		if notif.TargetType == "all_organizers" || notif.TargetType == "both" {
-			cursor, _ := config.GetDB().Collection("organizers").Find(ctxB, bson.M{})
+		if n.TargetType == "all_organizers" || n.TargetType == "both" {
+			cursor, _ := config.OrgsCol.Find(ctxB, bson.M{}, options.Find().SetProjection(bson.M{"email": 1}))
 			var orgs []models.Organizer
 			cursor.All(ctxB, &orgs)
 			for _, o := range orgs {
@@ -53,53 +55,69 @@ func Send(n *models.Notification) error {
 			}
 		}
 
-		if notif.TargetType == "selected_users" {
-			for _, idStr := range notif.RecipientIDs {
-				oid, _ := primitive.ObjectIDFromHex(idStr)
-				var u models.User
-				if err := config.GetDB().Collection("users").FindOne(ctxB, bson.M{"_id": oid}).Decode(&u); err == nil {
-					if u.Phone != "" {
-						emails[u.Phone] = true
+		if n.TargetType == "selected_users" {
+			var oids []primitive.ObjectID
+			for _, idStr := range n.RecipientIDs {
+				if oid, err := primitive.ObjectIDFromHex(idStr); err == nil {
+					oids = append(oids, oid)
+				}
+			}
+			if len(oids) > 0 {
+				cursor, err := config.UsersCol.Find(ctxB, bson.M{"_id": bson.M{"$in": oids}}, options.Find().SetProjection(bson.M{"phone": 1}))
+				if err == nil {
+					var users []models.User
+					cursor.All(ctxB, &users)
+					for _, u := range users {
+						if u.Phone != "" {
+							emails[u.Phone] = true
+						}
 					}
 				}
 			}
 		}
 
-		if notif.TargetType == "selected_organizers" {
-			for _, idStr := range notif.RecipientIDs {
-				oid, _ := primitive.ObjectIDFromHex(idStr)
-				var o models.Organizer
-				if err := config.GetDB().Collection("organizers").FindOne(ctxB, bson.M{"_id": oid}).Decode(&o); err == nil {
-					if o.Email != "" {
-						emails[o.Email] = true
+		if n.TargetType == "selected_organizers" {
+			var oids []primitive.ObjectID
+			for _, idStr := range n.RecipientIDs {
+				if oid, err := primitive.ObjectIDFromHex(idStr); err == nil {
+					oids = append(oids, oid)
+				}
+			}
+			if len(oids) > 0 {
+				cursor, err := config.OrgsCol.Find(ctxB, bson.M{"_id": bson.M{"$in": oids}}, options.Find().SetProjection(bson.M{"email": 1}))
+				if err == nil {
+					var orgs []models.Organizer
+					cursor.All(ctxB, &orgs)
+					for _, o := range orgs {
+						if o.Email != "" {
+							emails[o.Email] = true
+						}
 					}
 				}
 			}
 		}
 
-		println("Found", len(emails), "unique valid target emails. Starting broadcast...")
+		log.Info().Int("count", len(emails)).Msg("Starting broadcast to unique valid target emails")
 
-		// Send emails
 		for email := range emails {
-			// Basic email validation
+
 			if !strings.Contains(email, "@") || !strings.Contains(email, ".") {
 				continue
 			}
-			err := config.SendNotificationEmail(email, notif.Title, notif.Description, notif.ImageURL)
+			err := config.SendNotificationEmail(email, n.Title, n.Description, n.ImageURL)
 			if err != nil {
-				// Log the error
-				println("Failed to send notification email to", email, ":", err.Error())
+				log.Error().Err(err).Str("email", email).Msg("Failed to send notification email")
 			} else {
-				println("Notification email sent to", email)
+				log.Info().Str("email", email).Msg("Notification email sent")
 			}
 		}
-	}(*n)
+	})
 
 	return nil
 }
 
 func GetAll() ([]models.Notification, error) {
-	col := config.GetDB().Collection("notifications")
+	col := config.NotificationsCol
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 

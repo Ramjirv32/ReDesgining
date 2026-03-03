@@ -14,6 +14,7 @@ func PlayRoutes(app *fiber.App) {
 	play.Post("/signin", ctrl.PlaySignin)
 	play.Post("/verify", ctrl.VerifyOTP)
 	play.Post("/resend-otp", ctrl.ResendOTP)
+	play.Post("/google-auth", ctrl.GoogleAuth)
 
 	play.Post("/setup", middleware.RequireAuth, ctrl.PlaySetup)
 	play.Post("/submit-verification", middleware.RequireAuth, ctrl.SubmitVerification)

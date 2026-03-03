@@ -8,6 +8,8 @@ import (
 	couponsvc "ticpin-backend/services/coupon"
 	"time"
 
+	"ticpin-backend/worker"
+
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -15,15 +17,17 @@ import (
 
 func CreateEventBooking(c *fiber.Ctx) error {
 	var req struct {
-		UserEmail   string                 `json:"user_email"`
-		EventID     string                 `json:"event_id"`
-		EventName   string                 `json:"event_name"`
-		Tickets     []models.BookingTicket `json:"tickets"`
-		OrderAmount float64                `json:"order_amount"`
-		BookingFee  float64                `json:"booking_fee"`
-		CouponCode  string                 `json:"coupon_code"`
-		OfferID     string                 `json:"offer_id"`
-		UserID      string                 `json:"user_id"`
+		UserEmail      string                 `json:"user_email"`
+		EventID        string                 `json:"event_id"`
+		EventName      string                 `json:"event_name"`
+		Tickets        []models.BookingTicket `json:"tickets"`
+		OrderAmount    float64                `json:"order_amount"`
+		BookingFee     float64                `json:"booking_fee"`
+		CouponCode     string                 `json:"coupon_code"`
+		OfferID        string                 `json:"offer_id"`
+		UserID         string                 `json:"user_id"`
+		PaymentID      string                 `json:"payment_id"`
+		PaymentGateway string                 `json:"payment_gateway"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request: " + err.Error()})
@@ -78,6 +82,8 @@ func CreateEventBooking(c *fiber.Ctx) error {
 		CouponCode:     appliedCouponCode,
 		OfferID:        offerObjID,
 		GrandTotal:     grandTotal,
+		PaymentID:      req.PaymentID,
+		PaymentGateway: req.PaymentGateway,
 		Status:         "booked",
 	}
 
@@ -93,7 +99,7 @@ func CreateEventBooking(c *fiber.Ctx) error {
 	bookingEventObjID := eventObjID
 	bookingUserEmail := req.UserEmail
 	bookingGrandTotal := grandTotal
-	go func() {
+	worker.Submit(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		var ev models.Event
@@ -104,7 +110,7 @@ func CreateEventBooking(c *fiber.Ctx) error {
 				}
 			}
 		}
-	}()
+	})
 
 	return c.Status(201).JSON(fiber.Map{
 		"message":         "booking confirmed",
@@ -117,17 +123,19 @@ func CreateEventBooking(c *fiber.Ctx) error {
 
 func CreateDiningBooking(c *fiber.Ctx) error {
 	var req struct {
-		UserEmail   string  `json:"user_email"`
-		DiningID    string  `json:"dining_id"`
-		VenueName   string  `json:"venue_name"`
-		Date        string  `json:"date"`
-		TimeSlot    string  `json:"time_slot"`
-		Guests      int     `json:"guests"`
-		OrderAmount float64 `json:"order_amount"`
-		BookingFee  float64 `json:"booking_fee"`
-		CouponCode  string  `json:"coupon_code"`
-		OfferID     string  `json:"offer_id"`
-		UserID      string  `json:"user_id"`
+		UserEmail      string  `json:"user_email"`
+		DiningID       string  `json:"dining_id"`
+		VenueName      string  `json:"venue_name"`
+		Date           string  `json:"date"`
+		TimeSlot       string  `json:"time_slot"`
+		Guests         int     `json:"guests"`
+		OrderAmount    float64 `json:"order_amount"`
+		BookingFee     float64 `json:"booking_fee"`
+		CouponCode     string  `json:"coupon_code"`
+		OfferID        string  `json:"offer_id"`
+		UserID         string  `json:"user_id"`
+		PaymentID      string  `json:"payment_id"`
+		PaymentGateway string  `json:"payment_gateway"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request: " + err.Error()})
@@ -187,6 +195,8 @@ func CreateDiningBooking(c *fiber.Ctx) error {
 		CouponCode:     appliedCouponCode,
 		OfferID:        offerObjID,
 		GrandTotal:     grandTotal,
+		PaymentID:      req.PaymentID,
+		PaymentGateway: req.PaymentGateway,
 		Status:         "booked",
 	}
 
@@ -208,17 +218,19 @@ func CreateDiningBooking(c *fiber.Ctx) error {
 
 func CreatePlayBooking(c *fiber.Ctx) error {
 	var req struct {
-		UserEmail   string                 `json:"user_email"`
-		PlayID      string                 `json:"play_id"`
-		VenueName   string                 `json:"venue_name"`
-		Date        string                 `json:"date"`
-		Slot        string                 `json:"slot"`
-		Tickets     []models.BookingTicket `json:"tickets"`
-		OrderAmount float64                `json:"order_amount"`
-		BookingFee  float64                `json:"booking_fee"`
-		CouponCode  string                 `json:"coupon_code"`
-		OfferID     string                 `json:"offer_id"`
-		UserID      string                 `json:"user_id"`
+		UserEmail      string                 `json:"user_email"`
+		PlayID         string                 `json:"play_id"`
+		VenueName      string                 `json:"venue_name"`
+		Date           string                 `json:"date"`
+		Slot           string                 `json:"slot"`
+		Tickets        []models.BookingTicket `json:"tickets"`
+		OrderAmount    float64                `json:"order_amount"`
+		BookingFee     float64                `json:"booking_fee"`
+		CouponCode     string                 `json:"coupon_code"`
+		OfferID        string                 `json:"offer_id"`
+		UserID         string                 `json:"user_id"`
+		PaymentID      string                 `json:"payment_id"`
+		PaymentGateway string                 `json:"payment_gateway"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request: " + err.Error()})
@@ -278,6 +290,8 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 		CouponCode:     appliedCouponCode,
 		OfferID:        offerObjID,
 		GrandTotal:     grandTotal,
+		PaymentID:      req.PaymentID,
+		PaymentGateway: req.PaymentGateway,
 		Status:         "booked",
 	}
 
@@ -304,4 +318,17 @@ func GetEventAvailability(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.JSON(fiber.Map{"booked": availability})
+}
+
+func GetPlaySlotAvailability(c *fiber.Ctx) error {
+	playID := c.Params("id")
+	date := c.Query("date")
+	if date == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "date query param is required (YYYY-MM-DD)"})
+	}
+	slots, err := bookingsvc.GetPlayBookedSlots(playID, date)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"booked_slots": slots})
 }

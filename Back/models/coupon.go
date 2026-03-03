@@ -8,11 +8,11 @@ import (
 
 type Coupon struct {
 	ID            primitive.ObjectID   `bson:"_id,omitempty" json:"id"`
-	Code          string               `bson:"code" json:"code"`
+	Code          string               `bson:"code" json:"code" validate:"required"`
 	Description   string               `bson:"description,omitempty" json:"description,omitempty"`
-	Category      string               `bson:"category" json:"category"`
-	DiscountType  string               `bson:"discount_type" json:"discount_type"`
-	DiscountValue float64              `bson:"discount_value" json:"discount_value"`
+	Category      string               `bson:"category" json:"category" validate:"required,oneof=event play dining"`
+	DiscountType  string               `bson:"discount_type" json:"discount_type" validate:"required,oneof=percent flat"`
+	DiscountValue float64              `bson:"discount_value" json:"discount_value" validate:"required,gt=0"`
 	UserIDs       []primitive.ObjectID `bson:"user_ids,omitempty" json:"user_ids,omitempty"`
 	ValidFrom     time.Time            `bson:"valid_from" json:"valid_from"`
 	ValidUntil    time.Time            `bson:"valid_until" json:"valid_until"`

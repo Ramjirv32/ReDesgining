@@ -331,9 +331,9 @@ export default function EditEventPage() {
                             </div>
                             <div className="w-full h-[1px] bg-[#AEAEAE] mb-6" />
                             <div className="flex gap-1 mb-4">
-                                <button onClick={() => handleFormat('bold')} className={`p-2 rounded ${isBold ? 'bg-gray-200' : ''}`}><img src="/create event/bold.svg" alt="Bold" className="w-[40px] h-[40px]" /></button>
-                                <button onClick={() => handleFormat('italic')} className={`p-2 rounded ${isItalic ? 'bg-gray-200' : ''}`}><img src="/create event/italic.svg" alt="Italic" className="w-[40px] h-[40px]" /></button>
-                                <button onClick={() => handleFormat('underline')} className={`p-2 rounded ${isUnderline ? 'bg-gray-200' : ''}`}><img src="/create event/underline.svg" alt="Underline" className="w-[40px] h-[40px]" /></button>
+                                <button onClick={() => handleFormat('bold')} className={`p-2 rounded ${isBold ? 'bg-gray-200' : ''}`}><Image src="/create event/bold.svg" alt="Bold" width={40} height={40} /></button>
+                                <button onClick={() => handleFormat('italic')} className={`p-2 rounded ${isItalic ? 'bg-gray-200' : ''}`}><Image src="/create event/italic.svg" alt="Italic" width={40} height={40} /></button>
+                                <button onClick={() => handleFormat('underline')} className={`p-2 rounded ${isUnderline ? 'bg-gray-200' : ''}`}><Image src="/create event/underline.svg" alt="Underline" width={40} height={40} /></button>
                             </div>
                             <div className="border border-[#AEAEAE] rounded-[10px] p-6 min-h-[260px] relative">
                                 <div ref={editorRef} contentEditable onInput={e => setHasContent(e.currentTarget.innerText.length > 0)}
@@ -457,7 +457,11 @@ export default function EditEventPage() {
                                             <p className="text-[20px] font-semibold text-[#686868]">{label}</p>
                                             <p className="text-[18px] text-black">{size}</p>
                                         </div>
-                                        {url && <img src={url} alt={label} className="w-[60px] h-[60px] object-cover rounded-[8px] border border-[#AEAEAE]" />}
+                                        {url && (
+                                            <div className="relative w-[60px] h-[60px] rounded-[8px] overflow-hidden border border-[#AEAEAE]">
+                                                <Image src={url} alt={label} fill className="object-cover" />
+                                            </div>
+                                        )}
                                         <label htmlFor={`upload-${key}`} className="cursor-pointer">
                                             <div className="flex items-center border border-[#686868] rounded-[5px] h-[35px] overflow-hidden bg-white">
                                                 <span className="px-5 text-[15px] font-medium text-black">{uploading[key] ? 'Uploading...' : url ? 'Replace' : 'Upload'}</span>
@@ -496,7 +500,9 @@ export default function EditEventPage() {
                                 <div className="flex flex-wrap gap-3 mb-6">
                                     {galleryUrls.map((u, i) => (
                                         <div key={i} className="relative w-[80px] h-[80px]">
-                                            <img src={u} alt="" className="w-full h-full object-cover rounded-[8px] border border-[#AEAEAE]" />
+                                            <div className="relative w-full h-full rounded-[8px] overflow-hidden border border-[#AEAEAE]">
+                                                <Image src={u} alt="" fill className="object-cover" />
+                                            </div>
                                             <button onClick={() => setGalleryUrls(prev => prev.filter((_, idx) => idx !== i))} className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-[12px] leading-none flex items-center justify-center">×</button>
                                         </div>
                                     ))}

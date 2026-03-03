@@ -8,11 +8,17 @@ import (
 
 func GetAllPlays(c *fiber.Ctx) error {
 	category := c.Query("category")
-	plays, err := playservice.GetAll(category)
+	limit := c.QueryInt("limit", 20)
+	after := c.Query("after")
+
+	plays, nextCursor, err := playservice.GetAll(category, limit, after)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	return c.JSON(plays)
+	return c.JSON(fiber.Map{
+		"data":        plays,
+		"next_cursor": nextCursor,
+	})
 }
 
 func GetPlayByID(c *fiber.Ctx) error {

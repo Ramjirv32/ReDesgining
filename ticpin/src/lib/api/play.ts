@@ -27,6 +27,12 @@ export const playApi = {
       body: JSON.stringify({ email, password }),
     }),
 
+  googleAuth: (email: string) =>
+    request<VerifyResponse>('/organizer/play/google-auth', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+
   verifyOTP: (email: string, otp: string) =>
     request<VerifyResponse>('/organizer/play/verify', {
       method: 'POST',

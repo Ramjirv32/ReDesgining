@@ -29,14 +29,16 @@ export interface OrganizerDetail {
         id: string;
         category: string;
         orgType: string;
-        pan: string;
-        panName: string;
-        panDOB: string;
-        panCardUrl: string;
+        phone: string;
         bankAccountNo: string;
         bankIfsc: string;
         bankName: string;
         accountHolder: string;
+        gstNumber: string;
+        pan: string;
+        panName: string;
+        panDOB: string;
+        panCardUrl: string;
         backupEmail: string;
         backupPhone: string;
         updatedAt: string;
@@ -251,9 +253,12 @@ export const adminApi = {
 
     // ── Organizers ────────────────────────────────────────────────────────────
 
-    /** GET /api/admin/organizers?page=&limit= */
-    listOrganizers: (page = 1, limit = 20) =>
-        adminRequest<OrganizerListResponse>(`/organizers?page=${page}&limit=${limit}`),
+    /** GET /api/admin/organizers?page=&limit=&status= */
+    listOrganizers: (page = 1, limit = 20, status?: string) => {
+        let url = `/organizers?page=${page}&limit=${limit}`;
+        if (status) url += `&status=${status}`;
+        return adminRequest<OrganizerListResponse>(url);
+    },
 
     /** GET /api/admin/organizers/:id */
     getOrganizerDetail: (id: string) =>
@@ -450,6 +455,17 @@ export const adminApi = {
 
     /** GET /api/admin/users — for coupon user-selector */
     listUsers: () => adminRequest<UserRecord[]>('/users'),
+
+    /** PUT /api/admin/users/:id */
+    updateUser: (id: string, payload: Partial<UserRecord>) =>
+        adminRequest<{ message: string }>(`/users/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+        }),
+
+    /** DELETE /api/admin/users/:id */
+    deleteUser: (id: string) =>
+        adminRequest<{ message: string }>(`/users/${id}`, { method: 'DELETE' }),
 
     // ── Notifications ─────────────────────────────────────────────────────────
 

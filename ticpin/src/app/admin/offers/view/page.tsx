@@ -1,8 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import ViewOfferForm from './viewoffer';
-import ViewCouponForm from './viewcoupon';
+import Image from 'next/image';
 
 export default function ViewOffersPage() {
     return (
@@ -16,7 +15,7 @@ export default function ViewOffersPage() {
                     border: '1px solid transparent'
                 }}
             >
-                <img src="/admin panel/pricetagicon1.svg" alt="View Offer" className="w-12 h-12 mb-4 opacity-80" />
+                <Image src="/admin panel/pricetagicon1.svg" alt="View Offer" width={48} height={48} className="mb-4 opacity-80" />
                 <div className="w-14 h-[2px] bg-[#686868] mb-3"></div>
                 <span className="text-black font-medium text-[18px] text-center">View Offer</span>
             </Link>
@@ -33,7 +32,7 @@ export default function ViewOffersPage() {
                     border: '1px solid transparent'
                 }}
             >
-                <img src="/admin panel/pricetagicon1.svg" alt="View Coupon" className="w-12 h-12 mb-4 opacity-80" />
+                <Image src="/admin panel/pricetagicon1.svg" alt="View Coupon" width={48} height={48} className="mb-4 opacity-80" />
                 <div className="w-14 h-[2px] bg-[#686868] mb-3"></div>
                 <span className="text-black font-medium text-[18px] text-center">View Coupon</span>
             </Link>

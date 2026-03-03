@@ -1,7 +1,6 @@
 package organizers
 
 import (
-	"context"
 	"strconv"
 	"ticpin-backend/config"
 	"ticpin-backend/models"
@@ -23,22 +22,31 @@ func ListOrganizers(c *fiber.Ctx) error {
 		filter["email"] = bson.M{"$regex": search, "$options": "i"}
 	}
 
+	status := c.Query("status", "")
+	if status != "" {
+		filter["$or"] = []bson.M{
+			{"categoryStatus.events": status},
+			{"categoryStatus.dining": status},
+			{"categoryStatus.play": status},
+		}
+	}
+
 	skip := int64((page - 1) * limit)
 	opts := options.Find().SetSkip(skip).SetLimit(int64(limit)).SetSort(bson.M{"_id": -1})
 
 	col := config.GetDB().Collection("organizers")
-	cursor, err := col.Find(context.Background(), filter, opts)
+	cursor, err := col.Find(c.Context(), filter, opts)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	defer cursor.Close(context.Background())
+	defer cursor.Close(c.Context())
 
-	var list []models.Organizer
-	if err := cursor.All(context.Background(), &list); err != nil {
+	list := []models.Organizer{}
+	if err := cursor.All(c.Context(), &list); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	total, _ := col.CountDocuments(context.Background(), filter)
+	total, _ := col.CountDocuments(c.Context(), filter)
 
 	return c.JSON(fiber.Map{
 		"organizers": list,
@@ -55,15 +63,15 @@ func GetOrganizerDetail(c *fiber.Ctx) error {
 	}
 
 	var org models.Organizer
-	err = config.GetDB().Collection("organizers").FindOne(context.Background(), bson.M{"_id": id}).Decode(&org)
+	err = config.GetDB().Collection("organizers").FindOne(c.Context(), bson.M{"_id": id}).Decode(&org)
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "not found"})
 	}
 
-	cursor, err := config.GetDB().Collection("organizer_setups").Find(context.Background(), bson.M{"organizerId": id})
+	cursor, err := config.GetDB().Collection("organizer_setups").Find(c.Context(), bson.M{"organizerId": id})
 	var setups []models.OrganizerSetup
 	if err == nil {
-		cursor.All(context.Background(), &setups)
+		cursor.All(c.Context(), &setups)
 	}
 
 	return c.JSON(fiber.Map{
@@ -95,13 +103,12 @@ func DeleteOrganizer(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid id"})
 	}
 
-	_, err = config.GetDB().Collection("organizers").DeleteOne(context.Background(), bson.M{"_id": id})
+	_, err = config.GetDB().Collection("organizers").DeleteOne(c.Context(), bson.M{"_id": id})
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "failed to delete organizer"})
 	}
-	_, _ = config.GetDB().Collection("organizer_setups").DeleteMany(context.Background(), bson.M{"organizerId": id})
-
-	_, _ = config.GetDB().Collection("profiles").DeleteOne(context.Background(), bson.M{"organizerId": id})
+	_, _ = config.GetDB().Collection("organizer_setups").DeleteMany(c.Context(), bson.M{"organizerId": id})
+	_, _ = config.GetDB().Collection("profiles").DeleteOne(c.Context(), bson.M{"organizerId": id})
 
 	return c.JSON(fiber.Map{"message": "organizer and related data deleted"})
 }

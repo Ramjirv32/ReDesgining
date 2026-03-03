@@ -1,6 +1,7 @@
 'use client';
 
 import React, { Suspense, useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import SetupSidebar from '@/app/list-your-events/list-your-Setups/SetupSidebar';
 import { ChevronDown, ChevronRight, Check, Lock } from 'lucide-react';
@@ -46,7 +47,7 @@ function AccountSetupContent() {
         }
 
         if (session.id) {
-            organizerApi.getExistingSetup(session.id)
+            organizerApi.getExistingSetup(session.id, 'events')
                 .then(setup => {
                     if (setup?.pan) {
                         setPan(setup.pan); setPanName(setup.panName ?? '');
@@ -60,8 +61,10 @@ function AccountSetupContent() {
                             panCardUrl: setup.panCardUrl ?? '', panFileName: '(pre-filled)',
                             bankAccountNo: setup.bankAccountNo ?? '', bankIfsc: setup.bankIfsc ?? '',
                             bankName: setup.bankName ?? '', accountHolder: setup.accountHolder ?? '',
+                            gstNumber: setup.gstNumber ?? '',
                             backupEmail: setup.backupEmail ?? '', backupPhone: setup.backupPhone ?? '',
-                        }));                    }
+                        }));
+                    }
                 })
                 .catch(() => { })
                 .finally(() => setPageLoading(false));
@@ -80,10 +83,29 @@ function AccountSetupContent() {
         } finally { setUploading(false); }
     };
 
-    const handleContinue = () => {
-        const existing = JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? '{}');
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...existing, orgType: selectedCategory, pan, panName, panDOB, panCardUrl, panFileName }));
-        router.push('/list-your-events/setup/gst');
+    const [verifying, setVerifying] = useState(false);
+    const [panVerifyError, setPanVerifyError] = useState('');
+
+    const handleContinue = async () => {
+        if (prefilled) {
+            const existing = JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? '{}');
+            sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...existing, orgType: selectedCategory, pan, panName, panDOB, panCardUrl, panFileName }));
+            router.push('/list-your-events/setup/gst');
+            return;
+        }
+
+        setPanVerifyError('');
+        setVerifying(true);
+        try {
+            await organizerApi.verifyPAN(pan, panName, panDOB);
+            const existing = JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? '{}');
+            sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...existing, orgType: selectedCategory, pan, panName, panDOB, panCardUrl, panFileName, panVerified: true }));
+            router.push('/list-your-events/setup/gst');
+        } catch (err: any) {
+            setPanVerifyError(err.message || 'PAN verification failed. Please check your details.');
+        } finally {
+            setVerifying(false);
+        }
     };
 
     const canContinue = !!(pan && panName && panDOB && (panCardUrl || prefilled) && !uploading);
@@ -164,7 +186,7 @@ function AccountSetupContent() {
                                         <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
                                             {uploading ? <div className="w-5 h-5 border-2 border-zinc-400 border-t-black rounded-full animate-spin" />
                                                 : panCardUrl ? <Check size={22} className="text-green-600" />
-                                                    : <img src="/list your events/doc icon.svg" alt="doc" className="w-6 h-6 object-contain" />}
+                                                    : <Image src="/list your events/doc icon.svg" alt="doc" width={24} height={24} className="w-6 h-6 object-contain" />}
                                         </div>
                                         <div className="text-left">
                                             <p className="text-[15px] font-medium text-black truncate max-w-[220px]">{uploading ? 'Uploading…' : panFileName || 'Upload document'}</p>
@@ -175,10 +197,12 @@ function AccountSetupContent() {
                                 </div>
                             </div>
 
+                            {panVerifyError && <p className="text-red-500 text-[14px] font-medium mt-2">{panVerifyError}</p>}
+
                             <div className="pt-2 flex justify-center md:justify-start">
-                                <button onClick={handleContinue} disabled={!canContinue}
+                                <button onClick={handleContinue} disabled={!canContinue || verifying}
                                     className="bg-black text-white h-[48px] px-8 rounded-[15px] flex items-center justify-center gap-2 text-[15px] font-medium transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
-                                    Continue<ChevronRight size={18} />
+                                    {verifying ? 'Verifying...' : 'Continue'}<ChevronRight size={18} />
                                 </button>
                             </div>
                         </div>

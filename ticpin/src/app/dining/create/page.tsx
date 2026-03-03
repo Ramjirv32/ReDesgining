@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { ChevronDown, ChevronUp, Info, PlusCircle, ExternalLink, Bold, Italic, Underline, Search, Upload } from 'lucide-react';
 import { CATEGORIES, CITIES, CATEGORY_DATA } from './data';
 import { useRouter } from 'next/navigation';
@@ -98,7 +99,7 @@ const CreateDiningPage = () => {
 
     const validateImageDimensions = (file: File, expectedWidth: number, expectedHeight: number): Promise<boolean> => {
         return new Promise((resolve) => {
-            const img = new Image();
+            const img = new window.Image();
             img.src = URL.createObjectURL(file);
             img.onload = () => {
                 URL.revokeObjectURL(img.src);
@@ -318,13 +319,13 @@ const CreateDiningPage = () => {
 
                             <div className="flex gap-1 mb-4 mt-[-10px]">
                                 <button onClick={() => handleFormat('bold')} className={`p-2 rounded ${isBold ? 'bg-gray-200' : ''}`}>
-                                    <img src="/create event/bold.svg" alt="Bold" className="w-[40px] h-[40px]" />
+                                    <Image src="/create event/bold.svg" alt="Bold" width={40} height={40} />
                                 </button>
                                 <button onClick={() => handleFormat('italic')} className={`p-2 rounded ${isItalic ? 'bg-gray-200' : ''}`}>
-                                    <img src="/create event/italic.svg" alt="Italic" className="w-[40px] h-[40px]" />
+                                    <Image src="/create event/italic.svg" alt="Italic" width={40} height={40} />
                                 </button>
                                 <button onClick={() => handleFormat('underline')} className={`p-2 rounded ${isUnderline ? 'bg-gray-200' : ''}`}>
-                                    <img src="/create event/underline.svg" alt="Underline" className="w-[40px] h-[40px]" />
+                                    <Image src="/create event/underline.svg" alt="Underline" width={40} height={40} />
                                 </button>
                             </div>
                             <div className="border border-[#AEAEAE] rounded-[10px] p-6 min-h-[326px] relative">
@@ -496,7 +497,11 @@ const CreateDiningPage = () => {
                                         <div className="space-y-1">
                                             <p className="text-[20px] font-semibold text-[#686868]">Portrait</p>
                                             <p className="text-[20px] text-black">3:4 aspect ratio (900px by 1200px)</p>
-                                            {portraitUrl && <img src={portraitUrl} alt="Portrait preview" className="w-[50px] h-[50px] rounded-[6px] object-cover border border-[#686868] mt-1" />}
+                                            {portraitUrl && (
+                                                <div className="relative w-[50px] h-[50px] rounded-[6px] overflow-hidden border border-[#686868] mt-1">
+                                                    <Image src={portraitUrl} alt="Portrait preview" fill className="object-cover" />
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="space-y-1 ml-[-250px]">
                                             <p className="text-[20px] font-semibold text-[#686868]">Max Size</p>
@@ -521,7 +526,11 @@ const CreateDiningPage = () => {
                                         <div className="space-y-1">
                                             <p className="text-[20px] font-semibold text-[#686868]">Landscape</p>
                                             <p className="text-[20px] text-black">16:9 aspect ratio (1600px by 900px)</p>
-                                            {landscapeUrl && <img src={landscapeUrl} alt="Landscape preview" className="w-[50px] h-[50px] rounded-[6px] object-cover border border-[#686868] mt-1" />}
+                                            {landscapeUrl && (
+                                                <div className="relative w-[50px] h-[50px] rounded-[6px] overflow-hidden border border-[#686868] mt-1">
+                                                    <Image src={landscapeUrl} alt="Landscape preview" fill className="object-cover" />
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="space-y-1 ml-[-250px]">
                                             <p className="text-[20px] font-semibold text-[#686868]">Max Size</p>
@@ -593,7 +602,7 @@ const CreateDiningPage = () => {
                                 </div>
                             </div>
                             <div className="bg-[#E7C20026] border border-[#E7C200] rounded-[10px] p-4 flex items-center gap-3 mt-6">
-                                <img src="/create event/info-circle.svg" alt="Info" className="w-[40px] h-[40px]" />
+                                <Image src="/create event/info-circle.svg" alt="Info" width={40} height={40} />
                                 <span className="text-[19px] font-medium text-black">Viewable only on mobile and tablet web</span>
                             </div>
                         </section>
@@ -753,7 +762,7 @@ const CreateDiningPage = () => {
                                     </div>
                                 </div>
                                 <div className="bg-[#E7C20026] border border-[#E7C200] rounded-[10px] p-4 flex items-center gap-3 mt-6">
-                                    <img src="/create event/info-circle.svg" alt="Info" className="w-[40px] h-[40px]" />
+                                    <Image src="/create event/info-circle.svg" alt="Info" width={40} height={40} />
                                     <span className="text-[19px] font-medium text-black">Can’t find an option that properly describes your dining? Email dining@ticpin.in and we’ll assist you.</span>
                                 </div>
                             </section>

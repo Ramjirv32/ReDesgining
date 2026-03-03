@@ -14,6 +14,7 @@ func DiningRoutes(app *fiber.App) {
 	dining.Post("/signin", ctrl.DiningSignin)
 	dining.Post("/verify", ctrl.VerifyOTP)
 	dining.Post("/resend-otp", ctrl.ResendOTP)
+	dining.Post("/google-auth", ctrl.GoogleAuth)
 
 	dining.Post("/setup", middleware.RequireAuth, ctrl.DiningSetup)
 	dining.Post("/submit-verification", middleware.RequireAuth, ctrl.SubmitVerification)

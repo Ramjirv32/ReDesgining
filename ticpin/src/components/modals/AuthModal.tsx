@@ -1,10 +1,19 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { X, ChevronDown, ChevronLeft, Settings, Mail, ShieldCheck, LogOut, LayoutDashboard } from 'lucide-react';
+import Image from 'next/image';
+import { X, ChevronDown, ChevronLeft, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 import { saveUserSession, clearUserSession } from '@/lib/auth/user';
+import {
+    auth,
+    RecaptchaVerifier,
+    signInWithPhoneNumber,
+    type ConfirmationResult,
+} from '@/lib/firebase';
+
+const ADMIN_PHONE = '6383667872';
 
 interface AuthModalProps {
     isOpen: boolean;
@@ -24,64 +33,129 @@ export default function AuthModal({ isOpen, onClose, initialView = 'number', onS
     }, [isOpen, initialView]);
     const [number, setNumber] = useState('');
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [resent, setResent] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
     const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+    const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
 
     useEffect(() => {
-        if (view === 'otp') {
-            otpRefs.current[0]?.focus();
-        }
+        if (view === 'otp') otpRefs.current[0]?.focus();
     }, [view]);
 
+    // ── Recaptcha helper ─────────────────────────────────────────────
+    const getRecaptchaVerifier = (): RecaptchaVerifier => {
+        if (!auth) throw new Error('Firebase is not configured');
+        if (recaptchaVerifierRef.current) {
+            recaptchaVerifierRef.current.clear();
+            recaptchaVerifierRef.current = null;
+        }
+        const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
+        recaptchaVerifierRef.current = verifier;
+        return verifier;
+    };
+
+    // ── Send OTP ─────────────────────────────────────────────────────
+    const handleSendOtp = async () => {
+        if (number.length !== 10) return;
+        setLoading(true);
+        setError('');
+        try {
+            const verifier = getRecaptchaVerifier();
+            const result = await signInWithPhoneNumber(auth!, '+91' + number, verifier);
+            setConfirmationResult(result);
+            setView('otp');
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : 'Failed to send OTP. Try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // ── Resend OTP ───────────────────────────────────────────────────
+    const handleResend = async () => {
+        setError('');
+        setResent(false);
+        setLoading(true);
+        try {
+            const verifier = getRecaptchaVerifier();
+            const result = await signInWithPhoneNumber(auth!, '+91' + number, verifier);
+            setConfirmationResult(result);
+            setResent(true);
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : 'Could not resend OTP. Try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // ── Verify OTP ───────────────────────────────────────────────────
+    const handleVerifyOtp = async () => {
+        const code = otp.join('');
+        if (code.length !== 6) { setError('Enter all 6 digits'); return; }
+        if (!confirmationResult) { setError('Please request OTP first'); return; }
+        setLoading(true);
+        setError('');
+        try {
+            await confirmationResult.confirm(code);
+            const isAdminUser = number === ADMIN_PHONE;
+            if (isAdminUser) {
+                saveUserSession({ id: number, phone: number, name: 'Admin' });
+                router.push('/admin');
+                onClose();
+                return;
+            }
+            try {
+                const res = await fetch('/backend/api/users/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ phone: number }),
+                });
+                const data = await res.json();
+                saveUserSession({ id: data.id || number, phone: number, name: data.name || '' });
+            } catch {
+                saveUserSession({ id: number, phone: number, name: '' });
+            }
+            if (onSuccess) { onSuccess(); onClose(); } else { setView('profile'); }
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : 'Invalid OTP. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // ── OTP input handlers ───────────────────────────────────────────
     const handleOtpChange = (index: number, value: string) => {
         if (isNaN(Number(value))) return;
         const newOtp = [...otp];
         newOtp[index] = value.substring(value.length - 1);
         setOtp(newOtp);
-
-        if (value && index < 5) {
-            otpRefs.current[index + 1]?.focus();
-        }
+        if (value && index < 5) otpRefs.current[index + 1]?.focus();
     };
 
     const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Backspace' && !otp[index] && index > 0) {
             otpRefs.current[index - 1]?.focus();
         }
+        if (e.key === 'Enter') handleVerifyOtp();
     };
 
-    const completeLogin = async () => {
-        try {
-            const res = await fetch('/backend/api/users/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ phone: number }),
-            });
-            const data = await res.json();
-            saveUserSession({
-                id: data.id || 'mock-user-id',
-                phone: number,
-                name: data.name || ('User ' + number.slice(-4)),
-            });
-        } catch {
-            // Fallback: save mock session if backend unreachable
-            saveUserSession({
-                id: 'mock-user-id',
-                phone: number,
-                name: 'User ' + number.slice(-4),
-            });
-        }
-
-        if (onSuccess) {
-            onSuccess();
-            onClose();
-        } else {
-            setView('profile');
-        }
+    const handleOtpPaste = (e: React.ClipboardEvent) => {
+        e.preventDefault();
+        const data = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+        if (!data) return;
+        const next = [...otp];
+        data.split('').forEach((char, i) => { next[i] = char; });
+        setOtp(next);
+        otpRefs.current[Math.min(data.length, 5)]?.focus();
     };
 
     if (!isOpen) return null;
+
+    const isAdmin = number === ADMIN_PHONE;
 
     return (
         <div
@@ -89,7 +163,10 @@ export default function AuthModal({ isOpen, onClose, initialView = 'number', onS
                 }`}
             style={{ fontFamily: 'var(--font-anek-latin)' }}
         >
-            {/* Backdrop - only clickable here if not profile view, or separate backdrop for profile */}
+            {/* Invisible recaptcha anchor */}
+            <div id="recaptcha-container" />
+
+            {/* Backdrop */}
             <div
                 onClick={onClose}
                 className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-500 pointer-events-auto ${isOpen ? 'opacity-100' : 'opacity-0'
@@ -109,10 +186,12 @@ export default function AuthModal({ isOpen, onClose, initialView = 'number', onS
                         {/* Banner Section */}
                         <div className="relative h-[320px] flex flex-col items-center justify-center p-0 overflow-hidden shrink-0">
                             {/* Banner Image */}
-                            <img
+                            <Image
                                 src="/login/banner.jpeg"
                                 alt="Login Banner"
-                                className="absolute inset-0 w-full h-full object-cover"
+                                fill
+                                className="object-cover"
+                                priority
                             />
 
                             <button onClick={onClose} className="absolute top-6 right-6 text-white/80 hover:text-white transition-colors z-20 bg-black/20 p-2 rounded-full backdrop-blur-sm">
@@ -131,7 +210,7 @@ export default function AuthModal({ isOpen, onClose, initialView = 'number', onS
                                     <div className="w-full max-w-[604px] space-y-8">
                                         <div className="flex gap-4">
                                             <div className="flex items-center gap-2 px-4 bg-white border border-zinc-200 rounded-2xl h-[60px] min-w-[100px] cursor-pointer hover:border-zinc-300 transition-all">
-                                                <img src="https://flagcdn.com/w40/in.png" alt="IN" className="w-6 h-4 object-cover rounded-sm" />
+                                                <Image src="https://flagcdn.com/w40/in.png" alt="IN" width={24} height={16} className="w-6 h-4 object-cover rounded-sm" />
                                                 <span className="text-lg text-zinc-900 font-semibold">+91</span>
                                                 <ChevronDown size={16} className="text-zinc-400" />
                                             </div>
@@ -144,21 +223,24 @@ export default function AuthModal({ isOpen, onClose, initialView = 'number', onS
                                                     const val = e.target.value.replace(/\D/g, '');
                                                     if (val.length <= 10) setNumber(val);
                                                 }}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleSendOtp()}
                                             />
                                         </div>
 
+                                        {error && <p className="text-red-500 text-sm -mt-4">{error}</p>}
+
                                         <button
-                                            onClick={() => setView('otp')}
-                                            disabled={number.length !== 10}
+                                            onClick={handleSendOtp}
+                                            disabled={number.length !== 10 || loading}
                                             className="w-full h-[55px] bg-black text-white text-xl font-bold rounded-2xl hover:bg-zinc-800 transition-all active:scale-[0.98] disabled:bg-zinc-200 disabled:text-zinc-500 disabled:cursor-not-allowed shadow-xl shadow-black/10"
                                         >
-                                            Continue
+                                            {loading ? 'Sending OTP…' : 'Continue'}
                                         </button>
 
                                         <div className="text-center">
                                             <p className="text-[13px] text-zinc-500 font-medium leading-relaxed">
                                                 By continuing, you agree to our<br />
-                                                <span className="text-zinc-400 font-semibold cursor-pointer hover:text-zinc-600 transition-colors">Terms of Service</span> &nbsp;
+                                                <span className="text-zinc-400 font-semibold cursor-pointer hover:text-zinc-600 transition-colors">Terms of Service</span>&nbsp;
                                                 <span className="text-zinc-400 font-semibold cursor-pointer hover:text-zinc-600 transition-colors">Privacy Policy</span>
                                             </p>
                                         </div>
@@ -169,10 +251,10 @@ export default function AuthModal({ isOpen, onClose, initialView = 'number', onS
                                     <div className="text-center space-y-2">
                                         <h3 className="text-[32px] text-zinc-900 font-bold">Enter OTP</h3>
                                         <p className="text-[15px] text-zinc-500 font-medium">
-                                            We have sent a verification code to {number || '{ NUMBER }'}{' '}
+                                            We sent a 6-digit code to +91 {number}{' '}
                                             <span
                                                 className="text-[#7c00e6] font-bold cursor-pointer hover:underline"
-                                                onClick={() => setView('number')}
+                                                onClick={() => { setView('number'); setOtp(['', '', '', '', '', '']); setError(''); }}
                                             >
                                                 (Change)
                                             </span>
@@ -192,21 +274,31 @@ export default function AuthModal({ isOpen, onClose, initialView = 'number', onS
                                                     value={digit}
                                                     onChange={(e) => handleOtpChange(i, e.target.value)}
                                                     onKeyDown={(e) => handleKeyDown(i, e)}
+                                                    onPaste={handleOtpPaste}
                                                 />
                                             ))}
                                         </div>
 
+                                        {error && <p className="text-red-500 text-sm -mt-6">{error}</p>}
+                                        {resent && <p className="text-green-600 text-sm -mt-6">OTP resent successfully!</p>}
+
                                         <div className="space-y-4">
                                             <button
-                                                onClick={completeLogin}
-                                                disabled={otp.join('').length !== 6}
+                                                onClick={handleVerifyOtp}
+                                                disabled={otp.join('').length !== 6 || loading}
                                                 className="w-full h-[55px] bg-black text-white text-xl font-bold rounded-[11px] hover:bg-zinc-800 transition-all active:scale-[0.98] disabled:bg-zinc-200 disabled:text-zinc-500 disabled:cursor-not-allowed shadow-xl shadow-black/10"
                                             >
-                                                Continue
+                                                {loading ? 'Verifying…' : 'Continue'}
                                             </button>
                                             <div className="text-center">
                                                 <p className="text-[15px] text-zinc-500 font-medium">
-                                                    Didn't get the OPT? <span className="text-[#7c00e6] font-bold cursor-pointer hover:underline">Resend OTP</span>
+                                                    Didn&apos;t get the OTP?{' '}
+                                                    <span
+                                                        onClick={handleResend}
+                                                        className="text-[#7c00e6] font-bold cursor-pointer hover:underline"
+                                                    >
+                                                        {loading ? 'Sending…' : 'Resend OTP'}
+                                                    </span>
                                                 </p>
                                             </div>
                                         </div>
@@ -270,20 +362,20 @@ export default function AuthModal({ isOpen, onClose, initialView = 'number', onS
                                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                                 </div>
                                 <div className="space-y-1">
-                                    <h4 style={{ fontSize: '36px', fontWeight: 500, lineHeight: '100%', fontFamily: 'var(--font-anek-latin)' }} className="text-zinc-900">Name</h4>
+                                    <h4 style={{ fontSize: '36px', fontWeight: 500, lineHeight: '100%', fontFamily: 'var(--font-anek-latin)' }} className="text-zinc-900">{isAdmin ? 'Admin' : 'User'}</h4>
                                     <p className="text-lg text-zinc-500 font-medium tracking-tight uppercase">{number ? `+91 ${number}` : '{ NUMBER }'}</p>
                                 </div>
                             </div>
 
-                            {/* Menu Items Section */}
+                            {/* Menu Items Section — Admin Panel only for admin number */}
                             <div className="space-y-4 pt-4">
                                 {[
-                                    { label: 'Admin Panel', action: () => { router.push('/admin'); onClose(); } },
+                                    ...(isAdmin ? [{ label: 'Admin Panel', action: () => { router.push('/admin'); onClose(); } }] : []),
                                     { label: 'View all bookings', action: () => { } },
                                     { label: 'Chat with us', action: () => { } },
                                     { label: 'Terms & Conditions', action: () => { } },
                                     { label: 'Privacy Policy', action: () => { } },
-                                    { label: 'Logout', action: () => setShowLogoutConfirm(true) }
+                                    { label: 'Logout', action: () => setShowLogoutConfirm(true) },
                                 ].map((item, idx) => (
                                     <button
                                         key={idx}

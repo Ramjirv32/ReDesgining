@@ -1,6 +1,7 @@
 package user
 
 import (
+	"ticpin-backend/config"
 	"ticpin-backend/models"
 	userservice "ticpin-backend/services/user"
 
@@ -31,6 +32,11 @@ func LoginUser(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
+
+	if err := config.SetUserAuthCookies(c, u.ID.Hex(), u.Phone, ""); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "failed to set session"})
+	}
+
 	return c.JSON(u)
 }
 

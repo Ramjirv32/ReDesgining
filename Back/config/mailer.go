@@ -16,7 +16,6 @@ func sendOTP(from, pass, to, subject, body string) error {
 		port = 587
 	}
 
-	// Clean password (remove spaces often found in app passwords)
 	cleanPass := strings.ReplaceAll(pass, " ", "")
 
 	m := gomail.NewMessage()

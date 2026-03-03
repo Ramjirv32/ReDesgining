@@ -10,14 +10,15 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func Create(p *models.Play) error {
-	orgCol := config.GetDB().Collection("organizers")
+	orgCol := config.OrgsCol
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	var org models.Organizer
-	if err := orgCol.FindOne(ctx, bson.M{"_id": p.OrganizerID}).Decode(&org); err != nil {
+	if err := orgCol.FindOne(ctx, bson.M{"_id": p.OrganizerID}, options.FindOne().SetProjection(bson.M{"is_verified": 1, "category_status": 1})).Decode(&org); err != nil {
 		return errors.New("organizer not found")
 	}
 	if !org.IsVerified {
@@ -32,15 +33,15 @@ func Create(p *models.Play) error {
 	}
 	p.CreatedAt = time.Now()
 	p.UpdatedAt = time.Now()
-	col := config.GetDB().Collection("plays")
+	col := config.PlaysCol
 	ctx2, cancel2 := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel2()
 	_, err := col.InsertOne(ctx2, p)
 	return err
 }
 
-func GetAll(category string) ([]models.Play, error) {
-	col := config.GetDB().Collection("plays")
+func GetAll(category string, limit int, after string) ([]models.Play, string, error) {
+	col := config.PlaysCol
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -49,16 +50,44 @@ func GetAll(category string) ([]models.Play, error) {
 		filter["category"] = category
 	}
 
-	cursor, err := col.Find(ctx, filter)
+	if after != "" {
+		if oid, err := primitive.ObjectIDFromHex(after); err == nil {
+			filter["_id"] = bson.M{"$gt": oid}
+		}
+	}
+
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+
+	opts := options.Find().SetLimit(int64(limit)).SetSort(bson.M{"_id": 1})
+	opts.SetProjection(bson.M{
+		"title":             1,
+		"category":          1,
+		"images":            1,
+		"price_starts_from": 1,
+		"location":          1,
+		"status":            1,
+		"organizer_id":      1,
+	})
+
+	cursor, err := col.Find(ctx, filter, opts)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	defer cursor.Close(ctx)
+
 	var plays []models.Play
 	if err := cursor.All(ctx, &plays); err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return plays, nil
+
+	nextCursor := ""
+	if len(plays) > 0 {
+		nextCursor = plays[len(plays)-1].ID.Hex()
+	}
+
+	return plays, nextCursor, nil
 }
 
 func GetByID(id string) (*models.Play, error) {
@@ -66,7 +95,7 @@ func GetByID(id string) (*models.Play, error) {
 	if err != nil {
 		return nil, err
 	}
-	col := config.GetDB().Collection("plays")
+	col := config.PlaysCol
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	var p models.Play
@@ -81,7 +110,7 @@ func GetByOrganizer(organizerID string) ([]models.Play, error) {
 	if err != nil {
 		return nil, err
 	}
-	col := config.GetDB().Collection("plays")
+	col := config.PlaysCol
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	cursor, err := col.Find(ctx, bson.M{"organizer_id": objID})
@@ -105,22 +134,52 @@ func Update(id string, organizerID string, update *models.Play) error {
 	if err != nil {
 		return err
 	}
-	col := config.GetDB().Collection("plays")
+	col := config.PlaysCol
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	var original models.Play
 	if err := col.FindOne(ctx, bson.M{"_id": objID, "organizer_id": orgID}).Decode(&original); err != nil {
 		return errors.New("play not found or not owned by this organizer")
 	}
-	update.UpdatedAt = time.Now()
-	update.OrganizerID = orgID
-	update.CreatedAt = original.CreatedAt
-	ctx2, cancel2 := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel2()
+
+	updateDoc := bson.M{}
+	if update.Name != "" {
+		updateDoc["name"] = update.Name
+	}
+	if update.Category != "" {
+		updateDoc["category"] = update.Category
+	}
+	if update.VenueName != "" {
+		updateDoc["venue_name"] = update.VenueName
+	}
+	if update.VenueAddress != "" {
+		updateDoc["venue_address"] = update.VenueAddress
+	}
+	if update.PortraitImageURL != "" {
+		updateDoc["portrait_image_url"] = update.PortraitImageURL
+	}
+	if update.LandscapeImageURL != "" {
+		updateDoc["landscape_image_url"] = update.LandscapeImageURL
+	}
+	if update.PriceStartsFrom > 0 {
+		updateDoc["price_starts_from"] = update.PriceStartsFrom
+	}
+	if update.Description != "" {
+		updateDoc["description"] = update.Description
+	}
+	if len(update.Courts) > 0 {
+		updateDoc["courts"] = update.Courts
+	}
+	if update.EventInstructions != "" {
+		updateDoc["event_instructions"] = update.EventInstructions
+	}
+
+	updateDoc["updatedAt"] = time.Now()
+
 	_, err = col.UpdateOne(
-		ctx2,
+		ctx,
 		bson.M{"_id": objID, "organizer_id": orgID},
-		bson.M{"$set": update},
+		bson.M{"$set": updateDoc},
 	)
 	return err
 }
@@ -134,7 +193,7 @@ func Delete(id string, organizerID string) error {
 	if err != nil {
 		return err
 	}
-	col := config.GetDB().Collection("plays")
+	col := config.PlaysCol
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	res, err := col.DeleteOne(ctx, bson.M{"_id": objID, "organizer_id": orgID})

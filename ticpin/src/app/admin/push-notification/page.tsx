@@ -253,8 +253,8 @@ export default function PushNotification() {
                         ) : history.map(item => (
                             <div key={item.id} className="bg-white rounded-[25px] p-8 border border-white shadow-sm hover:shadow-md transition-shadow flex gap-8">
                                 {item.image_url && (
-                                    <div className="w-[120px] h-[120px] rounded-[15px] overflow-hidden flex-shrink-0 border border-zinc-100">
-                                        <img src={item.image_url} className="w-full h-full object-cover" alt="" />
+                                    <div className="w-[120px] h-[120px] rounded-[15px] overflow-hidden flex-shrink-0 border border-zinc-100 relative">
+                                        <Image src={item.image_url} fill className="object-cover" alt={item.title || 'Notification'} />
                                     </div>
                                 )}
                                 <div className="flex-1">

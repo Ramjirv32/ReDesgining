@@ -224,7 +224,7 @@ func UpdateOffer(c *fiber.Ctx) error {
 		AppliesTo:     appliesTo,
 		EntityIDs:     entityObjIDs,
 		ValidUntil:    validUntilTime,
-		IsActive:      isActiveStr == "true" || isActiveStr == "", // default to active if not specified
+		IsActive:      isActiveStr == "true" || isActiveStr == "",
 		UpdatedAt:     time.Now(),
 	}
 	if imageURL != "" {

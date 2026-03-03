@@ -20,7 +20,8 @@ go.work
 go.work.sum
 
 # Environment variables
-Backend/.env
+.env
+.env.local
 
 # ========================
 # Node.js / Next.js (Frontend)

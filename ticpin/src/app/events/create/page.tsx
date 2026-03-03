@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { ChevronDown, ChevronUp, Info, PlusCircle, ExternalLink, Bold, Italic, Underline, Search, Upload } from 'lucide-react';
 import { CATEGORIES, CITIES, CATEGORY_DATA } from './data';
 import { useRouter } from 'next/navigation';
@@ -274,7 +275,7 @@ const CreateEventPage = () => {
 
     const addSalesNotif = () => {
         if (!newSales.email.trim()) return;
-        setSalesNotifs([...salesNotifs, { email: newSales.email.trim(), mobile: '' }]);
+        setSalesNotifs([...salesNotifs, { email: newSales.email.trim(), mobile: newSales.mobile.trim() }]);
         setNewSales({ email: '', mobile: '' });
     };
 
@@ -370,19 +371,19 @@ const CreateEventPage = () => {
                                     onClick={() => handleFormat('bold')}
                                     className={`p-2 rounded ${isBold ? 'bg-gray-200' : ''}`}
                                 >
-                                    <img src="/create event/bold.svg" alt="Bold" className="w-[40px] h-[40px]" />
+                                    <Image src="/create event/bold.svg" alt="Bold" width={40} height={40} />
                                 </button>
                                 <button
                                     onClick={() => handleFormat('italic')}
                                     className={`p-2 rounded ${isItalic ? 'bg-gray-200' : ''}`}
                                 >
-                                    <img src="/create event/italic.svg" alt="Italic" className="w-[40px] h-[40px]" />
+                                    <Image src="/create event/italic.svg" alt="Italic" width={40} height={40} />
                                 </button>
                                 <button
                                     onClick={() => handleFormat('underline')}
                                     className={`p-2 rounded ${isUnderline ? 'bg-gray-200' : ''}`}
                                 >
-                                    <img src="/create event/underline.svg" alt="Underline" className="w-[40px] h-[40px]" />
+                                    <Image src="/create event/underline.svg" alt="Underline" width={40} height={40} />
                                 </button>
                             </div>
                             <div className="border border-[#AEAEAE] rounded-[10px] p-6 min-h-[326px] relative">
@@ -501,15 +502,26 @@ const CreateEventPage = () => {
                                 {/* Venue Address */}
                                 <div className="space-y-2">
                                     <label className="text-[20px] font-medium text-[#686868]" style={{ fontFamily: 'var(--font-anek-latin)' }}>Search and select your venue address</label>
-                                    <div className="relative border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 gap-4 mt-[10px]">
-                                        <Search className="text-[#AEAEAE]" size={24} />
-                                        <input
-                                            type="text"
-                                            placeholder="Search address"
-                                            value={venueAddress}
-                                            onChange={e => setVenueAddress(e.target.value)}
-                                            className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]"
-                                        />
+                                    <div className="flex gap-3 items-center mt-[10px]">
+                                        <div className="relative border border-[#686868] rounded-[10px] h-[64px] flex-1 flex items-center px-6 gap-4">
+                                            <Search className="text-[#AEAEAE]" size={24} />
+                                            <input
+                                                type="text"
+                                                placeholder="Search address"
+                                                value={venueAddress}
+                                                onChange={e => setVenueAddress(e.target.value)}
+                                                className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]"
+                                            />
+                                        </div>
+                                        <a
+                                            href={googleMapLink || '#'}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-2 border border-[#686868] rounded-[10px] h-[64px] px-6 bg-white text-black text-[18px] font-medium whitespace-nowrap hover:bg-zinc-50 transition-colors"
+                                        >
+                                            <ExternalLink size={20} />
+                                            Show Map
+                                        </a>
                                     </div>
                                 </div>
                                 {/* Google Map Link */}
@@ -620,7 +632,11 @@ const CreateEventPage = () => {
                                         </div>
                                         <div className="flex items-center justify-end gap-6 text-[#5331EA]">
                                             <span className="text-[17px] font-medium">* required</span>
-                                            {portraitUrl && <img src={portraitUrl} alt="Portrait preview" className="w-[50px] h-[50px] rounded-[6px] object-cover border border-[#686868]" />}
+                                            {portraitUrl && (
+                                                <div className="relative w-[50px] h-[50px] rounded-[6px] overflow-hidden border border-[#686868]">
+                                                    <Image src={portraitUrl} alt="Portrait preview" fill className="object-cover" />
+                                                </div>
+                                            )}
                                             <div
                                                 onClick={() => document.getElementById('upload-portrait')?.click()}
                                                 className="flex items-center border border-[#686868] rounded-[5px] h-[35px] overflow-hidden bg-[#EBEBEB] cursor-pointer"
@@ -649,7 +665,11 @@ const CreateEventPage = () => {
                                         </div>
                                         <div className="flex items-center justify-end gap-6 text-[#5331EA]">
                                             <span className="text-[17px] font-medium">* required</span>
-                                            {landscapeUrl && <img src={landscapeUrl} alt="Landscape preview" className="w-[70px] h-[40px] rounded-[6px] object-cover border border-[#686868]" />}
+                                            {landscapeUrl && (
+                                                <div className="relative w-[70px] h-[40px] rounded-[6px] overflow-hidden border border-[#686868]">
+                                                    <Image src={landscapeUrl} alt="Landscape preview" fill className="object-cover" />
+                                                </div>
+                                            )}
                                             <div
                                                 onClick={() => document.getElementById('upload-landscape')?.click()}
                                                 className="flex items-center border border-[#686868] rounded-[5px] h-[35px] overflow-hidden bg-[#EBEBEB] cursor-pointer"
@@ -722,7 +742,7 @@ const CreateEventPage = () => {
                             </div>
                             <div className="bg-[#5331EA26] border border-[#5331EA] rounded-[10px] p-4 flex items-center gap-3 mt-6">
                                 <div className="flex items-center justify-center w-6 h-6">
-                                    <img src="/create event/info-circle.svg" alt="Info" className="w-[40px] h-[40px]" />
+                                    <Image src="/create event/info-circle.svg" alt="Info" width={40} height={40} />
                                 </div>
                                 <span className="text-[19px] font-medium text-black" style={{ fontFamily: 'var(--font-anek-latin)' }}>
                                     Viewable only on mobile and tablet web
@@ -811,7 +831,11 @@ const CreateEventPage = () => {
                                     <div>
                                         <label className="text-[18px] font-medium text-[#686868]" style={{ fontFamily: 'var(--font-anek-latin)' }}>Artist Image</label>
                                         <div className="flex items-center gap-4 mt-2">
-                                            {artist.image_url && <img src={artist.image_url} alt="" className="w-[60px] h-[60px] rounded-[8px] object-cover border border-[#686868]" />}
+                                            {artist.image_url && (
+                                                <div className="relative w-[60px] h-[60px] rounded-[8px] overflow-hidden border border-[#686868]">
+                                                    <Image src={artist.image_url} alt={artist.name} fill className="object-cover" />
+                                                </div>
+                                            )}
                                             <div onClick={() => document.getElementById(`upload-artist-${idx}`)?.click()}
                                                 className="flex items-center border border-[#686868] rounded-[8px] h-[40px] overflow-hidden cursor-pointer bg-white">
                                                 <span className="px-4 text-[18px] font-medium text-black">
@@ -901,7 +925,11 @@ const CreateEventPage = () => {
                                         <div>
                                             <label className="text-[18px] font-medium text-[#686868]" style={{ fontFamily: 'var(--font-anek-latin)' }}>Category Image</label>
                                             <div className="flex items-center gap-4 mt-2">
-                                                {cat.image_url && <img src={cat.image_url} alt="" className="w-[60px] h-[60px] rounded-[8px] object-cover border border-[#686868]" />}
+                                                {cat.image_url && (
+                                                    <div className="relative w-[60px] h-[60px] rounded-[8px] overflow-hidden border border-[#686868]">
+                                                        <Image src={cat.image_url} alt={cat.name} fill className="object-cover" />
+                                                    </div>
+                                                )}
                                                 <div onClick={() => document.getElementById(`upload-ticket-${idx}`)?.click()}
                                                     className="flex items-center border border-[#686868] rounded-[8px] h-[40px] overflow-hidden cursor-pointer bg-white">
                                                     <span className="px-4 text-[18px] font-medium text-black">
@@ -1109,7 +1137,7 @@ const CreateEventPage = () => {
                                 {/* Note Box */}
                                 <div className="bg-[#5331EA26] border border-[#5331EA] rounded-[10px] p-4 flex items-center gap-3 mt-6">
                                     <div className="flex items-center justify-center w-6 h-6">
-                                        <img src="/create event/info-circle.svg" alt="Info" className="w-[40px] h-[40px]" />
+                                        <Image src="/create event/info-circle.svg" alt="Info" width={40} height={40} />
                                     </div>
                                     <span className="text-[19px] font-medium text-black" style={{ fontFamily: 'var(--font-anek-latin)' }}>
                                         Can’t find an option that properly describes your event? Email events@ticpin.in and we’ll assist you.
@@ -1248,67 +1276,86 @@ const CreateEventPage = () => {
                             Confirm your payment and contact details
                         </h2>
                         <section className="bg-white rounded-[15px] p-8">
+                            {/* Pre-filled notice */}
+                            <div className="bg-[#5331EA1A] border border-[#5331EA] rounded-[10px] px-6 py-4 flex items-center gap-3 mb-8">
+                                <Image src="/create event/info-circle.svg" alt="Info" width={32} height={32} className="shrink-0" />
+                                <span className="text-[18px] font-medium text-[#5331EA]">Your bank details have been pre-filled from your existing setup. Please review and confirm before submitting.</span>
+                            </div>
 
-                            <div className="space-y-8 ">
-                                <div className="space-y-2 mt-[-10px]">
-                                    <label className="text-[20px] font-medium text-[#686868]">Organiser *</label>
-                                    <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
+                            <div className="space-y-8">
+                                {/* Organiser */}
+                                <div className="space-y-2">
+                                    <label className="text-[20px] font-medium text-[#686868]">Organiser <span className="text-[#5331EA]">*</span></label>
+                                    <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6">
                                         <input
                                             type="text"
                                             placeholder="Organiser Name"
                                             value={payment.organizerName}
                                             onChange={e => setPayment({ ...payment, organizerName: e.target.value })}
-                                            className="w-full bg-transparent outline-none text-[20px] placeholder-[#AEAEAE]"
+                                            className="w-full bg-transparent outline-none text-[22px] font-medium text-black placeholder-[#AEAEAE]"
                                         />
                                     </div>
                                 </div>
+
+                                {/* GSTIN */}
                                 <div className="space-y-2">
-                                    <label className="text-[20px] font-medium text-[#686868]">GSTIN:</label>
-                                    <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
+                                    <div className="flex items-center gap-3">
+                                        <label className="text-[20px] font-medium text-[#686868]">GSTIN / PAN:</label>
+                                        <span className="text-[16px] text-[#AEAEAE] italic">(One from three can be chosen: GSTIN, PAN, or Aadhaar)</span>
+                                    </div>
+                                    <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6">
                                         <input
                                             type="text"
-                                            placeholder="GSTIN"
+                                            placeholder="Enter GSTIN or PAN number"
                                             value={payment.gstin}
                                             onChange={e => setPayment({ ...payment, gstin: e.target.value })}
-                                            className="w-full bg-transparent outline-none text-[20px] placeholder-[#AEAEAE]"
+                                            className="w-full bg-transparent outline-none text-[22px] font-medium text-black placeholder-[#AEAEAE]"
                                         />
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                                    <div className="space-y-2">
-                                        <label className="text-[20px] font-medium text-[#686868]">Account Number:</label>
-                                        <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
-                                            <input
-                                                type="text"
-                                                placeholder="Account Number"
-                                                value={payment.accountNumber}
-                                                onChange={e => setPayment({ ...payment, accountNumber: e.target.value })}
-                                                className="w-full bg-transparent outline-none text-[20px] placeholder-[#AEAEAE]"
-                                            />
+
+                                {/* Bank Details Confirmation Row */}
+                                <div>
+                                    <p className="text-[20px] font-semibold text-black mb-4">Bank Details</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                        <div className="space-y-2">
+                                            <label className="text-[18px] font-medium text-[#686868]">Account Number:</label>
+                                            <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 bg-[#F9F9F9]">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Bank account number"
+                                                    value={payment.accountNumber}
+                                                    onChange={e => setPayment({ ...payment, accountNumber: e.target.value })}
+                                                    className="w-full bg-transparent outline-none text-[20px] font-medium text-black placeholder-[#AEAEAE]"
+                                                />
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[20px] font-medium text-[#686868]">IFSC:</label>
-                                        <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
-                                            <input
-                                                type="text"
-                                                placeholder="IFSC Code"
-                                                value={payment.ifsc}
-                                                onChange={e => setPayment({ ...payment, ifsc: e.target.value })}
-                                                className="w-full bg-transparent outline-none text-[20px] placeholder-[#AEAEAE]"
-                                            />
+                                        <div className="space-y-2">
+                                            <label className="text-[18px] font-medium text-[#686868]">IFSC:</label>
+                                            <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 bg-[#F9F9F9]">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Bank IFSC code"
+                                                    value={payment.ifsc}
+                                                    onChange={e => setPayment({ ...payment, ifsc: e.target.value })}
+                                                    className="w-full bg-transparent outline-none text-[20px] font-medium text-black placeholder-[#AEAEAE]"
+                                                />
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[20px] font-medium text-[#686868]">Account Type:</label>
-                                        <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
-                                            <input
-                                                type="text"
-                                                placeholder="e.g. Current, Savings"
-                                                value={payment.accountType}
-                                                onChange={e => setPayment({ ...payment, accountType: e.target.value })}
-                                                className="w-full bg-transparent outline-none text-[20px] placeholder-[#AEAEAE]"
-                                            />
+                                        <div className="space-y-2">
+                                            <label className="text-[18px] font-medium text-[#686868]">Account Type:</label>
+                                            <div className="relative border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 bg-[#F9F9F9]">
+                                                <select
+                                                    value={payment.accountType}
+                                                    onChange={e => setPayment({ ...payment, accountType: e.target.value })}
+                                                    className="w-full appearance-none bg-transparent outline-none text-[20px] font-medium text-black"
+                                                >
+                                                    <option value="">Select account type</option>
+                                                    <option value="Savings">Savings</option>
+                                                    <option value="Current">Current</option>
+                                                </select>
+                                                <ChevronDown size={20} className="absolute right-4 pointer-events-none text-[#686868]" />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1393,10 +1440,10 @@ const CreateEventPage = () => {
                                 Send a copy of every sale to
                             </h2>
 
-                            <div className="w-full">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div className="space-y-3">
-                                    <label className="text-[20px] font-medium text-[#686868]" style={{ fontFamily: 'var(--font-anek-latin)' }}>Email</label>
-                                    <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
+                                    <label className="text-[20px] font-medium text-[#686868]" style={{ fontFamily: 'var(--font-anek-latin)' }}>Mail</label>
+                                    <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
                                         <input
                                             type="email"
                                             placeholder="Enter email address"
@@ -1408,13 +1455,26 @@ const CreateEventPage = () => {
                                         />
                                     </div>
                                 </div>
+                                <div className="space-y-3">
+                                    <label className="text-[20px] font-medium text-[#686868]" style={{ fontFamily: 'var(--font-anek-latin)' }}>Mobile</label>
+                                    <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
+                                        <input
+                                            type="tel"
+                                            placeholder="Enter mobile number"
+                                            value={newSales.mobile}
+                                            onChange={e => setNewSales({ ...newSales, mobile: e.target.value })}
+                                            className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]"
+                                            style={{ fontFamily: 'var(--font-anek-latin)' }}
+                                        />
+                                    </div>
+                                </div>
                             </div>
 
                             {salesNotifs.length > 0 && (
                                 <div className="flex flex-wrap gap-3">
                                     {salesNotifs.map((s, i) => (
                                         <div key={i} className="bg-zinc-100 px-4 py-2 rounded-lg flex items-center gap-2">
-                                            <span>{s.email}</span>
+                                            <span>{s.email}{s.mobile ? ` — ${s.mobile}` : ''}</span>
                                             <button onClick={() => removeSalesNotif(i)} className="text-red-500">×</button>
                                         </div>
                                     ))}

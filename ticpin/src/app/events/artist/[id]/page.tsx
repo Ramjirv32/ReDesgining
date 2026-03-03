@@ -2,6 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import BottomBanner from '@/components/layout/BottomBanner';
 import Footer from '@/components/layout/Footer';
 import EventCard from '@/components/events/EventCard';
@@ -73,10 +74,11 @@ export default function ArtistDetailPage() {
                 <section className="flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-16">
                     <div className="w-[280px] h-[280px] md:w-[400px] md:h-[400px] rounded-[30px] overflow-hidden bg-[#f3f0fd] flex-shrink-0 flex items-center justify-center border border-zinc-100 shadow-sm">
                         {artistDetails?.image_url ? (
-                            <img
+                            <Image
                                 src={artistDetails.image_url}
                                 alt={artistNameDecoded}
-                                className="w-full h-full object-cover"
+                                fill
+                                className="object-cover"
                             />
                         ) : (
                             <span className="text-8xl font-bold text-[#7B2FF7] opacity-20 uppercase select-none">{artistNameDecoded.charAt(0)}</span>

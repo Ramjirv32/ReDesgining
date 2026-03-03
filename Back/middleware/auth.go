@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"os"
 	"ticpin-backend/config"
 	"ticpin-backend/models"
 
@@ -18,11 +17,7 @@ type OrganizerClaims struct {
 }
 
 func jwtSecret() []byte {
-	s := os.Getenv("JWT_SECRET")
-	if s == "" {
-		s = "ticpin-secret-change-in-production"
-	}
-	return []byte(s)
+	return config.JWTSecret()
 }
 
 func RequireAuth(c *fiber.Ctx) error {
@@ -44,21 +39,75 @@ func RequireAuth(c *fiber.Ctx) error {
 
 	c.Locals("organizerId", claims.OrganizerID)
 	c.Locals("email", claims.Email)
+
+	adminEmail := config.GetAdminEmail()
+	c.Locals("isAdmin", claims.Email == adminEmail)
+
 	return c.Next()
 }
 
 func RequireAdmin(c *fiber.Ctx) error {
-	adminEmail := os.Getenv("ADMIN_EMAIL")
-	if adminEmail == "" {
-		adminEmail = "23cs139@kpriet.ac.in"
-	}
-	emailVal := c.Locals("email")
-	if emailVal == nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
-	}
-	email := emailVal.(string)
-	if email != adminEmail {
+	isAdmin, _ := c.Locals("isAdmin").(bool)
+	if !isAdmin {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "forbidden: admin access required"})
+	}
+	return c.Next()
+}
+
+func RequireSelfOrAdmin(c *fiber.Ctx) error {
+	organizerID := c.Params("id")
+	if organizerID == "" {
+		organizerID = c.Params("organizerId")
+	}
+
+	authID := c.Locals("organizerId").(string)
+	isAdmin, _ := c.Locals("isAdmin").(bool)
+
+	if !isAdmin && authID != organizerID {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "forbidden: you can only access your own data"})
+	}
+
+	return c.Next()
+}
+
+type UserClaims struct {
+	UserID string `json:"userId"`
+	Phone  string `json:"phone"`
+	jwt.RegisteredClaims
+}
+
+func RequireUserAuth(c *fiber.Ctx) error {
+	tokenStr := c.Cookies("ticpin_user_token")
+	if tokenStr == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized: missing user token"})
+	}
+
+	claims := &UserClaims{}
+	token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fiber.ErrUnauthorized
+		}
+		return jwtSecret(), nil
+	})
+
+	if err != nil || !token.Valid {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized: invalid or expired user token"})
+	}
+
+	c.Locals("userId", claims.UserID)
+	c.Locals("phone", claims.Phone)
+	return c.Next()
+}
+
+func RequireSelfUser(c *fiber.Ctx) error {
+	targetUserID := c.Params("userId")
+	if targetUserID == "" {
+		targetUserID = c.Params("id")
+	}
+
+	authUserID := c.Locals("userId").(string)
+	if authUserID != targetUserID {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "forbidden: you can only access your own profile"})
 	}
 	return c.Next()
 }
