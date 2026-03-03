@@ -76,6 +76,14 @@ func VerifyOTP(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
+	if org.CategoryStatus == nil || org.CategoryStatus["dining"] != "approved" {
+		_ = organizersvc.UpdateCategoryStatus(org.ID.Hex(), "dining", "approved")
+		if org.CategoryStatus == nil {
+			org.CategoryStatus = map[string]string{}
+		}
+		org.CategoryStatus["dining"] = "approved"
+	}
+
 	isAdmin := req.Email == config.GetAdminEmail()
 	if err := config.SetAuthCookies(c, org.ID.Hex(), org.Email, "dining", isAdmin, org.CategoryStatus); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "session error"})

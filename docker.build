@@ -1,0 +1,31 @@
+cd /home/ramji/Desktop/FinalTickpinDesgin/Back && docker build \
+  --build-arg PORT=9000 \
+  --build-arg "MONGODB_URI=mongodb+srv://ramji:Ramji23112005@cluster0.ln4g5.mongodb.net/final-ticpin?retryWrites=true&w=majority" \
+  --build-arg "CLOUDINARY_URL=cloudinary://453114646771214:Z6nBrncsqk5EVrmmsKUMO7V2rLM@dwqvk6l8o" \
+  --build-arg "JWT_SECRET=0EUIvUpeQ4/M5mEW6uIhxioHo0O18mnu8PdtvzQtE2w=" \
+  --build-arg "NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_S4cSv1Z2KjpNpt" \
+  --build-arg "RAZORPAY_KEY_SECRET=xSQjgZgrKiQS2LXUL4BQ3VvY" \
+  --build-arg "CASHFREE_CLIENT_ID=CF1205067D6A777G4UCVC73BRNOM0" \
+  --build-arg "CASHFREE_CLIENT_SECRET=cfsk_ma_prod_cffb00ee6a0531e28a6ba6a6e6c85b22_8ee50217" \
+  --build-arg "CASHFREE_VERIFICATION_URL=https://api.cashfree.com/verification" \
+  --build-arg "CASHFREE_PAYMENT_URL=https://api.cashfree.com/pg" \
+  --build-arg "PAYMENT_TRAFFIC_WEIGHT_CASHFREE=0.5" \
+  --build-arg "NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyCgRlcCM6i0tAN1JGdnytVFbIHKVoN7r-8" \
+  --build-arg "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=ticpin-fa6d2.firebaseapp.com" \
+  --build-arg "NEXT_PUBLIC_FIREBASE_PROJECT_ID=ticpin-fa6d2" \
+  --build-arg "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=ticpin-fa6d2.firebasestorage.app" \
+  --build-arg "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=276096958748" \
+  --build-arg "NEXT_PUBLIC_FIREBASE_APP_ID=1:276096958748:web:78b47a98591943a1867ad9" \
+  --build-arg "PLAY_EMAIL=play@ticpin.in" \
+  --build-arg "PLAY_APP_PASSWORD=irjs ojvn fbmh orht" \
+  --build-arg "DINING_EMAIL=dining@ticpin.in" \
+  --build-arg "DINING_APP_PASSWORD=whig xtqf vwsh dzrw" \
+  --build-arg "EVENTS_EMAIL=events@ticpin.in" \
+  --build-arg "EVENTS_APP_PASSWORD=tnco qmio jhkr ldqb" \
+  --build-arg "ADMIN_EMAIL=23cs139@kpriet.ac.in" \
+  --build-arg "ADMIN_PASSWORD=12345678" \
+  --build-arg "ADMIN_APP_PASSWORD=smmk omlg zpoj bvzs" \
+  -t ticpin-backend:latest \
+  -t kprcloud0/ticpin-backend:latest \
+  . 2>&1
+Built image successfully and noted Docker warnings

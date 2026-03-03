@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"organizer_id":{"$numberInt":"1"}},"name":"organizer_id_1"},{"v":{"$numberInt":"2"},"key":{"createdAt":{"$numberInt":"-1"}},"name":"createdAt_-1"}],"uuid":"28cdcfea90a44b9e863497ca66fe562b","collectionName":"dinings","type":"collection"}

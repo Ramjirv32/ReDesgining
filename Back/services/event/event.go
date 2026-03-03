@@ -31,8 +31,11 @@ func Create(e *models.Event) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	var org models.Organizer
-	if err := orgCol.FindOne(ctx, bson.M{"_id": e.OrganizerID}, options.FindOne().SetProjection(bson.M{"category_status": 1})).Decode(&org); err != nil {
+	if err := orgCol.FindOne(ctx, bson.M{"_id": e.OrganizerID}, options.FindOne().SetProjection(bson.M{"isVerified": 1, "categoryStatus": 1})).Decode(&org); err != nil {
 		return errors.New("organizer not found")
+	}
+	if !org.IsVerified {
+		return errors.New("organizer is not verified")
 	}
 	if org.CategoryStatus["events"] != "approved" {
 		return errors.New("organizer is not approved for the events category")
@@ -79,17 +82,6 @@ func GetAll(category string, artist string, limit int, after string) ([]models.E
 	}
 
 	opts := options.Find().SetLimit(int64(limit)).SetSort(bson.M{"_id": 1})
-
-	opts.SetProjection(bson.M{
-		"title":             1,
-		"category":          1,
-		"images":            1,
-		"price_starts_from": 1,
-		"venue":             1,
-		"date":              1,
-		"status":            1,
-		"organizer_id":      1,
-	})
 
 	cursor, err := col.Find(ctx, filter, opts)
 	if err != nil {
