@@ -132,27 +132,46 @@ export default function PlayBookPage() {
         setSelectedCourtIds([]);
     }, [duration]);
 
+    const formatTime = (mins: number) => {
+        let h = Math.floor(mins / 60);
+        const m = mins % 60;
+        const period = h < 12 || h === 24 ? 'AM' : 'PM';
+        let displayH = h % 12;
+        if (displayH === 0) displayH = 12;
+        return `${String(displayH).padStart(2, '0')}:${String(m).padStart(2, '0')} ${period}`;
+    };
+
+    const openingTimeStr = venue?.opening_time || (venue?.time ? venue.time.split(' - ')[0] : null);
+    const closingTimeStr = venue?.closing_time || (venue?.time ? venue.time.split(' - ')[1] : null);
+
+    const generateBlockSlots = () => {
+        if (!openingTimeStr || !closingTimeStr) return [];
+        const venueStart = parseTime(openingTimeStr);
+        const venueEnd = parseTime(closingTimeStr);
+        const blocks = [];
+        let current = venueStart;
+        while (current + duration * 60 <= venueEnd) {
+            const end = current + duration * 60;
+            const label = `${formatTime(current)} - ${formatTime(end)}`;
+            // find which base slot string this corresponds to for isWindowAvailable
+            const startSlotStr = TIME_SLOTS.find(s => parseTime(s.split(' - ')[0]) === current);
+            if (startSlotStr) {
+                blocks.push({ label, startSlot: startSlotStr });
+            }
+            current += duration * 60;
+        }
+        return blocks;
+    };
+
+    const blockSlots = generateBlockSlots();
+
     // Does a court have ANY free starting slot for the selected duration?
     const isCourtAvailableAnytime = (courtName: string, dur: number): boolean =>
-        filteredTimeSlots.some(slot => isWindowAvailable(courtName, slot, dur));
+        blockSlots.some(b => isWindowAvailable(courtName, b.startSlot, dur));
 
     const courts = venue?.courts ?? [];
     const selectedUniqueId = selectedCourtIds[0] ?? null;
     const selectedCourt = courts.find((c, idx) => `${c.id}-${idx}` === selectedUniqueId) ?? null;
-
-    // Filter time slots based on venue opening/closing time
-    const openingTimeStr = venue?.opening_time || (venue?.time ? venue.time.split(' - ')[0] : null);
-    const closingTimeStr = venue?.closing_time || (venue?.time ? venue.time.split(' - ')[1] : null);
-
-    const filteredTimeSlots = (openingTimeStr && closingTimeStr)
-        ? TIME_SLOTS.filter(slot => {
-            const [slotStart] = slot.split(' - ');
-            const venueStart = parseTime(openingTimeStr);
-            const venueEnd = parseTime(closingTimeStr);
-            const slotStartMins = parseTime(slotStart);
-            return slotStartMins >= venueStart && slotStartMins < venueEnd;
-        })
-        : TIME_SLOTS;
 
     const doBooking = (v: RealPlay) => {
         const tickets = selectedCourtIds.map(uid => {
@@ -272,12 +291,58 @@ export default function PlayBookPage() {
                             </div>
                         </section>
 
-                        {/* ── Step 1: Court Selection ── */}
+                        {/* ── Step 1: Time Slot Selection ── */}
+                        <section className="space-y-4">
+                            <h2 className="text-[13px] font-semibold uppercase tracking-[0.12em] text-black border-b border-zinc-200 pb-3">
+                                AVAILABLE TIME BLOCKS
+                            </h2>
+                            {loadingSlots ? (
+                                <div className="flex items-center gap-2 text-[14px] text-zinc-400">
+                                    <div className="w-4 h-4 border-2 border-zinc-300 border-t-zinc-600 rounded-full animate-spin" />
+                                    Checking availability...
+                                </div>
+                            ) : (
+                                <div className="flex flex-wrap gap-3">
+                                    {blockSlots.map((b, i) => {
+                                        // A slot block is available if ANY court is free for it
+                                        const isAvailable = courts.some(c => isWindowAvailable(c.name, b.startSlot, duration));
+                                        const isSelected = selectedSlot === b.label;
+                                        return (
+                                            <button
+                                                key={i}
+                                                disabled={!isAvailable}
+                                                onClick={() => {
+                                                    isAvailable && setSelectedSlot(b.label);
+                                                    setSelectedCourtIds([]); // Reset court when slot changes
+                                                }}
+                                                className={`px-5 h-[48px] rounded-[12px] text-[15px] font-medium border transition-all ${!isAvailable
+                                                    ? 'bg-zinc-100 border-zinc-200 text-zinc-400 cursor-not-allowed line-through'
+                                                    : isSelected
+                                                        ? 'bg-black text-white border-black shadow-lg scale-[1.02]'
+                                                        : 'bg-white text-black border-zinc-300 hover:border-black'
+                                                    }`}
+                                            >
+                                                {b.label}
+                                            </button>
+                                        );
+                                    })}
+                                    {blockSlots.length > 0 && blockSlots.every(b => !courts.some(c => isWindowAvailable(c.name, b.startSlot, duration))) && (
+                                        <p className="text-red-500 text-[15px] font-medium w-full">
+                                            No available slots for a {duration}hr window on this date.
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+                        </section>
+
+                        {/* ── Step 2: Court Selection (based on selected slot) ── */}
                         <section className="space-y-4">
                             <h2 className="text-[13px] font-semibold uppercase tracking-[0.12em] text-black border-b border-zinc-200 pb-3">
                                 SELECT COURT
                             </h2>
-                            {loadingSlots ? (
+                            {!selectedSlot ? (
+                                <p className="text-[14px] text-zinc-400 italic">Select a time block above to see available courts</p>
+                            ) : loadingSlots ? (
                                 <div className="flex items-center gap-2 text-[14px] text-zinc-400">
                                     <div className="w-4 h-4 border-2 border-zinc-300 border-t-zinc-600 rounded-full animate-spin" />
                                     Checking availability...
@@ -288,13 +353,14 @@ export default function PlayBookPage() {
                                 <div className="space-y-4">
                                     {courts.map((court, index) => {
                                         const uniqueId = `${court.id}-${index}`;
-                                        const fullyBooked = !isCourtAvailableAnytime(court.name, duration);
+                                        const selectedBlock = blockSlots.find(b => b.label === selectedSlot);
+                                        const isAvailable = selectedBlock ? isWindowAvailable(court.name, selectedBlock.startSlot, duration) : false;
                                         const isSelected = selectedCourtIds.includes(uniqueId);
                                         return (
                                             <div
                                                 key={uniqueId}
-                                                onClick={() => !fullyBooked && toggleCourt(uniqueId)}
-                                                className={`flex items-center gap-4 p-3 rounded-[16px] border transition-all ${fullyBooked
+                                                onClick={() => isAvailable && toggleCourt(uniqueId)}
+                                                className={`flex items-center gap-4 p-3 rounded-[16px] border transition-all ${!isAvailable
                                                     ? 'border-zinc-100 bg-zinc-50 opacity-50 cursor-not-allowed'
                                                     : isSelected
                                                         ? 'border-black bg-zinc-50 cursor-pointer shadow-md'
@@ -313,9 +379,9 @@ export default function PlayBookPage() {
                                                 <div className="flex-1 space-y-0.5">
                                                     <div className="flex items-center gap-2 flex-wrap">
                                                         <p className="text-[17px] font-semibold text-black uppercase">{court.name}</p>
-                                                        {fullyBooked && (
+                                                        {!isAvailable && (
                                                             <span className="text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 px-2 py-0.5 rounded-full">
-                                                                Fully Booked
+                                                                Unavailable for this slot
                                                             </span>
                                                         )}
                                                     </div>
@@ -340,49 +406,6 @@ export default function PlayBookPage() {
                                             </div>
                                         );
                                     })}
-                                </div>
-                            )}
-                        </section>
-
-                        {/* ── Step 2: Time Slot Selection (based on selected court) ── */}
-                        <section className="space-y-4">
-                            <h2 className="text-[13px] font-semibold uppercase tracking-[0.12em] text-black border-b border-zinc-200 pb-3">
-                                AVAILABLE TIME SLOTS
-                            </h2>
-                            {!selectedCourt ? (
-                                <p className="text-[14px] text-zinc-400 italic">Select a court above to see available time slots</p>
-                            ) : loadingSlots ? (
-                                <div className="flex items-center gap-2 text-[14px] text-zinc-400">
-                                    <div className="w-4 h-4 border-2 border-zinc-300 border-t-zinc-600 rounded-full animate-spin" />
-                                    Checking availability...
-                                </div>
-                            ) : (
-                                <div className="flex flex-wrap gap-3">
-                                    {filteredTimeSlots.map((slot, i) => {
-                                        const isAvailable = isWindowAvailable(selectedCourt.name, slot, duration);
-                                        const isSelected = selectedSlot === slot;
-                                        return (
-                                            <button
-                                                key={i}
-                                                disabled={!isAvailable}
-                                                onClick={() => isAvailable && setSelectedSlot(slot)}
-                                                title={!isAvailable ? `${selectedCourt.name} not free for ${duration}hr starting here` : slot}
-                                                className={`px-5 h-[48px] rounded-[12px] text-[15px] font-medium border transition-all ${!isAvailable
-                                                    ? 'bg-zinc-100 border-zinc-200 text-zinc-400 cursor-not-allowed line-through'
-                                                    : isSelected
-                                                        ? 'bg-black text-white border-black shadow-lg scale-[1.02]'
-                                                        : 'bg-white text-black border-zinc-300 hover:border-black'
-                                                    }`}
-                                            >
-                                                {slot}
-                                            </button>
-                                        );
-                                    })}
-                                    {filteredTimeSlots.every(slot => !isWindowAvailable(selectedCourt.name, slot, duration)) && (
-                                        <p className="text-red-500 text-[15px] font-medium w-full">
-                                            No available slots for {selectedCourt.name} with a {duration}hr window on this date.
-                                        </p>
-                                    )}
                                 </div>
                             )}
                         </section>
