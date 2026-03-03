@@ -254,8 +254,7 @@ function AdminDiningContent() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await adminApi.listDining();
-      setListings(Array.isArray(data) ? data : []);
+      setListings(await adminApi.listDining());
     } catch (e) {
 
     } finally {

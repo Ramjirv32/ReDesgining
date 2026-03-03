@@ -326,8 +326,7 @@ function AdminEventsContent() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await adminApi.listEvents();
-      setEvents(Array.isArray(data) ? data : []);
+      setEvents(await adminApi.listEvents());
     } catch (e) {
       // error suppressed
     } finally {

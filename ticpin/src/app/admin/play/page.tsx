@@ -251,8 +251,7 @@ function AdminPlayContent() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await adminApi.listPlay();
-      setListings(Array.isArray(data) ? data : []);
+      setListings(await adminApi.listPlay());
     } catch (e) {
 
     } finally {

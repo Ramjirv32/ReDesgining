@@ -283,7 +283,10 @@ export const adminApi = {
     // ── Events ────────────────────────────────────────────────────────────────
 
     /** GET /api/admin/events */
-    listEvents: () => adminRequest<AdminListing[]>('/events'),
+    listEvents: async (): Promise<AdminListing[]> => {
+        const res = await adminRequest<{ data: AdminListing[] } | AdminListing[]>('/events');
+        return Array.isArray(res) ? res : (res as { data: AdminListing[] }).data ?? [];
+    },
 
     /** PUT /api/admin/events/:id/status */
     updateEventStatus: (id: string, status: ListingStatus) =>
@@ -306,7 +309,10 @@ export const adminApi = {
     // ── Dining ────────────────────────────────────────────────────────────────
 
     /** GET /api/admin/dining */
-    listDining: () => adminRequest<AdminListing[]>('/dining'),
+    listDining: async (): Promise<AdminListing[]> => {
+        const res = await adminRequest<{ data: AdminListing[] } | AdminListing[]>('/dining');
+        return Array.isArray(res) ? res : (res as { data: AdminListing[] }).data ?? [];
+    },
 
     /** PUT /api/admin/dining/:id/status */
     updateDiningStatus: (id: string, status: ListingStatus) =>
@@ -329,7 +335,10 @@ export const adminApi = {
     // ── Play ──────────────────────────────────────────────────────────────────
 
     /** GET /api/admin/play */
-    listPlay: () => adminRequest<AdminListing[]>('/play'),
+    listPlay: async (): Promise<AdminListing[]> => {
+        const res = await adminRequest<{ data: AdminListing[] } | AdminListing[]>('/play');
+        return Array.isArray(res) ? res : (res as { data: AdminListing[] }).data ?? [];
+    },
 
     /** PUT /api/admin/play/:id/status */
     updatePlayStatus: (id: string, status: ListingStatus) =>
