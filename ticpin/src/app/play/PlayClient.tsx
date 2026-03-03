@@ -34,9 +34,23 @@ const sportsCategories = [
 const filters = ['All', 'Top Rated', 'Cricket', 'Pickleball', 'Badminton', 'Football', 'Tennis', 'Basketball', 'Table Tennis'];
 
 export default function PlayClient({ initialVenues }: { initialVenues: RealPlay[] }) {
-    const [venues] = useState<RealPlay[]>(initialVenues);
+    const [venues, setVenues] = useState<RealPlay[]>(initialVenues);
     const [activeFilter, setActiveFilter] = useState('All');
     const [modalFilters, setModalFilters] = useState<Record<string, string[]>>({});
+
+    
+    useEffect(() => {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+        if (!backendUrl) return;
+        fetch(`${backendUrl}/api/play`)
+            .then(r => r.json())
+            .then(data => {
+                const list: RealPlay[] = Array.isArray(data) ? data : (data?.data ?? []);
+                const approved = list.filter(v => v.status === 'approved');
+                if (approved.length > 0) setVenues(approved);
+            })
+            .catch(() => {});
+    }, []);
 
     const selectedSports = modalFilters.sports ?? [];
     const selectedDimensions = modalFilters.dimension ?? [];
