@@ -18,7 +18,7 @@ async function getCricketVenues(): Promise<RealPlay[]> {
         });
         if (!res.ok) return [];
         const data = await res.json();
-        return Array.isArray(data) ? data : [];
+        return Array.isArray(data) ? data : (data?.data ?? []);
     } catch (error) {
         console.error("Failed to fetch cricket venues:", error);
         return [];

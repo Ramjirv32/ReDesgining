@@ -11,7 +11,7 @@ func GetAllPlays(c *fiber.Ctx) error {
 	limit := c.QueryInt("limit", 20)
 	after := c.Query("after")
 
-	plays, nextCursor, err := playservice.GetAll(category, limit, after)
+	plays, nextCursor, err := playservice.GetAll(category, "approved", limit, after)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}

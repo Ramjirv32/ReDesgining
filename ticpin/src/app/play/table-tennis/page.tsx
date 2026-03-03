@@ -7,7 +7,8 @@ async function getTTVenues() {
         });
         if (!res.ok) return [];
         const data = await res.json();
-        return (Array.isArray(data) ? data : []).filter((v: any) => v.status === 'approved');
+        const list = Array.isArray(data) ? data : (data?.data ?? []);
+        return list.filter((v: any) => v.status === 'approved');
     } catch (error) {
         console.error("Failed to fetch table tennis venues:", error);
         return [];

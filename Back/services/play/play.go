@@ -40,7 +40,7 @@ func Create(p *models.Play) error {
 	return err
 }
 
-func GetAll(category string, limit int, after string) ([]models.Play, string, error) {
+func GetAll(category string, status string, limit int, after string) ([]models.Play, string, error) {
 	col := config.PlaysCol
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -48,6 +48,9 @@ func GetAll(category string, limit int, after string) ([]models.Play, string, er
 	filter := bson.M{}
 	if category != "" {
 		filter["category"] = category
+	}
+	if status != "" {
+		filter["status"] = status
 	}
 
 	if after != "" {

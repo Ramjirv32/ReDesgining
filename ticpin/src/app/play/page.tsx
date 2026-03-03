@@ -25,7 +25,8 @@ async function getVenues(): Promise<RealPlay[]> {
         });
         if (!res.ok) return [];
         const data = await res.json();
-        return (Array.isArray(data) ? data : []).filter((v: RealPlay) => v.status === 'approved');
+        const list: RealPlay[] = Array.isArray(data) ? data : (data?.data ?? []);
+        return list.filter((v: RealPlay) => v.status === 'approved');
     } catch (error) {
         console.error("Failed to fetch venues:", error);
         return [];
