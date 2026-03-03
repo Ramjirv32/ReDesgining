@@ -2,7 +2,7 @@ import EventCategoryClient from '../EventCategoryClient';
 
 async function getPerformanceEvents() {
     try {
-        const res = await fetch('http://localhost:9000/api/events?category=Performance', {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/events?category=Performance`, {
             cache: 'no-store'
         });
         if (!res.ok) return [];

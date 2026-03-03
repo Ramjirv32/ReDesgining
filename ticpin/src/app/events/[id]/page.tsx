@@ -49,7 +49,7 @@ interface EventData {
 
 async function getEventData(id: string): Promise<EventData | null> {
     try {
-        const base = process.env.BACKEND_URL ?? 'http://localhost:9000';
+        const base = process.env.NEXT_PUBLIC_BACKEND_URL;
         const res = await fetch(`${base}/api/events/${id}`, {
             next: { revalidate: 60 },
         });

@@ -30,7 +30,7 @@ interface RealPlay {
 
 async function getVenueData(id: string): Promise<RealPlay | null> {
     try {
-        const base = process.env.BACKEND_URL ?? 'http://localhost:9000';
+        const base = process.env.NEXT_PUBLIC_BACKEND_URL;
         const res = await fetch(`${base}/api/play/${id}`, {
             next: { revalidate: 60 }, // ISR: revalidate every 60s
         });

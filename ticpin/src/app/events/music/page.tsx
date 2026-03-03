@@ -2,7 +2,7 @@ import EventCategoryClient from '../EventCategoryClient';
 
 async function getMusicEvents() {
     try {
-        const res = await fetch('http://localhost:9000/api/events?category=Music', {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/events?category=Music`, {
             cache: 'no-store'
         });
         if (!res.ok) return [];

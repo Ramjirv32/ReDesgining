@@ -38,8 +38,8 @@ interface OfferRecord {
 async function getDiningData() {
     try {
         const [venuesRes, offersRes] = await Promise.all([
-            fetch('http://localhost:9000/api/dining', { cache: 'no-store' }),
-            fetch('http://localhost:9000/api/offers/dining', { cache: 'no-store' })
+            fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/dining`, { cache: 'no-store' }),
+            fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/offers/dining`, { cache: 'no-store' })
         ]);
 
         const venuesData = await venuesRes.json();

@@ -28,7 +28,7 @@ interface RealEvent {
 
 async function getEvents(): Promise<RealEvent[]> {
     try {
-        const response = await fetch('http://localhost:9000/api/events', {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/events`, {
             cache: 'no-store'
         });
         if (!response.ok) return [];

@@ -1,0 +1,8 @@
+.git
+.gitignore
+*.md
+.env
+.env.*
+main
+tmp_build
+tmp_main

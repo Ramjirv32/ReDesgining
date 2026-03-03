@@ -2,7 +2,7 @@ import EventCategoryClient from '../EventCategoryClient';
 
 async function getSportsEvents() {
     try {
-        const res = await fetch('http://localhost:9000/api/events?category=Sports', {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/events?category=Sports`, {
             cache: 'no-store'
         });
         if (!res.ok) return [];

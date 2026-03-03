@@ -2,7 +2,7 @@ import CategoryClient from '../CategoryClient';
 
 async function getBadmintonVenues() {
     try {
-        const res = await fetch('http://localhost:9000/api/play?category=BADMINTON', {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/play?category=BADMINTON`, {
             cache: 'no-store'
         });
         if (!res.ok) return [];

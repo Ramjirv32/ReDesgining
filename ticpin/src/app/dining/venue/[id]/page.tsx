@@ -21,7 +21,7 @@ interface RealDining {
 
 async function getVenueData(id: string): Promise<RealDining | null> {
     try {
-        const base = process.env.BACKEND_URL ?? 'http://localhost:9000';
+        const base = process.env.NEXT_PUBLIC_BACKEND_URL;
         const res = await fetch(`${base}/api/dining/${id}`, {
             next: { revalidate: 60 },
         });
