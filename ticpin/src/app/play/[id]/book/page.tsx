@@ -271,7 +271,7 @@ export default function PlayBookPage() {
                                                 className={`flex items-center gap-4 p-3 rounded-[16px] border cursor-pointer transition-all ${isSelected ? 'border-black bg-zinc-50' : 'border-zinc-200 bg-white hover:border-zinc-400'
                                                     }`}
                                             >
-                                                <div className="w-[110px] md:w-[150px] h-[80px] rounded-[12px] overflow-hidden shrink-0 bg-[#D9D9D9] flex items-center justify-center">
+                                                <div className="relative w-[110px] md:w-[150px] h-[80px] rounded-[12px] overflow-hidden shrink-0 bg-[#D9D9D9] flex items-center justify-center">
                                                     {court.image_url ? (
                                                         <Image src={court.image_url} alt={court.name} fill className="object-cover" />
                                                     ) : (

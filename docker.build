@@ -1,6 +1,6 @@
-cd /home/ramji/Desktop/FinalTickpinDesgin/Back && docker build \
+cd /home/ramji/Desktop/FinalTickpinDesgin/Back && docker build --no-cache \
   --build-arg PORT=9000 \
-  --build-arg "MONGODB_URI=mongodb+srv://ramji:Ramji23112005@cluster0.ln4g5.mongodb.net/final-ticpin?retryWrites=true&w=majority" \
+  --build-arg "MONGODB_URI=mongodb+srv://ramji:Ramji23112005@cluster0.ln4g5.mongodb.net/ticpin?retryWrites=true&w=majority" \
   --build-arg "CLOUDINARY_URL=cloudinary://453114646771214:Z6nBrncsqk5EVrmmsKUMO7V2rLM@dwqvk6l8o" \
   --build-arg "JWT_SECRET=0EUIvUpeQ4/M5mEW6uIhxioHo0O18mnu8PdtvzQtE2w=" \
   --build-arg "NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_S4cSv1Z2KjpNpt" \
@@ -27,5 +27,4 @@ cd /home/ramji/Desktop/FinalTickpinDesgin/Back && docker build \
   --build-arg "ADMIN_APP_PASSWORD=smmk omlg zpoj bvzs" \
   -t ticpin-backend:latest \
   -t kprcloud0/ticpin-backend:latest \
-  . 2>&1
-Built image successfully and noted Docker warnings
+  . && docker push kprcloud0/ticpin-backend:latest
