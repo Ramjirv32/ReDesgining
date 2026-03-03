@@ -27,7 +27,8 @@ func GetAllEvents(c *fiber.Ctx) error {
 }
 
 func GetEventByID(c *fiber.Ctx) error {
-	e, err := eventservice.GetByID(c.Params("id"))
+	bypass := c.Query("bypassCache") == "true"
+	e, err := eventservice.GetByID(c.Params("id"), bypass)
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "event not found"})
 	}

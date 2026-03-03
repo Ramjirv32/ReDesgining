@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"ticpin-backend/cache"
 	"ticpin-backend/config"
 	"ticpin-backend/models"
 	diningservice "ticpin-backend/services/dining"
@@ -24,6 +25,18 @@ func deleteDoc(collection string, id string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	_, err = col.DeleteOne(ctx, bson.M{"_id": objID})
+	if err == nil {
+		// Invalidate cache (strip plural 's' if present for singular key)
+		keyType := collection
+		if collection == "plays" {
+			keyType = "play"
+		} else if collection == "events" {
+			keyType = "event"
+		} else if collection == "dinings" {
+			keyType = "dining"
+		}
+		cache.GlobalCache.Delete(keyType + ":" + id)
+	}
 	return err
 }
 
@@ -63,6 +76,7 @@ func UpdateEventStatus(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
+	cache.GlobalCache.Delete("event:" + id)
 	return c.JSON(fiber.Map{"message": "event status updated", "status": body.Status})
 }
 
@@ -84,6 +98,7 @@ func UpdateEvent(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
+	cache.GlobalCache.Delete("event:" + id)
 	return c.JSON(fiber.Map{"message": "event updated"})
 }
 
@@ -123,6 +138,7 @@ func UpdateDiningStatus(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
+	cache.GlobalCache.Delete("dining:" + id)
 	return c.JSON(fiber.Map{"message": "dining status updated", "status": body.Status})
 }
 
@@ -144,6 +160,7 @@ func UpdateDining(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
+	cache.GlobalCache.Delete("dining:" + id)
 	return c.JSON(fiber.Map{"message": "dining updated"})
 }
 
@@ -183,6 +200,7 @@ func UpdatePlayStatus(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
+	cache.GlobalCache.Delete("play:" + id)
 	return c.JSON(fiber.Map{"message": "play status updated", "status": body.Status})
 }
 
@@ -204,6 +222,7 @@ func UpdatePlay(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
+	cache.GlobalCache.Delete("play:" + id)
 	return c.JSON(fiber.Map{"message": "play updated"})
 }
 

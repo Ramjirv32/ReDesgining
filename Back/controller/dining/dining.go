@@ -21,7 +21,8 @@ func GetAllDinings(c *fiber.Ctx) error {
 }
 
 func GetDiningByID(c *fiber.Ctx) error {
-	d, err := diningservice.GetByID(c.Params("id"))
+	bypass := c.Query("bypassCache") == "true"
+	d, err := diningservice.GetByID(c.Params("id"), bypass)
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "dining not found"})
 	}

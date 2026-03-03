@@ -23,6 +23,8 @@ type Play struct {
 	SubCategory        string             `bson:"sub_category" json:"sub_category"`
 	Date               time.Time          `bson:"date" json:"date" validate:"required"`
 	Time               string             `bson:"time" json:"time" validate:"required"`
+	OpeningTime        string             `bson:"opening_time" json:"opening_time"`
+	ClosingTime        string             `bson:"closing_time" json:"closing_time"`
 	Duration           string             `bson:"duration" json:"duration"`
 	Courts             []Court            `bson:"courts" json:"courts" validate:"required,min=1"`
 	City               string             `bson:"city" json:"city" validate:"required"`

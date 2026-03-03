@@ -20,6 +20,7 @@ interface CartData {
     timeSlot?: string;
     guests?: number;
     slot?: string;
+    duration?: number;
 }
 
 /** Dynamically load a third-party payment SDK script (idempotent). */
@@ -337,6 +338,7 @@ export default function ReviewBookingPage() {
                     venue_name: cartData.eventName,
                     date: cartData.date || '',
                     slot: cartData.slot || '',
+                    duration: cartData.duration || 1,
                     tickets: cartData.tickets.map(t => ({
                         category: t.name,
                         price: t.price,

@@ -22,16 +22,27 @@ interface RealPlay {
     venue_name?: string;
     sub_category?: string;
     time?: string;
+    opening_time?: string;
+    closing_time?: string;
     price_starts_from?: number;
     courts?: Court[];
 }
 
 const TIME_SLOTS = [
-    '06:00 - 07:00 AM', '07:00 - 08:00 AM', '08:00 - 09:00 AM',
-    '09:00 - 10:00 AM', '10:00 - 11:00 AM', '11:00 AM - 12:00 PM',
-    '04:00 - 05:00 PM', '05:00 - 06:00 PM', '06:00 - 07:00 PM',
-    '07:00 - 08:00 PM', '08:00 - 09:00 PM', '09:00 - 10:00 PM',
+    "05:00 - 06:00 AM", "06:00 - 07:00 AM", "07:00 - 08:00 AM", "08:00 - 09:00 AM",
+    "09:00 - 10:00 AM", "10:00 - 11:00 AM", "11:00 AM - 12:00 PM",
+    "12:00 - 01:00 PM", "01:00 - 02:00 PM", "02:00 - 03:00 PM", "03:00 - 04:00 PM",
+    "04:00 - 05:00 PM", "05:00 - 06:00 PM", "06:00 - 07:00 PM",
+    "07:00 - 08:00 PM", "08:00 - 09:00 PM", "09:00 - 10:00 PM", "10:00 - 11:00 PM",
 ];
+
+const parseTime = (timeStr: string) => {
+    const [time, period] = timeStr.trim().split(' ');
+    let [hours, minutes] = time.split(':').map(Number);
+    if (period === 'PM' && hours !== 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+    return hours * 60 + minutes;
+};
 
 function getNextDays(count = 7) {
     const days = [];
@@ -110,8 +121,8 @@ export default function PlayBookPage() {
             .finally(() => setLoadingSlots(false));
     }, [id, selectedDate]);
 
-    const toggleCourt = (courtId: string) => {
-        setSelectedCourtIds([courtId]);
+    const toggleCourt = (uniqueId: string) => {
+        setSelectedCourtIds([uniqueId]);
         setSelectedSlot(null); // reset slot — available times differ per court
     };
 
@@ -123,15 +134,29 @@ export default function PlayBookPage() {
 
     // Does a court have ANY free starting slot for the selected duration?
     const isCourtAvailableAnytime = (courtName: string, dur: number): boolean =>
-        TIME_SLOTS.some(slot => isWindowAvailable(courtName, slot, dur));
+        filteredTimeSlots.some(slot => isWindowAvailable(courtName, slot, dur));
 
     const courts = venue?.courts ?? [];
-    const selectedCourtId = selectedCourtIds[0] ?? null;
-    const selectedCourt = courts.find(c => c.id === selectedCourtId) ?? null;
+    const selectedUniqueId = selectedCourtIds[0] ?? null;
+    const selectedCourt = courts.find((c, idx) => `${c.id}-${idx}` === selectedUniqueId) ?? null;
+
+    // Filter time slots based on venue opening/closing time
+    const openingTimeStr = venue?.opening_time || (venue?.time ? venue.time.split(' - ')[0] : null);
+    const closingTimeStr = venue?.closing_time || (venue?.time ? venue.time.split(' - ')[1] : null);
+
+    const filteredTimeSlots = (openingTimeStr && closingTimeStr)
+        ? TIME_SLOTS.filter(slot => {
+            const [slotStart] = slot.split(' - ');
+            const venueStart = parseTime(openingTimeStr);
+            const venueEnd = parseTime(closingTimeStr);
+            const slotStartMins = parseTime(slotStart);
+            return slotStartMins >= venueStart && slotStartMins < venueEnd;
+        })
+        : TIME_SLOTS;
 
     const doBooking = (v: RealPlay) => {
-        const tickets = selectedCourtIds.map(cid => {
-            const court = courts.find(c => c.id === cid);
+        const tickets = selectedCourtIds.map(uid => {
+            const court = courts.find((c, idx) => `${c.id}-${idx}` === uid);
             const pricePerHour = court?.price ?? v.price_starts_from ?? 500;
             return {
                 category: court?.name ?? 'Court', // Use category to store court name for backend validation
@@ -262,16 +287,17 @@ export default function PlayBookPage() {
                             ) : (
                                 <div className="space-y-4">
                                     {courts.map((court, index) => {
+                                        const uniqueId = `${court.id}-${index}`;
                                         const fullyBooked = !isCourtAvailableAnytime(court.name, duration);
-                                        const isSelected = selectedCourtIds.includes(court.id);
+                                        const isSelected = selectedCourtIds.includes(uniqueId);
                                         return (
                                             <div
-                                                key={`${court.id}-${index}`}
-                                                onClick={() => !fullyBooked && toggleCourt(court.id)}
+                                                key={uniqueId}
+                                                onClick={() => !fullyBooked && toggleCourt(uniqueId)}
                                                 className={`flex items-center gap-4 p-3 rounded-[16px] border transition-all ${fullyBooked
                                                     ? 'border-zinc-100 bg-zinc-50 opacity-50 cursor-not-allowed'
                                                     : isSelected
-                                                        ? 'border-black bg-zinc-50 cursor-pointer'
+                                                        ? 'border-black bg-zinc-50 cursor-pointer shadow-md'
                                                         : 'border-zinc-200 bg-white hover:border-zinc-400 cursor-pointer'
                                                     }`}
                                             >
@@ -332,7 +358,7 @@ export default function PlayBookPage() {
                                 </div>
                             ) : (
                                 <div className="flex flex-wrap gap-3">
-                                    {TIME_SLOTS.map((slot, i) => {
+                                    {filteredTimeSlots.map((slot, i) => {
                                         const isAvailable = isWindowAvailable(selectedCourt.name, slot, duration);
                                         const isSelected = selectedSlot === slot;
                                         return (
@@ -344,7 +370,7 @@ export default function PlayBookPage() {
                                                 className={`px-5 h-[48px] rounded-[12px] text-[15px] font-medium border transition-all ${!isAvailable
                                                     ? 'bg-zinc-100 border-zinc-200 text-zinc-400 cursor-not-allowed line-through'
                                                     : isSelected
-                                                        ? 'bg-black text-white border-black'
+                                                        ? 'bg-black text-white border-black shadow-lg scale-[1.02]'
                                                         : 'bg-white text-black border-zinc-300 hover:border-black'
                                                     }`}
                                             >
@@ -352,7 +378,7 @@ export default function PlayBookPage() {
                                             </button>
                                         );
                                     })}
-                                    {TIME_SLOTS.every(slot => !isWindowAvailable(selectedCourt.name, slot, duration)) && (
+                                    {filteredTimeSlots.every(slot => !isWindowAvailable(selectedCourt.name, slot, duration)) && (
                                         <p className="text-red-500 text-[15px] font-medium w-full">
                                             No available slots for {selectedCourt.name} with a {duration}hr window on this date.
                                         </p>
@@ -364,11 +390,11 @@ export default function PlayBookPage() {
                         {/* Price summary */}
                         {selectedCourtIds.length > 0 && (
                             <section className="bg-zinc-50 rounded-[14px] p-4 border border-zinc-200 space-y-1">
-                                {selectedCourtIds.map(cid => {
-                                    const court = courts.find(c => c.id === cid);
+                                {selectedCourtIds.map(uid => {
+                                    const court = courts.find((c, idx) => `${c.id}-${idx}` === uid);
                                     if (!court) return null;
                                     return (
-                                        <div key={cid} className="flex justify-between text-[15px]">
+                                        <div key={uid} className="flex justify-between text-[15px]">
                                             <span className="text-black font-medium">{court.name} × {duration}hr</span>
                                             <span className="font-semibold text-black">₹{court.price * duration}</span>
                                         </div>
@@ -376,8 +402,8 @@ export default function PlayBookPage() {
                                 })}
                                 <div className="border-t border-zinc-300 pt-2 mt-2 flex justify-between text-[16px] font-bold">
                                     <span>Total</span>
-                                    <span>₹{selectedCourtIds.reduce((s, cid) => {
-                                        const court = courts.find(c => c.id === cid);
+                                    <span>₹{selectedCourtIds.reduce((s, uid) => {
+                                        const court = courts.find((c, idx) => `${c.id}-${idx}` === uid);
                                         return s + (court?.price ?? 0) * duration;
                                     }, 0)}</span>
                                 </div>

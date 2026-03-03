@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"ticpin-backend/cache"
 	"ticpin-backend/config"
 	"ticpin-backend/models"
 
@@ -102,7 +103,18 @@ func GetAll(category string, artist string, limit int, after string) ([]models.E
 	return events, nextCursor, nil
 }
 
-func GetByID(id string) (*models.Event, error) {
+func GetByID(id string, bypassCache bool) (*models.Event, error) {
+	// 1. Try cache
+	cacheKey := "event:" + id
+	if !bypassCache {
+		if val, ok := cache.GlobalCache.Get(cacheKey); ok {
+			if e, ok := val.(*models.Event); ok {
+				return e, nil
+			}
+		}
+	}
+
+	// 2. Fetch from DB
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return nil, err
@@ -114,6 +126,10 @@ func GetByID(id string) (*models.Event, error) {
 	if err := col.FindOne(ctx, bson.M{"_id": objID}).Decode(&e); err != nil {
 		return nil, err
 	}
+
+	// 3. Store in cache (5 min TTL)
+	cache.GlobalCache.Set(cacheKey, &e, 5*time.Minute)
+
 	return &e, nil
 }
 
@@ -195,6 +211,9 @@ func Update(id string, organizerID string, update *models.Event) error {
 		bson.M{"_id": objID, "organizer_id": orgID},
 		bson.M{"$set": updateDoc},
 	)
+	if err == nil {
+		cache.GlobalCache.Delete("event:" + id)
+	}
 	return err
 }
 
@@ -217,5 +236,6 @@ func Delete(id string, organizerID string) error {
 	if res.DeletedCount == 0 {
 		return errors.New("event not found or not owned by this organizer")
 	}
+	cache.GlobalCache.Delete("event:" + id)
 	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"ticpin-backend/cache"
 	"ticpin-backend/config"
 	"ticpin-backend/models"
 
@@ -84,7 +85,18 @@ func GetAll(category string, status string, limit int, after string) ([]models.P
 	return plays, nextCursor, nil
 }
 
-func GetByID(id string) (*models.Play, error) {
+func GetByID(id string, bypassCache bool) (*models.Play, error) {
+	// 1. Try cache (unless bypass is requested)
+	cacheKey := "play:" + id
+	if !bypassCache {
+		if val, ok := cache.GlobalCache.Get(cacheKey); ok {
+			if p, ok := val.(*models.Play); ok {
+				return p, nil
+			}
+		}
+	}
+
+	// 2. Fetch from DB
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return nil, err
@@ -96,6 +108,10 @@ func GetByID(id string) (*models.Play, error) {
 	if err := col.FindOne(ctx, bson.M{"_id": objID}).Decode(&p); err != nil {
 		return nil, err
 	}
+
+	// 3. Store in cache (5 min TTL)
+	cache.GlobalCache.Set(cacheKey, &p, 5*time.Minute)
+
 	return &p, nil
 }
 
@@ -146,6 +162,15 @@ func Update(id string, organizerID string, update *models.Play) error {
 	if update.VenueName != "" {
 		updateDoc["venue_name"] = update.VenueName
 	}
+	if update.Time != "" {
+		updateDoc["time"] = update.Time
+	}
+	if update.OpeningTime != "" {
+		updateDoc["opening_time"] = update.OpeningTime
+	}
+	if update.ClosingTime != "" {
+		updateDoc["closing_time"] = update.ClosingTime
+	}
 	if update.VenueAddress != "" {
 		updateDoc["venue_address"] = update.VenueAddress
 	}
@@ -175,6 +200,10 @@ func Update(id string, organizerID string, update *models.Play) error {
 		bson.M{"_id": objID, "organizer_id": orgID},
 		bson.M{"$set": updateDoc},
 	)
+	if err == nil {
+		// Invalidate cache
+		cache.GlobalCache.Delete("play:" + id)
+	}
 	return err
 }
 
@@ -197,5 +226,7 @@ func Delete(id string, organizerID string) error {
 	if res.DeletedCount == 0 {
 		return errors.New("play not found or not owned by this organizer")
 	}
+	// Invalidate cache
+	cache.GlobalCache.Delete("play:" + id)
 	return nil
 }

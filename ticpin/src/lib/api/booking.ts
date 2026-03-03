@@ -42,6 +42,7 @@ export interface CreatePlayPayload {
     venue_name: string;
     date: string;
     slot: string;
+    duration: number;
     tickets: BookingTicketItem[];
     order_amount: number;
     booking_fee: number;

@@ -99,6 +99,8 @@ export interface AdminListing {
     // event-specific
     date?: string;
     time?: string;
+    opening_time?: string;
+    closing_time?: string;
     venue?: string;
     venue_name?: string;
     venue_address?: string;

@@ -11,13 +11,17 @@ type item struct {
 }
 
 type TTLCache struct {
-	items map[string]item
-	mu    sync.RWMutex
+	items    map[string]item
+	mu       sync.RWMutex
+	maxItems int
 }
 
-func NewTTLCache() *TTLCache {
+var GlobalCache = NewTTLCache(1000)
+
+func NewTTLCache(maxItems int) *TTLCache {
 	cache := &TTLCache{
-		items: make(map[string]item),
+		items:    make(map[string]item),
+		maxItems: maxItems,
 	}
 
 	go func() {
@@ -41,8 +45,18 @@ func (c *TTLCache) Set(key string, value interface{}, ttl time.Duration) {
 	if ttl > 0 {
 		expiration = time.Now().Add(ttl).UnixNano()
 	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	
+	if c.maxItems > 0 && len(c.items) >= c.maxItems {
+		for k := range c.items {
+			delete(c.items, k)
+			break
+		}
+	}
+
 	c.items[key] = item{
 		value:      value,
 		expiration: expiration,

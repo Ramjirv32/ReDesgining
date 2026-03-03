@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"ticpin-backend/cache"
 	"ticpin-backend/config"
 	"ticpin-backend/models"
 
@@ -77,7 +78,18 @@ func GetAll(limit int, after string) ([]models.Dining, string, error) {
 	return dinings, nextCursor, nil
 }
 
-func GetByID(id string) (*models.Dining, error) {
+func GetByID(id string, bypassCache bool) (*models.Dining, error) {
+	// 1. Try cache
+	cacheKey := "dining:" + id
+	if !bypassCache {
+		if val, ok := cache.GlobalCache.Get(cacheKey); ok {
+			if d, ok := val.(*models.Dining); ok {
+				return d, nil
+			}
+		}
+	}
+
+	// 2. Fetch from DB
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return nil, err
@@ -89,6 +101,10 @@ func GetByID(id string) (*models.Dining, error) {
 	if err := col.FindOne(ctx, bson.M{"_id": objID}).Decode(&d); err != nil {
 		return nil, err
 	}
+
+	// 3. Store in cache (5 min TTL)
+	cache.GlobalCache.Set(cacheKey, &d, 5*time.Minute)
+
 	return &d, nil
 }
 
@@ -165,6 +181,9 @@ func Update(id string, organizerID string, update *models.Dining) error {
 		bson.M{"_id": objID, "organizer_id": orgID},
 		bson.M{"$set": updateDoc},
 	)
+	if err == nil {
+		cache.GlobalCache.Delete("dining:" + id)
+	}
 	return err
 }
 
@@ -187,5 +206,6 @@ func Delete(id string, organizerID string) error {
 	if res.DeletedCount == 0 {
 		return errors.New("dining not found or not owned by this organizer")
 	}
+	cache.GlobalCache.Delete("dining:" + id)
 	return nil
 }

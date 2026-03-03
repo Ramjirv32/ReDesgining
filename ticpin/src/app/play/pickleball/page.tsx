@@ -2,7 +2,7 @@ import CategoryClient from '../CategoryClient';
 
 async function getPickleballVenues() {
     try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/play?category=PICKLEBALL`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/play?category=Pickleball`, {
             cache: 'no-store'
         });
         if (!res.ok) return [];

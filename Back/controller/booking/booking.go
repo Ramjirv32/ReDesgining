@@ -223,6 +223,7 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 		VenueName      string                 `json:"venue_name"`
 		Date           string                 `json:"date"`
 		Slot           string                 `json:"slot"`
+		Duration       int                    `json:"duration"`
 		Tickets        []models.BookingTicket `json:"tickets"`
 		OrderAmount    float64                `json:"order_amount"`
 		BookingFee     float64                `json:"booking_fee"`
@@ -277,12 +278,18 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 		grandTotal = 0
 	}
 
+	duration := req.Duration
+	if duration <= 0 {
+		duration = 1
+	}
+
 	booking := &models.PlayBooking{
 		UserEmail:      req.UserEmail,
 		PlayID:         playObjID,
 		VenueName:      req.VenueName,
 		Date:           req.Date,
 		Slot:           req.Slot,
+		Duration:       duration,
 		Tickets:        req.Tickets,
 		OrderAmount:    req.OrderAmount,
 		BookingFee:     req.BookingFee,

@@ -22,7 +22,8 @@ func GetAllPlays(c *fiber.Ctx) error {
 }
 
 func GetPlayByID(c *fiber.Ctx) error {
-	p, err := playservice.GetByID(c.Params("id"))
+	bypass := c.Query("bypassCache") == "true"
+	p, err := playservice.GetByID(c.Params("id"), bypass)
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "play not found"})
 	}

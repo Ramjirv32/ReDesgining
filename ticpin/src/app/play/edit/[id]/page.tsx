@@ -26,7 +26,9 @@ export default function EditPlayPage() {
     const [venueAddress, setVenueAddress] = useState('');
     const [instagramLink, setInstagramLink] = useState('');
     const [googleMapLink, setGoogleMapLink] = useState('');
-    const [openingTime, setOpeningTime] = useState('');
+    const [openingTime, setOpeningTime] = useState(''); // legacy combined
+    const [openingTimeOnly, setOpeningTimeOnly] = useState('');
+    const [closingTimeOnly, setClosingTimeOnly] = useState('');
     const [portraitUrl, setPortraitUrl] = useState('');
     const [landscapeUrl, setLandscapeUrl] = useState('');
     const [secondaryBannerUrl, setSecondaryBannerUrl] = useState('');
@@ -74,6 +76,8 @@ export default function EditPlayPage() {
                 setInstagramLink((d.instagram_link as string) ?? '');
                 setGoogleMapLink((d.google_map_link as string) ?? '');
                 setOpeningTime((d.time as string) ?? '');
+                setOpeningTimeOnly((d.opening_time as string) ?? '');
+                setClosingTimeOnly((d.closing_time as string) ?? '');
                 setPortraitUrl((d.portrait_image_url as string) ?? '');
                 setLandscapeUrl((d.landscape_image_url as string) ?? '');
                 setSecondaryBannerUrl((d.secondary_banner_url as string) ?? '');
@@ -181,7 +185,9 @@ export default function EditPlayPage() {
                 category: selections.category,
                 sub_category: selections.subCategory === 'Select Court Type' ? '' : selections.subCategory,
                 city: selections.city === 'Select City' ? '' : selections.city,
-                time: openingTime,
+                time: (openingTimeOnly && closingTimeOnly) ? `${openingTimeOnly} - ${closingTimeOnly}` : openingTime,
+                opening_time: openingTimeOnly,
+                closing_time: closingTimeOnly,
                 venue_name: venueName.trim(),
                 venue_address: venueAddress,
                 google_map_link: googleMapLink,
@@ -373,12 +379,28 @@ export default function EditPlayPage() {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-[20px] font-medium text-[#686868]">Opening Time</label>
-                                    <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
-                                        <input type="text" placeholder="e.g. Mon-Sun 6AM-10PM" value={openingTime} onChange={e => setOpeningTime(e.target.value)} className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]" />
+                                <div className="grid grid-cols-2 gap-8">
+                                    <div className="space-y-2">
+                                        <label className="text-[20px] font-medium text-[#686868]">Opening Time <span style={{ color: accentColor }}>*</span></label>
+                                        <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
+                                            <input type="text" placeholder="e.g. 06:00 AM" value={openingTimeOnly} onChange={e => setOpeningTimeOnly(e.target.value)} className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]" />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[20px] font-medium text-[#686868]">Closing Time <span style={{ color: accentColor }}>*</span></label>
+                                        <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
+                                            <input type="text" placeholder="e.g. 10:00 PM" value={closingTimeOnly} onChange={e => setClosingTimeOnly(e.target.value)} className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]" />
+                                        </div>
                                     </div>
                                 </div>
+                                {openingTime && (
+                                    <div className="space-y-2 opacity-50">
+                                        <label className="text-[16px] font-medium text-[#686868]">Legacy Timing (Combined)</label>
+                                        <div className="border border-dashed border-[#AEAEAE] rounded-[10px] h-[48px] flex items-center px-6 mt-[5px]">
+                                            <input type="text" readOnly value={openingTime} className="w-full bg-transparent outline-none text-[16px] text-zinc-500" />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </section>
 

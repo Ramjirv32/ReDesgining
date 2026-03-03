@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"time"
 
@@ -72,6 +73,7 @@ func ConnectDB() error {
 	NotificationsCol = db.Collection("notifications")
 	PassesCol = db.Collection("ticpin_passes")
 
+	fmt.Println("Database collections initialized")
 	CreateIndexes()
 	return nil
 }
@@ -81,6 +83,7 @@ func GetDB() *mongo.Database {
 }
 
 func CreateIndexes() {
+	fmt.Println("Creating indexes...")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -100,10 +103,26 @@ func CreateIndexes() {
 	})
 
 	for _, col := range []*mongo.Collection{EventsCol, PlaysCol, DiningsCol} {
-		col.Indexes().CreateMany(ctx, []mongo.IndexModel{
+		_, err := col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 			{Keys: bson.D{{Key: "organizer_id", Value: 1}}},
+			{Keys: bson.D{{Key: "status", Value: 1}}},
+			{Keys: bson.D{{Key: "category", Value: 1}}},
+			{Keys: bson.D{{Key: "city", Value: 1}}},
 			{Keys: bson.D{{Key: "createdAt", Value: -1}}},
 		})
+		if err != nil {
+			fmt.Printf("Error creating indexes for %s: %v\n", col.Name(), err)
+		} else {
+			fmt.Printf("Indexes created for %s\n", col.Name())
+		}
+	}
+
+	_, err := PlaysCol.Indexes().CreateMany(ctx, []mongo.IndexModel{
+		{Keys: bson.D{{Key: "opening_time", Value: 1}}},
+		{Keys: bson.D{{Key: "closing_time", Value: 1}}},
+	})
+	if err != nil {
+		fmt.Printf("Error creating extra indexes for plays: %v\n", err)
 	}
 
 	PassesCol.Indexes().CreateMany(ctx, []mongo.IndexModel{

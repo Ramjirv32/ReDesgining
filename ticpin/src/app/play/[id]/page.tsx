@@ -18,6 +18,8 @@ interface RealPlay {
     gallery_urls?: string[];
     secondary_banner_url?: string;
     time?: string;
+    opening_time?: string;
+    closing_time?: string;
     courts?: { id: string; name: string; type: string; price: number; image_url?: string }[];
     guide?: { facilities: string[] | string; is_pet_friendly: boolean };
     event_instructions?: string;

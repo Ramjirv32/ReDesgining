@@ -2,7 +2,7 @@ import CategoryClient from '../CategoryClient';
 
 async function getTTVenues() {
     try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/play?category=TABLE TENNIS`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/play?category=Table%20Tennis`, {
             cache: 'no-store'
         });
         if (!res.ok) return [];

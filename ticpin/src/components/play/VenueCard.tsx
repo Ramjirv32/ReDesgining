@@ -10,14 +10,14 @@ interface VenueCardProps {
 
 export default function VenueCard({ name, location, image, priceStartsFrom }: VenueCardProps) {
     return (
-        <div className="group mx-auto w-full max-w-[329px] h-[320px] transition-all duration-300 hover:-translate-y-1">
-            <div className="bg-white rounded-[15px] border border-[#686868] overflow-hidden shadow-sm flex flex-col h-full hover:shadow-lg transition-shadow">
+        <div className="mx-auto w-full max-w-[329px] h-[320px]">
+            <div className="bg-white rounded-[15px] border border-[#686868] overflow-hidden shadow-sm flex flex-col h-full">
                 <div className="relative w-full h-[185px] overflow-hidden">
                     <Image
                         src={image}
                         alt={name}
                         fill
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                        className="object-cover"
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
                     />
                 </div>

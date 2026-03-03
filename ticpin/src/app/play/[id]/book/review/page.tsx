@@ -16,7 +16,7 @@ interface CartData {
     date: string;
     slot: string;
     duration: number;
-    tickets: { name: string; price: number; quantity: number }[];
+    tickets: { category?: string; name: string; price: number; quantity: number }[];
     totalPrice: number;
 }
 
@@ -220,8 +220,9 @@ export default function PlayReviewPage() {
                 venue_name: cartData.eventName,
                 date: cartData.date,
                 slot: cartData.slot,
+                duration: cartData.duration,
                 tickets: cartData.tickets.map(t => ({
-                    category: t.name,
+                    category: t.category ?? t.name,
                     price: t.price,
                     quantity: t.quantity,
                 })),

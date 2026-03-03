@@ -34,13 +34,18 @@ const CreatePlayPage = () => {
     const [timeHour, setTimeHour] = useState('');
     const [timeMinute, setTimeMinute] = useState('');
     const [timePeriod, setTimePeriod] = useState('AM');
+    const [closeHour, setCloseHour] = useState('');
+    const [closeMinute, setCloseMinute] = useState('');
+    const [closePeriod, setClosePeriod] = useState('PM');
     const [facilities, setFacilities] = useState<string[]>([]);
     const [showFacilitiesDropdown, setShowFacilitiesDropdown] = useState(false);
     const [petFriendly, setPetFriendly] = useState('');
 
     const FACILITIES_OPTIONS = ['Parking', 'Changing Rooms', 'Showers', 'Equipment Rental', 'Cafeteria', 'Locker', 'First Aid', 'WiFi', 'Seating Area', 'Restrooms'];
     const toggleFacility = (f: string) => setFacilities(prev => prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f]);
+
     const openingTime = timeHour && timeMinute ? `${timeHour}:${timeMinute} ${timePeriod}` : '';
+    const closingTime = closeHour && closeMinute ? `${closeHour}:${closeMinute} ${closePeriod}` : '';
 
     // Payment Details
     const [payment, setPayment] = useState({
@@ -97,7 +102,7 @@ const CreatePlayPage = () => {
         const draft = {
             venueName, portraitUrl, landscapeUrl, secondaryBannerUrl, videoUrl,
             galleryUrls, instagramLink, googleMapLink, venueAddress,
-            timeHour, timeMinute, timePeriod, facilities, petFriendly,
+            timeHour, timeMinute, timePeriod, closeHour, closeMinute, closePeriod, facilities, petFriendly,
             payment, pocs, salesNotifs,
             showInstructions, showYoutube, showProhibited, showFaqs,
             playInstructions, youtubeVideoUrl, prohibitedItems, faqs,
@@ -126,6 +131,7 @@ const CreatePlayPage = () => {
         setVenueName(''); setPortraitUrl(''); setLandscapeUrl(''); setSecondaryBannerUrl('');
         setVideoUrl(''); setGalleryUrls([]); setInstagramLink(''); setGoogleMapLink('');
         setVenueAddress(''); setTimeHour(''); setTimeMinute(''); setTimePeriod('AM');
+        setCloseHour(''); setCloseMinute(''); setClosePeriod('PM');
         setFacilities([]); setPetFriendly(''); setPayment({ organizerName: '', gstin: '', accountNumber: '', ifsc: '', accountType: '' });
         setPocs([]); setSalesNotifs([]); setShowInstructions(false); setShowYoutube(false);
         setShowProhibited(false); setShowFaqs(false); setPlayInstructions('');
@@ -163,6 +169,9 @@ const CreatePlayPage = () => {
                 if (d.timeHour) setTimeHour(d.timeHour);
                 if (d.timeMinute) setTimeMinute(d.timeMinute);
                 if (d.timePeriod) setTimePeriod(d.timePeriod);
+                if (d.closeHour) setCloseHour(d.closeHour);
+                if (d.closeMinute) setCloseMinute(d.closeMinute);
+                if (d.closePeriod) setClosePeriod(d.closePeriod);
                 if (d.facilities?.length) setFacilities(d.facilities);
                 if (d.petFriendly) setPetFriendly(d.petFriendly);
                 if (d.payment) setPayment(d.payment);
@@ -308,7 +317,9 @@ const CreatePlayPage = () => {
                 category: selections.category,
                 sub_category: selections.subCategory === 'Select Court Type' ? '' : selections.subCategory,
                 city: selections.city,
-                time: openingTime,
+                time: `${openingTime} - ${closingTime}`,
+                opening_time: openingTime,
+                closing_time: closingTime,
                 venue_name: venueName.trim(),
                 venue_address: venueAddress,
                 google_map_link: googleMapLink,
@@ -715,10 +726,10 @@ const CreatePlayPage = () => {
                                 <h3 className="text-[30px] font-medium text-black mb-6">Play Guide</h3>
                                 <div className="w-full h-[1px] bg-[#AEAEAE] mb-8"></div>
                                 <div className="space-y-6">
+                                    {/* Opening Time */}
                                     <div className="flex items-center justify-between">
                                         <span className="text-[25px] font-medium text-black">Opening time <span className="text-[#E7C200]">*</span></span>
                                         <div className="flex items-center gap-3 w-[840px]">
-                                            {/* Hour */}
                                             <div className="relative border border-[#686868] rounded-[10px] h-[64px] flex-1 flex items-center px-4">
                                                 <select value={timeHour} onChange={e => setTimeHour(e.target.value)} className="w-full appearance-none bg-transparent outline-none text-[22px] text-black">
                                                     <option value="">HH</option>
@@ -729,7 +740,6 @@ const CreatePlayPage = () => {
                                                 <ChevronDown size={20} className="absolute right-3 pointer-events-none" />
                                             </div>
                                             <span className="text-[28px] font-semibold text-[#686868]">:</span>
-                                            {/* Minute */}
                                             <div className="relative border border-[#686868] rounded-[10px] h-[64px] flex-1 flex items-center px-4">
                                                 <select value={timeMinute} onChange={e => setTimeMinute(e.target.value)} className="w-full appearance-none bg-transparent outline-none text-[22px] text-black">
                                                     <option value="">MM</option>
@@ -739,17 +749,51 @@ const CreatePlayPage = () => {
                                                 </select>
                                                 <ChevronDown size={20} className="absolute right-3 pointer-events-none" />
                                             </div>
-                                            {/* AM / PM */}
                                             <div className="flex border border-[#686868] rounded-[10px] h-[64px] overflow-hidden">
                                                 {['AM', 'PM'].map(period => (
                                                     <button
                                                         key={period}
                                                         type="button"
                                                         onClick={() => setTimePeriod(period)}
-                                                        className={`w-[80px] text-[22px] font-semibold transition-colors ${timePeriod === period
-                                                            ? 'bg-[#E7C200] text-black'
-                                                            : 'bg-transparent text-[#686868] hover:bg-zinc-100'
-                                                            }`}
+                                                        className={`w-[80px] text-[22px] font-semibold transition-colors ${timePeriod === period ? 'bg-[#E7C200] text-black' : 'bg-transparent text-[#686868] hover:bg-zinc-100'}`}
+                                                    >
+                                                        {period}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Closing Time */}
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[25px] font-medium text-black">Closing time <span className="text-[#E7C200]">*</span></span>
+                                        <div className="flex items-center gap-3 w-[840px]">
+                                            <div className="relative border border-[#686868] rounded-[10px] h-[64px] flex-1 flex items-center px-4">
+                                                <select value={closeHour} onChange={e => setCloseHour(e.target.value)} className="w-full appearance-none bg-transparent outline-none text-[22px] text-black">
+                                                    <option value="">HH</option>
+                                                    {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
+                                                        <option key={h} value={h}>{h}</option>
+                                                    ))}
+                                                </select>
+                                                <ChevronDown size={20} className="absolute right-3 pointer-events-none" />
+                                            </div>
+                                            <span className="text-[28px] font-semibold text-[#686868]">:</span>
+                                            <div className="relative border border-[#686868] rounded-[10px] h-[64px] flex-1 flex items-center px-4">
+                                                <select value={closeMinute} onChange={e => setCloseMinute(e.target.value)} className="w-full appearance-none bg-transparent outline-none text-[22px] text-black">
+                                                    <option value="">MM</option>
+                                                    {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => (
+                                                        <option key={m} value={m}>{m}</option>
+                                                    ))}
+                                                </select>
+                                                <ChevronDown size={20} className="absolute right-3 pointer-events-none" />
+                                            </div>
+                                            <div className="flex border border-[#686868] rounded-[10px] h-[64px] overflow-hidden">
+                                                {['AM', 'PM'].map(period => (
+                                                    <button
+                                                        key={period}
+                                                        type="button"
+                                                        onClick={() => setClosePeriod(period)}
+                                                        className={`w-[80px] text-[22px] font-semibold transition-colors ${closePeriod === period ? 'bg-[#E7C200] text-black' : 'bg-transparent text-[#686868] hover:bg-zinc-100'}`}
                                                     >
                                                         {period}
                                                     </button>
