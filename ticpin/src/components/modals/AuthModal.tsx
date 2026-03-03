@@ -6,6 +6,7 @@ import { X, ChevronDown, ChevronLeft, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 import { saveUserSession, clearUserSession } from '@/lib/auth/user';
+import { getOrganizerSession, saveOrganizerSession } from '@/lib/auth/organizer';
 import {
     auth,
     RecaptchaVerifier,
@@ -102,7 +103,16 @@ export default function AuthModal({ isOpen, onClose, initialView = 'number', onS
             await confirmationResult.confirm(code);
             const isAdminUser = number === ADMIN_PHONE;
             if (isAdminUser) {
-                saveUserSession({ id: number, phone: number, name: 'Admin' });
+                const adminSession = { id: number, phone: number, name: 'Admin' };
+                saveUserSession(adminSession);
+                // Also save as organizer session so AdminLayout/Navbar recognizes it
+                saveOrganizerSession({
+                    id: number,
+                    email: 'admin@ticpin.com',
+                    vertical: 'admin',
+                    isAdmin: true,
+                    categoryStatus: {}
+                });
                 router.push('/admin');
                 onClose();
                 return;

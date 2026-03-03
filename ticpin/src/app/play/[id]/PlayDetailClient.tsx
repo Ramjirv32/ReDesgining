@@ -131,8 +131,8 @@ export default function PlayDetailClient({ venue, id }: { venue: RealPlay, id: s
                             <section className="space-y-4">
                                 <h2 className="text-2xl font-semibold text-black uppercase">Available Courts</h2>
                                 <div className="space-y-3">
-                                    {venue.courts.map((court) => (
-                                        <div key={court.id || court.name} className="flex items-center gap-4 p-4 bg-white rounded-[16px] border border-zinc-200">
+                                    {venue.courts.map((court, index) => (
+                                        <div key={`${court.id}-${index}`} className="flex items-center gap-4 p-4 bg-white rounded-[16px] border border-zinc-200">
                                             <div className="w-[90px] h-[70px] rounded-[12px] overflow-hidden shrink-0 bg-[#D9D9D9] relative">
                                                 {court.image_url ? (
                                                     <Image src={court.image_url} alt={court.name} fill className="object-cover" />

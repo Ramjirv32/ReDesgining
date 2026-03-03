@@ -39,6 +39,7 @@ type PlayBooking struct {
 	VenueName      string             `bson:"venue_name" json:"venue_name"`
 	Date           string             `bson:"date" json:"date"`
 	Slot           string             `bson:"slot" json:"slot"`
+	Duration       int                `bson:"duration" json:"duration"`
 	Tickets        []BookingTicket    `bson:"tickets" json:"tickets"`
 	OrderAmount    float64            `bson:"order_amount" json:"order_amount"`
 	BookingFee     float64            `bson:"booking_fee" json:"booking_fee"`

@@ -12,6 +12,22 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+var TIME_SLOTS = []string{
+	"06:00 - 07:00 AM", "07:00 - 08:00 AM", "08:00 - 09:00 AM",
+	"09:00 - 10:00 AM", "10:00 - 11:00 AM", "11:00 AM - 12:00 PM",
+	"04:00 - 05:00 PM", "05:00 - 06:00 PM", "06:00 - 07:00 PM",
+	"07:00 - 08:00 PM", "08:00 - 09:00 PM", "09:00 - 10:00 PM",
+}
+
+func getSlotIndex(slot string) int {
+	for i, s := range TIME_SLOTS {
+		if s == slot {
+			return i
+		}
+	}
+	return -1
+}
+
 func GetPlayBookedSlots(playIDHex string, date string) ([]string, error) {
 	playID, err := primitive.ObjectIDFromHex(playIDHex)
 	if err != nil {
@@ -31,22 +47,32 @@ func GetPlayBookedSlots(playIDHex string, date string) ([]string, error) {
 	}
 	defer cursor.Close(ctx)
 
-	var results []struct {
-		Slot string `bson:"slot"`
-	}
+	var results []models.PlayBooking
 	if err := cursor.All(ctx, &results); err != nil {
 		return nil, err
 	}
 
-	seen := map[string]bool{}
-	slots := []string{}
-	for _, r := range results {
-		if !seen[r.Slot] {
-			seen[r.Slot] = true
-			slots = append(slots, r.Slot)
+	bookedCombinations := []string{}
+	for _, b := range results {
+		startIdx := getSlotIndex(b.Slot)
+		if startIdx == -1 {
+			continue
+		}
+
+		duration := b.Duration
+		if duration <= 0 {
+			duration = 1
+		}
+
+		for _, ticket := range b.Tickets {
+			for i := 0; i < duration; i++ {
+				if startIdx+i < len(TIME_SLOTS) {
+					bookedCombinations = append(bookedCombinations, TIME_SLOTS[startIdx+i]+"|"+ticket.Category)
+				}
+			}
 		}
 	}
-	return slots, nil
+	return bookedCombinations, nil
 }
 
 func CreatePlay(b *models.PlayBooking) error {
@@ -71,17 +97,45 @@ func CreatePlay(b *models.PlayBooking) error {
 		b.OrganizerID = adminID
 	}
 
-	var existing models.PlayBooking
-	err := col.FindOne(ctx, bson.M{"play_id": b.PlayID, "user_email": b.UserEmail, "date": b.Date, "slot": b.Slot}).Decode(&existing)
-	if err == nil {
+	startIdx := getSlotIndex(b.Slot)
+	if startIdx == -1 {
+		return errors.New("invalid time slot")
+	}
 
-		adminEmail := config.GetAdminEmail()
-		isAdmin := b.UserEmail == adminEmail
-		if !isAdmin {
-			orgCol := config.OrgsCol
-			var org models.Organizer
-			if errOrg := orgCol.FindOne(ctx, bson.M{"email": b.UserEmail}).Decode(&org); errOrg != nil {
-				return errors.New("you already have a booking for this play slot")
+	duration := b.Duration
+	if duration <= 0 {
+		duration = 1
+	}
+
+	// Check if any of the requested courts are already booked in ANY of the overlapping slots
+	for _, ticket := range b.Tickets {
+		cursor, err := col.Find(ctx, bson.M{
+			"play_id":          b.PlayID,
+			"date":             b.Date,
+			"status":           "booked",
+			"tickets.category": ticket.Category,
+		})
+		if err != nil {
+			continue
+		}
+
+		var existingBookings []models.PlayBooking
+		if err := cursor.All(ctx, &existingBookings); err != nil {
+			cursor.Close(ctx)
+			continue
+		}
+		cursor.Close(ctx)
+
+		for _, eb := range existingBookings {
+			ebStart := getSlotIndex(eb.Slot)
+			ebDur := eb.Duration
+			if ebDur <= 0 {
+				ebDur = 1
+			}
+
+			// Overlap logic: [startIdx, startIdx + duration) overlaps [ebStart, ebStart + ebDur)
+			if (startIdx < ebStart+ebDur) && (ebStart < startIdx+duration) {
+				return errors.New("court " + ticket.Category + " is already booked during this time window")
 			}
 		}
 	}
@@ -90,6 +144,6 @@ func CreatePlay(b *models.PlayBooking) error {
 	b.Status = "booked"
 	b.BookedAt = time.Now()
 
-	_, err = col.InsertOne(ctx, b)
+	_, err := col.InsertOne(ctx, b)
 	return err
 }

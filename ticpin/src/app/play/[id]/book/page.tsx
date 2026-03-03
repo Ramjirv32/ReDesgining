@@ -68,6 +68,21 @@ export default function PlayBookPage() {
     const [bookedSlots, setBookedSlots] = useState<string[]>([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
 
+    // Helper to check if a specific court is available for a range of slots
+    const isWindowAvailable = (courtName: string, startSlot: string, dur: number) => {
+        const startIdx = TIME_SLOTS.indexOf(startSlot);
+        if (startIdx === -1) return false;
+
+        for (let i = 0; i < dur; i++) {
+            const currentSlot = TIME_SLOTS[startIdx + i];
+            if (!currentSlot) return false; // Duration exceeds available slots list
+            if (bookedSlots.includes(`${currentSlot}|${courtName}`)) {
+                return false;
+            }
+        }
+        return true;
+    };
+
     // Fetch venue
     useEffect(() => {
         if (!id) return;
@@ -96,17 +111,30 @@ export default function PlayBookPage() {
     }, [id, selectedDate]);
 
     const toggleCourt = (courtId: string) => {
-        setSelectedCourtIds(prev =>
-            prev.includes(courtId) ? prev.filter(c => c !== courtId) : [...prev, courtId]
-        );
+        setSelectedCourtIds([courtId]);
+        setSelectedSlot(null); // reset slot — available times differ per court
     };
 
+    // When duration changes, reset both selections (availability window changes)
+    useEffect(() => {
+        setSelectedSlot(null);
+        setSelectedCourtIds([]);
+    }, [duration]);
+
+    // Does a court have ANY free starting slot for the selected duration?
+    const isCourtAvailableAnytime = (courtName: string, dur: number): boolean =>
+        TIME_SLOTS.some(slot => isWindowAvailable(courtName, slot, dur));
+
+    const courts = venue?.courts ?? [];
+    const selectedCourtId = selectedCourtIds[0] ?? null;
+    const selectedCourt = courts.find(c => c.id === selectedCourtId) ?? null;
+
     const doBooking = (v: RealPlay) => {
-        const courts = v.courts ?? [];
         const tickets = selectedCourtIds.map(cid => {
             const court = courts.find(c => c.id === cid);
             const pricePerHour = court?.price ?? v.price_starts_from ?? 500;
             return {
+                category: court?.name ?? 'Court', // Use category to store court name for backend validation
                 name: `${court?.name ?? 'Court'} — ${court?.type ?? ''} (${duration}hr)`,
                 price: pricePerHour * duration,
                 quantity: 1,
@@ -120,7 +148,7 @@ export default function PlayBookPage() {
             type: 'play',
             date: selectedDate,
             slot: selectedSlot,
-            duration,
+            duration: duration, // Include duration for backend models
             tickets,
             totalPrice,
         };
@@ -145,7 +173,6 @@ export default function PlayBookPage() {
     }
     if (!venue) return <div className="text-center py-20 text-zinc-500">Venue not found</div>;
 
-    const courts = venue.courts ?? [];
     const curMonth = dates[0].month;
 
     return (
@@ -187,8 +214,8 @@ export default function PlayBookPage() {
                                         key={d.key}
                                         onClick={() => setSelectedDate(d.key)}
                                         className={`w-[52px] h-[64px] rounded-[14px] flex flex-col items-center justify-center transition-all shrink-0 ${selectedDate === d.key
-                                                ? 'bg-black text-white'
-                                                : 'bg-white border border-zinc-300 text-black hover:border-black'
+                                            ? 'bg-black text-white'
+                                            : 'bg-white border border-zinc-300 text-black hover:border-black'
                                             }`}
                                     >
                                         <span className="text-[26px] font-semibold leading-none">{d.label}</span>
@@ -220,55 +247,32 @@ export default function PlayBookPage() {
                             </div>
                         </section>
 
-                        {/* Slots */}
+                        {/* ── Step 1: Court Selection ── */}
                         <section className="space-y-4">
                             <h2 className="text-[13px] font-semibold uppercase tracking-[0.12em] text-black border-b border-zinc-200 pb-3">
-                                AVAILABLE TIME SLOTS
+                                SELECT COURT
                             </h2>
                             {loadingSlots ? (
                                 <div className="flex items-center gap-2 text-[14px] text-zinc-400">
                                     <div className="w-4 h-4 border-2 border-zinc-300 border-t-zinc-600 rounded-full animate-spin" />
                                     Checking availability...
                                 </div>
-                            ) : (
-                                <div className="flex flex-wrap gap-3">
-                                    {TIME_SLOTS.map((slot, i) => {
-                                        const isBooked = bookedSlots.includes(slot);
-                                        const isSelected = selectedSlot === slot;
-                                        return (
-                                            <button key={i}
-                                                disabled={isBooked}
-                                                onClick={() => !isBooked && setSelectedSlot(slot)}
-                                                title={isBooked ? 'Already booked' : ''}
-                                                className={`px-5 h-[48px] rounded-[12px] text-[15px] font-medium border transition-all ${isBooked
-                                                        ? 'bg-zinc-100 border-zinc-200 text-zinc-400 cursor-not-allowed line-through'
-                                                        : isSelected
-                                                            ? 'bg-black text-white border-black'
-                                                            : 'bg-white text-black border-zinc-300 hover:border-black'
-                                                    }`}
-                                            >
-                                                {slot}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </section>
-
-                        {/* Courts */}
-                        <section className="space-y-4">
-                            <h2 className="text-[13px] font-semibold uppercase tracking-[0.12em] text-black border-b border-zinc-200 pb-3">
-                                AVAILABLE COURTS
-                            </h2>
-                            {courts.length === 0 ? (
+                            ) : courts.length === 0 ? (
                                 <p className="text-[#686868] text-[15px]">No courts configured for this venue.</p>
                             ) : (
                                 <div className="space-y-4">
-                                    {courts.map((court) => {
+                                    {courts.map((court, index) => {
+                                        const fullyBooked = !isCourtAvailableAnytime(court.name, duration);
                                         const isSelected = selectedCourtIds.includes(court.id);
                                         return (
-                                            <div key={court.id} onClick={() => toggleCourt(court.id)}
-                                                className={`flex items-center gap-4 p-3 rounded-[16px] border cursor-pointer transition-all ${isSelected ? 'border-black bg-zinc-50' : 'border-zinc-200 bg-white hover:border-zinc-400'
+                                            <div
+                                                key={`${court.id}-${index}`}
+                                                onClick={() => !fullyBooked && toggleCourt(court.id)}
+                                                className={`flex items-center gap-4 p-3 rounded-[16px] border transition-all ${fullyBooked
+                                                    ? 'border-zinc-100 bg-zinc-50 opacity-50 cursor-not-allowed'
+                                                    : isSelected
+                                                        ? 'border-black bg-zinc-50 cursor-pointer'
+                                                        : 'border-zinc-200 bg-white hover:border-zinc-400 cursor-pointer'
                                                     }`}
                                             >
                                                 <div className="relative w-[110px] md:w-[150px] h-[80px] rounded-[12px] overflow-hidden shrink-0 bg-[#D9D9D9] flex items-center justify-center">
@@ -281,7 +285,14 @@ export default function PlayBookPage() {
                                                     )}
                                                 </div>
                                                 <div className="flex-1 space-y-0.5">
-                                                    <p className="text-[17px] font-semibold text-black uppercase">{court.name}</p>
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <p className="text-[17px] font-semibold text-black uppercase">{court.name}</p>
+                                                        {fullyBooked && (
+                                                            <span className="text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 px-2 py-0.5 rounded-full">
+                                                                Fully Booked
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     <p className="text-[14px] font-medium text-[#686868]">{court.type}</p>
                                                     <p className="text-[15px] font-bold text-black mt-1">
                                                         ₹{court.price}<span className="text-[13px] font-normal text-[#686868]"> / hr</span>
@@ -303,6 +314,49 @@ export default function PlayBookPage() {
                                             </div>
                                         );
                                     })}
+                                </div>
+                            )}
+                        </section>
+
+                        {/* ── Step 2: Time Slot Selection (based on selected court) ── */}
+                        <section className="space-y-4">
+                            <h2 className="text-[13px] font-semibold uppercase tracking-[0.12em] text-black border-b border-zinc-200 pb-3">
+                                AVAILABLE TIME SLOTS
+                            </h2>
+                            {!selectedCourt ? (
+                                <p className="text-[14px] text-zinc-400 italic">Select a court above to see available time slots</p>
+                            ) : loadingSlots ? (
+                                <div className="flex items-center gap-2 text-[14px] text-zinc-400">
+                                    <div className="w-4 h-4 border-2 border-zinc-300 border-t-zinc-600 rounded-full animate-spin" />
+                                    Checking availability...
+                                </div>
+                            ) : (
+                                <div className="flex flex-wrap gap-3">
+                                    {TIME_SLOTS.map((slot, i) => {
+                                        const isAvailable = isWindowAvailable(selectedCourt.name, slot, duration);
+                                        const isSelected = selectedSlot === slot;
+                                        return (
+                                            <button
+                                                key={i}
+                                                disabled={!isAvailable}
+                                                onClick={() => isAvailable && setSelectedSlot(slot)}
+                                                title={!isAvailable ? `${selectedCourt.name} not free for ${duration}hr starting here` : slot}
+                                                className={`px-5 h-[48px] rounded-[12px] text-[15px] font-medium border transition-all ${!isAvailable
+                                                    ? 'bg-zinc-100 border-zinc-200 text-zinc-400 cursor-not-allowed line-through'
+                                                    : isSelected
+                                                        ? 'bg-black text-white border-black'
+                                                        : 'bg-white text-black border-zinc-300 hover:border-black'
+                                                    }`}
+                                            >
+                                                {slot}
+                                            </button>
+                                        );
+                                    })}
+                                    {TIME_SLOTS.every(slot => !isWindowAvailable(selectedCourt.name, slot, duration)) && (
+                                        <p className="text-red-500 text-[15px] font-medium w-full">
+                                            No available slots for {selectedCourt.name} with a {duration}hr window on this date.
+                                        </p>
+                                    )}
                                 </div>
                             )}
                         </section>
@@ -344,9 +398,11 @@ export default function PlayBookPage() {
                             </button>
                             {(selectedCourtIds.length === 0 || !selectedSlot) && (
                                 <p className="text-center text-[13px] text-[#686868] mt-2">
-                                    {!selectedSlot && selectedCourtIds.length > 0 ? 'Select a time slot to continue' :
-                                        selectedCourtIds.length === 0 && selectedSlot ? 'Select a court to continue' :
-                                            'Select a court and time slot to continue'}
+                                    {selectedCourtIds.length === 0
+                                        ? 'Select a court to continue'
+                                        : !selectedSlot
+                                            ? 'Select a time slot to continue'
+                                            : 'Select a court and time slot to continue'}
                                 </p>
                             )}
                         </div>

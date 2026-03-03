@@ -37,8 +37,12 @@ export default function PlayClient({ initialVenues }: { initialVenues: RealPlay[
     const [venues, setVenues] = useState<RealPlay[]>(initialVenues);
     const [activeFilter, setActiveFilter] = useState('All');
     const [modalFilters, setModalFilters] = useState<Record<string, string[]>>({});
+    const [mounted, setMounted] = useState(false);
 
-    
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
     useEffect(() => {
         const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
         if (!backendUrl) return;
@@ -49,7 +53,7 @@ export default function PlayClient({ initialVenues }: { initialVenues: RealPlay[
                 const approved = list.filter(v => v.status === 'approved');
                 if (approved.length > 0) setVenues(approved);
             })
-            .catch(() => {});
+            .catch(() => { });
     }, []);
 
     const selectedSports = modalFilters.sports ?? [];
@@ -59,8 +63,8 @@ export default function PlayClient({ initialVenues }: { initialVenues: RealPlay[
     const cityFilter = selectedLocation ? selectedLocation.split(',')[0].trim().toLowerCase() : '';
 
     let filteredVenues = venues.filter(v => {
-        // Filter by city
-        if (cityFilter && !v.city?.toLowerCase().includes(cityFilter)) return false;
+        // Filter by city - only after mount to avoid hydration mismatch
+        if (mounted && cityFilter && !v.city?.toLowerCase().includes(cityFilter)) return false;
         // Chip filter
         if (activeFilter !== 'All') {
             if (activeFilter === 'Top Rated') {

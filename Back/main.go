@@ -29,7 +29,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/gofiber/fiber/v2/middleware/limiter"
+	// "github.com/gofiber/fiber/v2/middleware/limiter"
 	fiberRecover "github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
@@ -79,15 +79,15 @@ func main() {
 	app.Use(fiberRecover.New())
 	app.Use(compress.New(compress.Config{Level: compress.LevelDefault}))
 
-	app.Use(limiter.New(limiter.Config{
-		Max:        60,
-		Expiration: 1 * time.Minute,
-		LimitReached: func(c *fiber.Ctx) error {
-			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
-				"error": "rate limit exceeded, please try again later",
-			})
-		},
-	}))
+	// app.Use(limiter.New(limiter.Config{
+	// 	Max:        15000,
+	// 	Expiration: 1 * time.Minute,
+	// 	LimitReached: func(c *fiber.Ctx) error {
+	// 		return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+	// 			"error": "rate limit exceeded, please try again later",
+	// 		})
+	// 	},
+	// }))
 
 	corsOrigins := os.Getenv("CORS_ORIGINS")
 	if corsOrigins == "" {

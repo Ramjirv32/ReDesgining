@@ -25,6 +25,7 @@ cd /home/ramji/Desktop/FinalTickpinDesgin/Back && docker build --no-cache \
   --build-arg "ADMIN_EMAIL=23cs139@kpriet.ac.in" \
   --build-arg "ADMIN_PASSWORD=12345678" \
   --build-arg "ADMIN_APP_PASSWORD=smmk omlg zpoj bvzs" \
+  --build-arg "CORS_ORIGINS=https://re-desgining.vercel.app,http://localhost:3000,https://ticpin.in" \
   -t ticpin-backend:latest \
   -t kprcloud0/ticpin-backend:latest \
   . && docker push kprcloud0/ticpin-backend:latest
