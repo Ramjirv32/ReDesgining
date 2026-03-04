@@ -28,6 +28,7 @@ interface RealPlay {
     courts?: Court[];
 }
 
+// Fixed 1-hour slot strings returned by the backend (e.g. "09:00 - 10:00 AM|CourtName")
 const TIME_SLOTS = [
     "05:00 - 06:00 AM", "06:00 - 07:00 AM", "07:00 - 08:00 AM", "08:00 - 09:00 AM",
     "09:00 - 10:00 AM", "10:00 - 11:00 AM", "11:00 AM - 12:00 PM",
@@ -36,13 +37,35 @@ const TIME_SLOTS = [
     "07:00 - 08:00 PM", "08:00 - 09:00 PM", "09:00 - 10:00 PM", "10:00 - 11:00 PM",
 ];
 
-const parseTime = (timeStr: string) => {
+/** Parse "09:00 AM" or "09:00 PM" → minutes since midnight */
+const parseTime = (timeStr: string): number => {
     const [time, period] = timeStr.trim().split(' ');
     let [hours, minutes] = time.split(':').map(Number);
     if (period === 'PM' && hours !== 12) hours += 12;
     if (period === 'AM' && hours === 12) hours = 0;
     return hours * 60 + minutes;
 };
+
+/**
+ * Parse the start time (minutes) of a backend slot string.
+ * Handles both "09:00 - 10:00 AM" and "11:00 AM - 12:00 PM" formats.
+ */
+const parseSlotStartMin = (slot: string): number => {
+    // Format A: "11:00 AM - 12:00 PM"  — period is embedded in the first token group
+    if (/\d{1,2}:\d{2}\s*(AM|PM)\s*-/i.test(slot)) {
+        const firstPart = slot.split(/\s*-\s*/)[0].trim(); // "11:00 AM"
+        return parseTime(firstPart);
+    }
+    // Format B: "09:00 - 10:00 AM"  — both times share the trailing period
+    const parts = slot.split(/\s*-\s*/);
+    const period = /PM/i.test(parts[1]) ? 'PM' : 'AM';
+    return parseTime(`${parts[0].trim()} ${period}`);
+};
+
+// Precompute start-minute for every backend 1-hour slot string (used for overlap checks)
+const SLOT_START_MIN: Readonly<Record<string, number>> = Object.fromEntries(
+    TIME_SLOTS.map(s => [s, parseSlotStartMin(s)])
+);
 
 function getNextDays(count = 7) {
     const days = [];
@@ -79,17 +102,27 @@ export default function PlayBookPage() {
     const [bookedSlots, setBookedSlots] = useState<string[]>([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
 
-    // Helper to check if a specific court is available for a range of slots
-    const isWindowAvailable = (courtName: string, startSlot: string, dur: number) => {
-        const startIdx = TIME_SLOTS.indexOf(startSlot);
-        if (startIdx === -1) return false;
-
-        for (let i = 0; i < dur; i++) {
-            const currentSlot = TIME_SLOTS[startIdx + i];
-            if (!currentSlot) return false; // Duration exceeds available slots list
-            if (bookedSlots.includes(`${currentSlot}|${courtName}`)) {
-                return false;
-            }
+    /**
+     * Returns true if `courtName` has NO booked 1-hour window that overlaps the
+     * requested [startMin, endMin) interval.
+     * Works entirely in minutes — no dependency on TIME_SLOTS string ordering.
+     */
+    const isWindowAvailable = (courtName: string, startMin: number, endMin: number): boolean => {
+        for (const booked of bookedSlots) {
+            const pipeIdx = booked.lastIndexOf('|');
+            if (pipeIdx === -1) continue;
+            const slotStr    = booked.substring(0, pipeIdx);
+            const bCourtName = booked.substring(pipeIdx + 1);
+            if (bCourtName !== courtName) continue;
+            // Dynamically parse start minute so both "09:00 - 10:00 AM" and
+            // "09:00 AM - 10:00 AM" backend formats are handled correctly.
+            let bStart: number;
+            try { bStart = parseSlotStartMin(slotStr); } catch { continue; }
+            if (isNaN(bStart)) continue;
+            const bEnd = bStart + 60;
+            // Overlap: intervals [startMin, endMin) and [bStart, bEnd) overlap when
+            //   startMin < bEnd  AND  bStart < endMin
+            if (startMin < bEnd && bStart < endMin) return false;
         }
         return true;
     };
@@ -123,7 +156,7 @@ export default function PlayBookPage() {
 
     const toggleCourt = (uniqueId: string) => {
         setSelectedCourtIds([uniqueId]);
-        setSelectedSlot(null); // reset slot — available times differ per court
+        // Do NOT reset the selected slot — the user picks slot first, then court.
     };
 
     // When duration changes, reset both selections (availability window changes)
@@ -141,23 +174,30 @@ export default function PlayBookPage() {
         return `${String(displayH).padStart(2, '0')}:${String(m).padStart(2, '0')} ${period}`;
     };
 
-    const openingTimeStr = venue?.opening_time || (venue?.time ? venue.time.split(' - ')[0] : null);
-    const closingTimeStr = venue?.closing_time || (venue?.time ? venue.time.split(' - ')[1] : null);
+    // Derive opening/closing time from dedicated fields, composite time string, or
+    // fall back to a sensible default (06:00 AM – 11:00 PM) so slots always render.
+    const openingTimeStr =
+        venue?.opening_time ||
+        (venue?.time ? venue.time.split(' - ')[0].trim() : null) ||
+        '06:00 AM';
+    const closingTimeStr =
+        venue?.closing_time ||
+        (venue?.time ? venue.time.split(' - ')[1]?.trim() : null) ||
+        '11:00 PM';
 
-    const generateBlockSlots = () => {
+    const generateBlockSlots = (): { label: string; startMin: number; endMin: number }[] => {
         if (!openingTimeStr || !closingTimeStr) return [];
         const venueStart = parseTime(openingTimeStr);
-        const venueEnd = parseTime(closingTimeStr);
-        const blocks = [];
+        const venueEnd   = parseTime(closingTimeStr);
+        const blocks: { label: string; startMin: number; endMin: number }[] = [];
         let current = venueStart;
         while (current + duration * 60 <= venueEnd) {
             const end = current + duration * 60;
-            const label = `${formatTime(current)} - ${formatTime(end)}`;
-            // find which base slot string this corresponds to for isWindowAvailable
-            const startSlotStr = TIME_SLOTS.find(s => parseTime(s.split(' - ')[0]) === current);
-            if (startSlotStr) {
-                blocks.push({ label, startSlot: startSlotStr });
-            }
+            blocks.push({
+                label:    `${formatTime(current)} - ${formatTime(end)}`,
+                startMin: current,
+                endMin:   end,
+            });
             current += duration * 60;
         }
         return blocks;
@@ -165,9 +205,9 @@ export default function PlayBookPage() {
 
     const blockSlots = generateBlockSlots();
 
-    // Does a court have ANY free starting slot for the selected duration?
-    const isCourtAvailableAnytime = (courtName: string, dur: number): boolean =>
-        blockSlots.some(b => isWindowAvailable(courtName, b.startSlot, dur));
+    // Does a court have ANY free block for the selected duration on this date?
+    const isCourtAvailableAnytime = (courtName: string): boolean =>
+        blockSlots.some(b => isWindowAvailable(courtName, b.startMin, b.endMin));
 
     const courts = venue?.courts ?? [];
     const selectedUniqueId = selectedCourtIds[0] ?? null;
@@ -304,8 +344,8 @@ export default function PlayBookPage() {
                             ) : (
                                 <div className="flex flex-wrap gap-3">
                                     {blockSlots.map((b, i) => {
-                                        // A slot block is available if ANY court is free for it
-                                        const isAvailable = courts.some(c => isWindowAvailable(c.name, b.startSlot, duration));
+                                        // A slot block is available if ANY court is free for the full window
+                                        const isAvailable = courts.some(c => isWindowAvailable(c.name, b.startMin, b.endMin));
                                         const isSelected = selectedSlot === b.label;
                                         return (
                                             <button
@@ -326,7 +366,7 @@ export default function PlayBookPage() {
                                             </button>
                                         );
                                     })}
-                                    {blockSlots.length > 0 && blockSlots.every(b => !courts.some(c => isWindowAvailable(c.name, b.startSlot, duration))) && (
+                                    {blockSlots.length > 0 && blockSlots.every(b => !courts.some(c => isWindowAvailable(c.name, b.startMin, b.endMin))) && (
                                         <p className="text-red-500 text-[15px] font-medium w-full">
                                             No available slots for a {duration}hr window on this date.
                                         </p>
@@ -354,7 +394,7 @@ export default function PlayBookPage() {
                                     {courts.map((court, index) => {
                                         const uniqueId = `${court.id}-${index}`;
                                         const selectedBlock = blockSlots.find(b => b.label === selectedSlot);
-                                        const isAvailable = selectedBlock ? isWindowAvailable(court.name, selectedBlock.startSlot, duration) : false;
+                                        const isAvailable = selectedBlock ? isWindowAvailable(court.name, selectedBlock.startMin, selectedBlock.endMin) : false;
                                         const isSelected = selectedCourtIds.includes(uniqueId);
                                         return (
                                             <div
@@ -447,11 +487,9 @@ export default function PlayBookPage() {
                             </button>
                             {(selectedCourtIds.length === 0 || !selectedSlot) && (
                                 <p className="text-center text-[13px] text-[#686868] mt-2">
-                                    {selectedCourtIds.length === 0
-                                        ? 'Select a court to continue'
-                                        : !selectedSlot
-                                            ? 'Select a time slot to continue'
-                                            : 'Select a court and time slot to continue'}
+                                    {!selectedSlot
+                                        ? 'Select a time slot to continue'
+                                        : 'Select a court to continue'}
                                 </p>
                             )}
                         </div>

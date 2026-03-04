@@ -3,6 +3,8 @@ package booking
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"ticpin-backend/config"
@@ -12,21 +14,83 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-var TIME_SLOTS = []string{
-	"05:00 - 06:00 AM", "06:00 - 07:00 AM", "07:00 - 08:00 AM", "08:00 - 09:00 AM",
-	"09:00 - 10:00 AM", "10:00 - 11:00 AM", "11:00 AM - 12:00 PM",
-	"12:00 - 01:00 PM", "01:00 - 02:00 PM", "02:00 - 03:00 PM", "03:00 - 04:00 PM",
-	"04:00 - 05:00 PM", "05:00 - 06:00 PM", "06:00 - 07:00 PM",
-	"07:00 - 08:00 PM", "08:00 - 09:00 PM", "09:00 - 10:00 PM", "10:00 - 11:00 PM",
-}
-
-func getSlotIndex(slot string) int {
-	for i, s := range TIME_SLOTS {
-		if s == slot {
-			return i
+// parseTimeMins parses "09:00 AM" / "9:00 AM" → minutes since midnight.
+func parseTimeMins(s string) (int, error) {
+	s = strings.TrimSpace(s)
+	t, err := time.Parse("03:04 PM", s)
+	if err != nil {
+		t, err = time.Parse("3:04 PM", s)
+		if err != nil {
+			return 0, fmt.Errorf("cannot parse time %q: %w", s, err)
 		}
 	}
-	return -1
+	return t.Hour()*60 + t.Minute(), nil
+}
+
+// formatTimeMins converts minutes since midnight → "09:00 AM" / "12:00 PM".
+func formatTimeMins(mins int) string {
+	h := mins / 60
+	m := mins % 60
+	period := "AM"
+	if h >= 12 {
+		period = "PM"
+	}
+	dh := h % 12
+	if dh == 0 {
+		dh = 12
+	}
+	return fmt.Sprintf("%02d:%02d %s", dh, m, period)
+}
+
+// generateSlots returns 1-hour slot strings (e.g. "09:00 AM - 10:00 AM") from
+// openingTime to closingTime, derived from the venue's stored opening/closing fields.
+// Falls back to full-day range if either field is empty.
+func generateSlots(openingTime, closingTime string) []string {
+	start, err1 := parseTimeMins(openingTime)
+	end, err2 := parseTimeMins(closingTime)
+	if err1 != nil || err2 != nil || end <= start {
+		// fallback: 05:00 AM – 11:00 PM
+		start = 5 * 60
+		end = 23 * 60
+	}
+	var slots []string
+	for cur := start; cur+60 <= end; cur += 60 {
+		slots = append(slots, formatTimeMins(cur)+" - "+formatTimeMins(cur+60))
+	}
+	return slots
+}
+
+// slotStartMins converts a slot string ("09:00 AM - 10:00 AM") → start minutes.
+// Returns -1 if unparseable.
+func slotStartMins(slot string) int {
+	parts := strings.SplitN(slot, " - ", 2)
+	if len(parts) != 2 {
+		return -1
+	}
+	m, err := parseTimeMins(parts[0])
+	if err != nil {
+		return -1
+	}
+	return m
+}
+
+// getVenueSlots fetches the play and returns its dynamic 1-hour slot list.
+func getVenueSlots(ctx context.Context, playID primitive.ObjectID) ([]string, error) {
+	var play models.Play
+	if err := config.PlaysCol.FindOne(ctx, bson.M{"_id": playID}).Decode(&play); err != nil {
+		return nil, fmt.Errorf("play not found: %w", err)
+	}
+	openT := play.OpeningTime
+	closeT := play.ClosingTime
+	// Fallback: parse from play.Time ("09:00 AM - 09:00 PM")
+	if openT == "" || closeT == "" {
+		parts := strings.SplitN(play.Time, " - ", 2)
+		if len(parts) == 2 {
+			openT = strings.TrimSpace(parts[0])
+			closeT = strings.TrimSpace(parts[1])
+		}
+	}
+	return generateSlots(openT, closeT), nil
 }
 
 func GetPlayBookedSlots(playIDHex string, date string) ([]string, error) {
@@ -34,10 +98,22 @@ func GetPlayBookedSlots(playIDHex string, date string) ([]string, error) {
 	if err != nil {
 		return nil, errors.New("invalid play_id")
 	}
-	col := config.PlayBookingsCol
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	// Build the venue's dynamic slot list so we can expand multi-hour bookings correctly.
+	venueSlots, err := getVenueSlots(ctx, playID)
+	if err != nil {
+		return nil, err
+	}
+	// Index: slot string → position
+	slotIndex := make(map[string]int, len(venueSlots))
+	for i, s := range venueSlots {
+		slotIndex[s] = i
+	}
+
+	col := config.PlayBookingsCol
 	cursor, err := col.Find(ctx, bson.M{
 		"play_id": playID,
 		"date":    date,
@@ -55,20 +131,36 @@ func GetPlayBookedSlots(playIDHex string, date string) ([]string, error) {
 
 	bookedCombinations := []string{}
 	for _, b := range results {
-		startIdx := getSlotIndex(b.Slot)
-		if startIdx == -1 {
-			continue
+		// Try to find the booking slot in the venue's dynamic slot list first.
+		startIdx, found := slotIndex[b.Slot]
+		if !found {
+			// Legacy bookings may have used the old "HH:MM - HH:MM AM" format.
+			// Fall back to minute-based position matching.
+			slotMins := slotStartMins(b.Slot)
+			if slotMins < 0 {
+				continue
+			}
+			startIdx = -1
+			for i, s := range venueSlots {
+				if slotStartMins(s) == slotMins {
+					startIdx = i
+					break
+				}
+			}
+			if startIdx == -1 {
+				continue
+			}
 		}
 
-		duration := b.Duration
-		if duration <= 0 {
-			duration = 1
+		dur := b.Duration
+		if dur <= 0 {
+			dur = 1
 		}
 
 		for _, ticket := range b.Tickets {
-			for i := 0; i < duration; i++ {
-				if startIdx+i < len(TIME_SLOTS) {
-					bookedCombinations = append(bookedCombinations, TIME_SLOTS[startIdx+i]+"|"+ticket.Category)
+			for i := 0; i < dur; i++ {
+				if startIdx+i < len(venueSlots) {
+					bookedCombinations = append(bookedCombinations, venueSlots[startIdx+i]+"|"+ticket.Category)
 				}
 			}
 		}
@@ -88,9 +180,9 @@ func CreatePlay(b *models.PlayBooking) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	// Fetch the play to get organizer and venue hours.
 	var play models.Play
-	errPlay := config.PlaysCol.FindOne(ctx, bson.M{"_id": b.PlayID}).Decode(&play)
-	if errPlay == nil {
+	if err := config.PlaysCol.FindOne(ctx, bson.M{"_id": b.PlayID}).Decode(&play); err == nil {
 		b.OrganizerID = play.OrganizerID
 	}
 	if b.OrganizerID.IsZero() {
@@ -98,9 +190,39 @@ func CreatePlay(b *models.PlayBooking) error {
 		b.OrganizerID = adminID
 	}
 
-	startIdx := getSlotIndex(b.Slot)
-	if startIdx == -1 {
-		return errors.New("invalid time slot")
+	// Build dynamic slot list from this venue's opening/closing time.
+	openT := play.OpeningTime
+	closeT := play.ClosingTime
+	if openT == "" || closeT == "" {
+		parts := strings.SplitN(play.Time, " - ", 2)
+		if len(parts) == 2 {
+			openT = strings.TrimSpace(parts[0])
+			closeT = strings.TrimSpace(parts[1])
+		}
+	}
+	venueSlots := generateSlots(openT, closeT)
+	slotIndex := make(map[string]int, len(venueSlots))
+	for i, s := range venueSlots {
+		slotIndex[s] = i
+	}
+
+	// Validate that the requested slot exists in this venue's schedule.
+	startIdx, valid := slotIndex[b.Slot]
+	if !valid {
+		// Accept legacy format by matching on start-minute.
+		slotMins := slotStartMins(b.Slot)
+		if slotMins >= 0 {
+			for i, s := range venueSlots {
+				if slotStartMins(s) == slotMins {
+					startIdx = i
+					valid = true
+					break
+				}
+			}
+		}
+	}
+	if !valid {
+		return fmt.Errorf("time slot %q is outside this venue's operating hours (%s – %s)", b.Slot, openT, closeT)
 	}
 
 	duration := b.Duration
@@ -108,7 +230,8 @@ func CreatePlay(b *models.PlayBooking) error {
 		duration = 1
 	}
 
-	// Check if any of the requested courts are already booked in ANY of the overlapping slots
+	// Overlap check: ensure no court in this booking is already reserved for any
+	// 1-hour window that falls within [startIdx, startIdx+duration).
 	for _, ticket := range b.Tickets {
 		cursor, err := col.Find(ctx, bson.M{
 			"play_id":          b.PlayID,
@@ -128,15 +251,31 @@ func CreatePlay(b *models.PlayBooking) error {
 		cursor.Close(ctx)
 
 		for _, eb := range existingBookings {
-			ebStart := getSlotIndex(eb.Slot)
+			ebIdx, ok := slotIndex[eb.Slot]
+			if !ok {
+				// Legacy format fallback
+				sm := slotStartMins(eb.Slot)
+				if sm < 0 {
+					continue
+				}
+				for i, s := range venueSlots {
+					if slotStartMins(s) == sm {
+						ebIdx = i
+						ok = true
+						break
+					}
+				}
+				if !ok {
+					continue
+				}
+			}
 			ebDur := eb.Duration
 			if ebDur <= 0 {
 				ebDur = 1
 			}
-
-			// Overlap logic: [startIdx, startIdx + duration) overlaps [ebStart, ebStart + ebDur)
-			if (startIdx < ebStart+ebDur) && (ebStart < startIdx+duration) {
-				return errors.New("court " + ticket.Category + " is already booked during this time window")
+			// [startIdx, startIdx+duration) overlaps [ebIdx, ebIdx+ebDur)
+			if startIdx < ebIdx+ebDur && ebIdx < startIdx+duration {
+				return fmt.Errorf("court %q is already booked during this time window", ticket.Category)
 			}
 		}
 	}
