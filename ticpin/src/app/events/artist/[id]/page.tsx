@@ -36,13 +36,13 @@ export default function ArtistDetailPage() {
     useEffect(() => {
         fetch(`/backend/api/events?artist=${encodeURIComponent(artistNameDecoded)}`)
             .then(r => r.json())
-            .then((data: RealEvent[]) => {
-                const list = Array.isArray(data) ? data : [];
+            .then((data: any) => {
+                const list = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
                 setEvents(list);
 
                 // Extract artist details from the first event that has them
                 for (const ev of list) {
-                    const found = ev.artists?.find(a => a.name.toLowerCase() === artistNameDecoded.toLowerCase());
+                    const found = ev.artists?.find((a: any) => a.name.toLowerCase() === artistNameDecoded.toLowerCase());
                     if (found) {
                         setArtistDetails(found);
                         if (found.description) break; // Prefer entry with description
@@ -72,7 +72,7 @@ export default function ArtistDetailPage() {
 
                 {/* Artist Profile Header */}
                 <section className="flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-16">
-                    <div className="w-[280px] h-[280px] md:w-[400px] md:h-[400px] rounded-[30px] overflow-hidden bg-[#f3f0fd] flex-shrink-0 flex items-center justify-center border border-zinc-100 shadow-sm">
+                    <div className="relative w-[280px] h-[280px] md:w-[400px] md:h-[400px] rounded-[30px] overflow-hidden bg-[#f3f0fd] flex-shrink-0 flex items-center justify-center border border-zinc-100 shadow-sm">
                         {artistDetails?.image_url ? (
                             <Image
                                 src={artistDetails.image_url}

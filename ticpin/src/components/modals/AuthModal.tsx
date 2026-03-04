@@ -47,26 +47,27 @@ export default function AuthModal({ isOpen, onClose, initialView = 'number', onS
     }, [view]);
 
     // ── Recaptcha helper ─────────────────────────────────────────────
-    const getRecaptchaVerifier = (): RecaptchaVerifier => {
-        if (!auth) throw new Error('Firebase is not configured');
-        if (recaptchaVerifierRef.current) {
-            recaptchaVerifierRef.current.clear();
-            recaptchaVerifierRef.current = null;
-        }
-        const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
-        recaptchaVerifierRef.current = verifier;
-        return verifier;
-    };
+    // const getRecaptchaVerifier = (): RecaptchaVerifier => {
+    //     if (!auth) throw new Error('Firebase is not configured');
+    //     if (recaptchaVerifierRef.current) {
+    //         recaptchaVerifierRef.current.clear();
+    //         recaptchaVerifierRef.current = null;
+    //     }
+    //     const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
+    //     recaptchaVerifierRef.current = verifier;
+    //     return verifier;
+    // };
 
-    // ── Send OTP ─────────────────────────────────────────────────────
+    // ── Send OTP (Firebase bypassed — any number accepted) ───────────
     const handleSendOtp = async () => {
         if (number.length !== 10) return;
         setLoading(true);
         setError('');
         try {
-            const verifier = getRecaptchaVerifier();
-            const result = await signInWithPhoneNumber(auth!, '+91' + number, verifier);
-            setConfirmationResult(result);
+            // [Firebase OTP commented out]
+            // const verifier = getRecaptchaVerifier();
+            // const result = await signInWithPhoneNumber(auth!, '+91' + number, verifier);
+            // setConfirmationResult(result);
             setView('otp');
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : 'Failed to send OTP. Try again.');
@@ -81,9 +82,10 @@ export default function AuthModal({ isOpen, onClose, initialView = 'number', onS
         setResent(false);
         setLoading(true);
         try {
-            const verifier = getRecaptchaVerifier();
-            const result = await signInWithPhoneNumber(auth!, '+91' + number, verifier);
-            setConfirmationResult(result);
+            // [Firebase OTP commented out]
+            // const verifier = getRecaptchaVerifier();
+            // const result = await signInWithPhoneNumber(auth!, '+91' + number, verifier);
+            // setConfirmationResult(result);
             setResent(true);
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : 'Could not resend OTP. Try again.');
@@ -92,15 +94,16 @@ export default function AuthModal({ isOpen, onClose, initialView = 'number', onS
         }
     };
 
-    // ── Verify OTP ───────────────────────────────────────────────────
+    // ── Verify OTP (Firebase bypassed — any 6-digit code accepted) ───
     const handleVerifyOtp = async () => {
         const code = otp.join('');
         if (code.length !== 6) { setError('Enter all 6 digits'); return; }
-        if (!confirmationResult) { setError('Please request OTP first'); return; }
+        // [Firebase OTP commented out — any OTP is accepted]
+        // if (!confirmationResult) { setError('Please request OTP first'); return; }
         setLoading(true);
         setError('');
         try {
-            await confirmationResult.confirm(code);
+            // await confirmationResult!.confirm(code);
             const isAdminUser = number === ADMIN_PHONE;
             if (isAdminUser) {
                 const adminSession = { id: number, phone: number, name: 'Admin' };

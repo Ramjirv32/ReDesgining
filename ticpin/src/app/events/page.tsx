@@ -33,7 +33,8 @@ async function getEvents(): Promise<RealEvent[]> {
         });
         if (!response.ok) return [];
         const data = await response.json();
-        return (Array.isArray(data) ? data : []).filter((e: RealEvent) => e.status === 'approved');
+        const events = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
+        return events.filter((e: RealEvent) => e.status === 'approved');
     } catch (err) {
         console.error("Failed to fetch events:", err);
         return [];

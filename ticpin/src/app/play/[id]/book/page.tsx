@@ -37,13 +37,25 @@ const TIME_SLOTS = [
     "07:00 - 08:00 PM", "08:00 - 09:00 PM", "09:00 - 10:00 PM", "10:00 - 11:00 PM",
 ];
 
-/** Parse "09:00 AM" or "09:00 PM" → minutes since midnight */
+/** Parse "09:00 AM" / "9:00 PM" / "09:00" (24-hr) → minutes since midnight.
+ *  Returns NaN on any failure so callers can fall back safely. */
 const parseTime = (timeStr: string): number => {
-    const [time, period] = timeStr.trim().split(' ');
-    let [hours, minutes] = time.split(':').map(Number);
-    if (period === 'PM' && hours !== 12) hours += 12;
-    if (period === 'AM' && hours === 12) hours = 0;
-    return hours * 60 + minutes;
+    if (!timeStr) return NaN;
+    const s = timeStr.trim();
+    // "09:00 AM" / "9:00 pm"
+    const ampm = s.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (ampm) {
+        let h = parseInt(ampm[1], 10);
+        const m = parseInt(ampm[2], 10);
+        const p = ampm[3].toUpperCase();
+        if (p === 'PM' && h !== 12) h += 12;
+        if (p === 'AM' && h === 12) h = 0;
+        return h * 60 + m;
+    }
+    // "09:00" (24-hr)
+    const h24 = s.match(/^(\d{1,2}):(\d{2})$/);
+    if (h24) return parseInt(h24[1], 10) * 60 + parseInt(h24[2], 10);
+    return NaN;
 };
 
 /**
@@ -102,11 +114,8 @@ export default function PlayBookPage() {
     const [bookedSlots, setBookedSlots] = useState<string[]>([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
 
-    /**
-     * Returns true if `courtName` has NO booked 1-hour window that overlaps the
-     * requested [startMin, endMin) interval.
-     * Works entirely in minutes — no dependency on TIME_SLOTS string ordering.
-     */
+   
+
     const isWindowAvailable = (courtName: string, startMin: number, endMin: number): boolean => {
         for (const booked of bookedSlots) {
             const pipeIdx = booked.lastIndexOf('|');
@@ -143,8 +152,9 @@ export default function PlayBookPage() {
     useEffect(() => {
         if (!id || !selectedDate) return;
         setLoadingSlots(true);
-        // Clear selected slot if it becomes unavailable
+        // Clear both slot AND court selection when date changes
         setSelectedSlot(null);
+        setSelectedCourtIds([]);
         fetch(`/backend/api/play/${id}/booked-slots?date=${selectedDate}`, { credentials: 'include' })
             .then(r => r.json())
             .then(data => {
@@ -174,21 +184,30 @@ export default function PlayBookPage() {
         return `${String(displayH).padStart(2, '0')}:${String(m).padStart(2, '0')} ${period}`;
     };
 
-    // Derive opening/closing time from dedicated fields, composite time string, or
-    // fall back to a sensible default (06:00 AM – 11:00 PM) so slots always render.
-    const openingTimeStr =
-        venue?.opening_time ||
-        (venue?.time ? venue.time.split(' - ')[0].trim() : null) ||
-        '06:00 AM';
-    const closingTimeStr =
-        venue?.closing_time ||
-        (venue?.time ? venue.time.split(' - ')[1]?.trim() : null) ||
-        '11:00 PM';
+    // Derive opening/closing minutes robustly — try every possible source,
+    // fall back to 06:00 AM – 11:00 PM so slots ALWAYS render.
+    const resolveVenueTimes = (): { start: number; end: number } => {
+        const FALLBACK = { start: 6 * 60, end: 23 * 60 }; // 06:00 AM – 11:00 PM
+        // 1. Dedicated fields
+        const s1 = parseTime(venue?.opening_time ?? '');
+        const e1 = parseTime(venue?.closing_time ?? '');
+        if (!isNaN(s1) && !isNaN(e1) && e1 > s1) return { start: s1, end: e1 };
+        // 2. Composite `time` field — try " - " then "-"
+        const t = venue?.time ?? '';
+        if (t) {
+            const sep = t.includes(' - ') ? ' - ' : '-';
+            const parts = t.split(sep);
+            if (parts.length >= 2) {
+                const s2 = parseTime(parts[0].trim());
+                const e2 = parseTime(parts[parts.length - 1].trim());
+                if (!isNaN(s2) && !isNaN(e2) && e2 > s2) return { start: s2, end: e2 };
+            }
+        }
+        return FALLBACK;
+    };
 
     const generateBlockSlots = (): { label: string; startMin: number; endMin: number }[] => {
-        if (!openingTimeStr || !closingTimeStr) return [];
-        const venueStart = parseTime(openingTimeStr);
-        const venueEnd   = parseTime(closingTimeStr);
+        const { start: venueStart, end: venueEnd } = resolveVenueTimes();
         const blocks: { label: string; startMin: number; endMin: number }[] = [];
         let current = venueStart;
         while (current + duration * 60 <= venueEnd) {
@@ -198,7 +217,7 @@ export default function PlayBookPage() {
                 startMin: current,
                 endMin:   end,
             });
-            current += duration * 60;
+            current += 60; 
         }
         return blocks;
     };
@@ -225,13 +244,19 @@ export default function PlayBookPage() {
             };
         });
         const totalPrice = tickets.reduce((s, t) => s + t.price, 0);
+        // Backend slotIndex only holds 1-hour entries — send the 1-hr start slot,
+        // not the full duration label (e.g. send "10:00 AM - 11:00 AM", not "10:00 AM - 12:00 PM")
+        const selectedBlock = blockSlots.find(b => b.label === selectedSlot);
+        const backendSlot = selectedBlock
+            ? `${formatTime(selectedBlock.startMin)} - ${formatTime(selectedBlock.startMin + 60)}`
+            : selectedSlot;
         const cartItem = {
             eventId: v.id,
             eventName: v.name,
             city: v.city ?? '',
             type: 'play',
             date: selectedDate,
-            slot: selectedSlot,
+            slot: backendSlot,
             duration: duration, // Include duration for backend models
             tickets,
             totalPrice,
@@ -343,34 +368,32 @@ export default function PlayBookPage() {
                                 </div>
                             ) : (
                                 <div className="flex flex-wrap gap-3">
-                                    {blockSlots.map((b, i) => {
-                                        // A slot block is available if ANY court is free for the full window
-                                        const isAvailable = courts.some(c => isWindowAvailable(c.name, b.startMin, b.endMin));
+                                    {blockSlots.length === 0 ? (
+                                        <p className="text-zinc-400 text-[14px] italic">No time blocks available for this duration.</p>
+                                    ) : blockSlots.map((b, i) => {
                                         const isSelected = selectedSlot === b.label;
+                                        // Disable slot when no courts exist OR all courts are fully booked
+                                        const hasFreeCourt = courts.length > 0 && courts.some(c => isWindowAvailable(c.name, b.startMin, b.endMin));
                                         return (
                                             <button
                                                 key={i}
-                                                disabled={!isAvailable}
+                                                disabled={!hasFreeCourt}
                                                 onClick={() => {
-                                                    isAvailable && setSelectedSlot(b.label);
-                                                    setSelectedCourtIds([]); // Reset court when slot changes
+                                                    setSelectedSlot(b.label);
+                                                    setSelectedCourtIds([]);
                                                 }}
-                                                className={`px-5 h-[48px] rounded-[12px] text-[15px] font-medium border transition-all ${!isAvailable
-                                                    ? 'bg-zinc-100 border-zinc-200 text-zinc-400 cursor-not-allowed line-through'
-                                                    : isSelected
-                                                        ? 'bg-black text-white border-black shadow-lg scale-[1.02]'
-                                                        : 'bg-white text-black border-zinc-300 hover:border-black'
-                                                    }`}
+                                                className={`px-5 h-[48px] rounded-[12px] text-[15px] font-medium border transition-all ${
+                                                    !hasFreeCourt
+                                                        ? 'bg-zinc-100 border-zinc-200 text-zinc-400 cursor-not-allowed line-through'
+                                                        : isSelected
+                                                            ? 'bg-black text-white border-black shadow-lg scale-[1.02]'
+                                                            : 'bg-white text-black border-zinc-300 hover:border-black'
+                                                }`}
                                             >
                                                 {b.label}
                                             </button>
                                         );
                                     })}
-                                    {blockSlots.length > 0 && blockSlots.every(b => !courts.some(c => isWindowAvailable(c.name, b.startMin, b.endMin))) && (
-                                        <p className="text-red-500 text-[15px] font-medium w-full">
-                                            No available slots for a {duration}hr window on this date.
-                                        </p>
-                                    )}
                                 </div>
                             )}
                         </section>

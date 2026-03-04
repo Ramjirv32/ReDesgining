@@ -7,7 +7,8 @@ async function getComedyEvents() {
         });
         if (!res.ok) return [];
         const data = await res.json();
-        return (Array.isArray(data) ? data : []).filter((e: any) => e.status === 'approved');
+        const events = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
+        return events.filter((e: any) => e.status === 'approved');
     } catch (error) {
         console.error("Failed to fetch comedy events:", error);
         return [];
