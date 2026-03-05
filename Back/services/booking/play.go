@@ -42,7 +42,7 @@ func formatTimeMins(mins int) string {
 	return fmt.Sprintf("%02d:%02d %s", dh, m, period)
 }
 
-// generateSlots returns 1-hour slot strings (e.g. "09:00 AM - 10:00 AM") from
+// generateSlots returns 30-minute slot strings (e.g. "09:00 AM - 09:30 AM") from
 // openingTime to closingTime, derived from the venue's stored opening/closing fields.
 // Falls back to full-day range if either field is empty.
 func generateSlots(openingTime, closingTime string) []string {
@@ -54,8 +54,8 @@ func generateSlots(openingTime, closingTime string) []string {
 		end = 23 * 60
 	}
 	var slots []string
-	for cur := start; cur+60 <= end; cur += 60 {
-		slots = append(slots, formatTimeMins(cur)+" - "+formatTimeMins(cur+60))
+	for cur := start; cur+30 <= end; cur += 30 {
+		slots = append(slots, formatTimeMins(cur)+" - "+formatTimeMins(cur+30))
 	}
 	return slots
 }

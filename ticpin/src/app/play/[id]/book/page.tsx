@@ -28,14 +28,7 @@ interface RealPlay {
     courts?: Court[];
 }
 
-// Fixed 1-hour slot strings returned by the backend (e.g. "09:00 - 10:00 AM|CourtName")
-const TIME_SLOTS = [
-    "05:00 - 06:00 AM", "06:00 - 07:00 AM", "07:00 - 08:00 AM", "08:00 - 09:00 AM",
-    "09:00 - 10:00 AM", "10:00 - 11:00 AM", "11:00 AM - 12:00 PM",
-    "12:00 - 01:00 PM", "01:00 - 02:00 PM", "02:00 - 03:00 PM", "03:00 - 04:00 PM",
-    "04:00 - 05:00 PM", "05:00 - 06:00 PM", "06:00 - 07:00 PM",
-    "07:00 - 08:00 PM", "08:00 - 09:00 PM", "09:00 - 10:00 PM", "10:00 - 11:00 PM",
-];
+// Slots are generated dynamically from venue opening/closing time — no static list needed.
 
 /** Parse "09:00 AM" / "9:00 PM" / "09:00" (24-hr) → minutes since midnight.
  *  Returns NaN on any failure so callers can fall back safely. */
@@ -60,24 +53,14 @@ const parseTime = (timeStr: string): number => {
 
 /**
  * Parse the start time (minutes) of a backend slot string.
- * Handles both "09:00 - 10:00 AM" and "11:00 AM - 12:00 PM" formats.
+ * Handles "09:00 AM - 09:30 AM" format (both halves have AM/PM).
  */
 const parseSlotStartMin = (slot: string): number => {
-    // Format A: "11:00 AM - 12:00 PM"  — period is embedded in the first token group
-    if (/\d{1,2}:\d{2}\s*(AM|PM)\s*-/i.test(slot)) {
-        const firstPart = slot.split(/\s*-\s*/)[0].trim(); // "11:00 AM"
-        return parseTime(firstPart);
-    }
-    // Format B: "09:00 - 10:00 AM"  — both times share the trailing period
-    const parts = slot.split(/\s*-\s*/);
-    const period = /PM/i.test(parts[1]) ? 'PM' : 'AM';
-    return parseTime(`${parts[0].trim()} ${period}`);
+    const firstPart = slot.split(/\s*-\s*/)[0].trim();
+    return parseTime(firstPart);
 };
 
-// Precompute start-minute for every backend 1-hour slot string (used for overlap checks)
-const SLOT_START_MIN: Readonly<Record<string, number>> = Object.fromEntries(
-    TIME_SLOTS.map(s => [s, parseSlotStartMin(s)])
-);
+
 
 function getNextDays(count = 7) {
     const days = [];
@@ -128,7 +111,7 @@ export default function PlayBookPage() {
             let bStart: number;
             try { bStart = parseSlotStartMin(slotStr); } catch { continue; }
             if (isNaN(bStart)) continue;
-            const bEnd = bStart + 60;
+            const bEnd = bStart + 30; // each backend slot is 30 min wide
             // Overlap: intervals [startMin, endMin) and [bStart, bEnd) overlap when
             //   startMin < bEnd  AND  bStart < endMin
             if (startMin < bEnd && bStart < endMin) return false;
@@ -206,18 +189,29 @@ export default function PlayBookPage() {
         return FALLBACK;
     };
 
+    // duration is in 30-min units: 1=30min, 2=1hr, 3=1.5hr, etc.
+    const durationMins = duration * 30;
+    const durationLabel = (() => {
+        const total = durationMins;
+        const hrs = Math.floor(total / 60);
+        const mins = total % 60;
+        if (hrs === 0) return `${mins} min`;
+        if (mins === 0) return `${hrs} hr`;
+        return `${hrs} hr ${mins} min`;
+    })();
+
     const generateBlockSlots = (): { label: string; startMin: number; endMin: number }[] => {
         const { start: venueStart, end: venueEnd } = resolveVenueTimes();
         const blocks: { label: string; startMin: number; endMin: number }[] = [];
         let current = venueStart;
-        while (current + duration * 60 <= venueEnd) {
-            const end = current + duration * 60;
+        while (current + durationMins <= venueEnd) {
+            const end = current + durationMins;
             blocks.push({
                 label:    `${formatTime(current)} - ${formatTime(end)}`,
                 startMin: current,
                 endMin:   end,
             });
-            current += 60; 
+            current += 30; // step every 30 min
         }
         return blocks;
     };
@@ -236,19 +230,20 @@ export default function PlayBookPage() {
         const tickets = selectedCourtIds.map(uid => {
             const court = courts.find((c, idx) => `${c.id}-${idx}` === uid);
             const pricePerHour = court?.price ?? v.price_starts_from ?? 500;
+            // price is stored per-hour; duration is in 30-min units → actual cost = price × (duration/2)
+            const actualPrice = Math.round(pricePerHour * duration / 2);
             return {
-                category: court?.name ?? 'Court', // Use category to store court name for backend validation
-                name: `${court?.name ?? 'Court'} — ${court?.type ?? ''} (${duration}hr)`,
-                price: pricePerHour * duration,
+                category: court?.name ?? 'Court',
+                name: `${court?.name ?? 'Court'} — ${court?.type ?? ''} (${durationLabel})`,
+                price: actualPrice,
                 quantity: 1,
             };
         });
         const totalPrice = tickets.reduce((s, t) => s + t.price, 0);
-        // Backend slotIndex only holds 1-hour entries — send the 1-hr start slot,
-        // not the full duration label (e.g. send "10:00 AM - 11:00 AM", not "10:00 AM - 12:00 PM")
+        // Send the 30-min start slot string to backend (e.g. "09:00 AM - 09:30 AM")
         const selectedBlock = blockSlots.find(b => b.label === selectedSlot);
         const backendSlot = selectedBlock
-            ? `${formatTime(selectedBlock.startMin)} - ${formatTime(selectedBlock.startMin + 60)}`
+            ? `${formatTime(selectedBlock.startMin)} - ${formatTime(selectedBlock.startMin + 30)}`
             : selectedSlot;
         const cartItem = {
             eventId: v.id,
@@ -347,7 +342,7 @@ export default function PlayBookPage() {
                                     −
                                 </button>
                                 <div className="px-6 h-[52px] flex items-center justify-center border-x border-zinc-300">
-                                    <span className="text-[18px] font-semibold text-black whitespace-nowrap">{duration} hr</span>
+                                    <span className="text-[18px] font-semibold text-black whitespace-nowrap">{durationLabel}</span>
                                 </div>
                                 <button onClick={() => setDuration(d => d + 1)}
                                     className="w-[44px] h-[52px] text-[22px] font-medium text-black hover:bg-zinc-100 transition-colors flex items-center justify-center">
@@ -358,9 +353,24 @@ export default function PlayBookPage() {
 
                         {/* ── Step 1: Time Slot Selection ── */}
                         <section className="space-y-4">
-                            <h2 className="text-[13px] font-semibold uppercase tracking-[0.12em] text-black border-b border-zinc-200 pb-3">
-                                AVAILABLE TIME BLOCKS
-                            </h2>
+                            <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
+                                <h2 className="text-[13px] font-semibold uppercase tracking-[0.12em] text-black">
+                                    AVAILABLE TIME BLOCKS
+                                </h2>
+                                {!loadingSlots && courts.length > 0 && (() => {
+                                    const total = blockSlots.length;
+                                    const free = blockSlots.filter(b =>
+                                        courts.some(c => isWindowAvailable(c.name, b.startMin, b.endMin))
+                                    ).length;
+                                    return (
+                                        <span className={`text-[12px] font-semibold px-2 py-0.5 rounded-full ${
+                                            free === 0 ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-600'
+                                        }`}>
+                                            {free === 0 ? 'Fully Booked' : `${free} / ${total} slots available`}
+                                        </span>
+                                    );
+                                })()}
+                            </div>
                             {loadingSlots ? (
                                 <div className="flex items-center gap-2 text-[14px] text-zinc-400">
                                     <div className="w-4 h-4 border-2 border-zinc-300 border-t-zinc-600 rounded-full animate-spin" />
@@ -375,23 +385,27 @@ export default function PlayBookPage() {
                                         // Disable slot when no courts exist OR all courts are fully booked
                                         const hasFreeCourt = courts.length > 0 && courts.some(c => isWindowAvailable(c.name, b.startMin, b.endMin));
                                         return (
-                                            <button
-                                                key={i}
-                                                disabled={!hasFreeCourt}
-                                                onClick={() => {
-                                                    setSelectedSlot(b.label);
-                                                    setSelectedCourtIds([]);
-                                                }}
-                                                className={`px-5 h-[48px] rounded-[12px] text-[15px] font-medium border transition-all ${
-                                                    !hasFreeCourt
-                                                        ? 'bg-zinc-100 border-zinc-200 text-zinc-400 cursor-not-allowed line-through'
-                                                        : isSelected
-                                                            ? 'bg-black text-white border-black shadow-lg scale-[1.02]'
-                                                            : 'bg-white text-black border-zinc-300 hover:border-black'
-                                                }`}
-                                            >
-                                                {b.label}
-                                            </button>
+                                            <div key={i} className="flex flex-col items-center gap-1">
+                                                <button
+                                                    disabled={!hasFreeCourt}
+                                                    onClick={() => {
+                                                        setSelectedSlot(b.label);
+                                                        setSelectedCourtIds([]);
+                                                    }}
+                                                    className={`px-5 h-[48px] rounded-[12px] text-[15px] font-medium border transition-all ${
+                                                        !hasFreeCourt
+                                                            ? 'bg-zinc-100 border-zinc-200 text-zinc-400 cursor-not-allowed line-through'
+                                                            : isSelected
+                                                                ? 'bg-black text-white border-black shadow-lg scale-[1.02]'
+                                                                : 'bg-white text-black border-zinc-300 hover:border-black'
+                                                    }`}
+                                                >
+                                                    {b.label}
+                                                </button>
+                                                {!hasFreeCourt && (
+                                                    <span className="text-[10px] font-semibold text-red-400 uppercase tracking-wider">Booked</span>
+                                                )}
+                                            </div>
                                         );
                                     })}
                                 </div>
@@ -449,13 +463,23 @@ export default function PlayBookPage() {
                                                         )}
                                                     </div>
                                                     <p className="text-[14px] font-medium text-[#686868]">{court.type}</p>
+                                                    {(() => {
+                                                        const remainingCount = blockSlots.filter(b => isWindowAvailable(court.name, b.startMin, b.endMin)).length;
+                                                        return remainingCount > 0 ? (
+                                                            <span className="text-[11px] font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full inline-block">
+                                                                {remainingCount} slot{remainingCount !== 1 ? 's' : ''} available
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-[11px] font-semibold text-red-500 bg-red-50 px-2 py-0.5 rounded-full inline-block">
+                                                                Fully booked today
+                                                            </span>
+                                                        );
+                                                    })()}
                                                     <p className="text-[15px] font-bold text-black mt-1">
                                                         ₹{court.price}<span className="text-[13px] font-normal text-[#686868]"> / hr</span>
-                                                        {duration > 1 && (
-                                                            <span className="ml-2 text-[13px] text-[#686868] font-medium">
-                                                                = ₹{court.price * duration} for {duration}hr
-                                                            </span>
-                                                        )}
+                                                        <span className="ml-2 text-[13px] text-[#686868] font-medium">
+                                                            = ₹{Math.round(court.price * duration / 2)} for {durationLabel}
+                                                        </span>
                                                     </p>
                                                 </div>
                                                 <div className={`w-[24px] h-[24px] rounded-[6px] border-2 flex items-center justify-center shrink-0 transition-all ${isSelected ? 'border-black bg-black' : 'border-zinc-300 bg-white'
@@ -479,10 +503,11 @@ export default function PlayBookPage() {
                                 {selectedCourtIds.map(uid => {
                                     const court = courts.find((c, idx) => `${c.id}-${idx}` === uid);
                                     if (!court) return null;
+                                    const linePrice = Math.round(court.price * duration / 2);
                                     return (
                                         <div key={uid} className="flex justify-between text-[15px]">
-                                            <span className="text-black font-medium">{court.name} × {duration}hr</span>
-                                            <span className="font-semibold text-black">₹{court.price * duration}</span>
+                                            <span className="text-black font-medium">{court.name} × {durationLabel}</span>
+                                            <span className="font-semibold text-black">₹{linePrice}</span>
                                         </div>
                                     );
                                 })}
@@ -490,7 +515,7 @@ export default function PlayBookPage() {
                                     <span>Total</span>
                                     <span>₹{selectedCourtIds.reduce((s, uid) => {
                                         const court = courts.find((c, idx) => `${c.id}-${idx}` === uid);
-                                        return s + (court?.price ?? 0) * duration;
+                                        return s + Math.round((court?.price ?? 0) * duration / 2);
                                     }, 0)}</span>
                                 </div>
                             </section>
