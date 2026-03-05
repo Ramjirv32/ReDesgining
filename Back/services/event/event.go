@@ -104,7 +104,7 @@ func GetAll(category string, artist string, limit int, after string) ([]models.E
 }
 
 func GetByID(id string, bypassCache bool) (*models.Event, error) {
-	// 1. Try cache
+	
 	cacheKey := "event:" + id
 	if !bypassCache {
 		if val, ok := cache.GlobalCache.Get(cacheKey); ok {
@@ -114,7 +114,7 @@ func GetByID(id string, bypassCache bool) (*models.Event, error) {
 		}
 	}
 
-	// 2. Fetch from DB
+	
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return nil, err
@@ -127,7 +127,7 @@ func GetByID(id string, bypassCache bool) (*models.Event, error) {
 		return nil, err
 	}
 
-	// 3. Store in cache (5 min TTL)
+	
 	cache.GlobalCache.Set(cacheKey, &e, 5*time.Minute)
 
 	return &e, nil

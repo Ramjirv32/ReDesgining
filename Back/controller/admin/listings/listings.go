@@ -26,7 +26,7 @@ func deleteDoc(collection string, id string) error {
 	defer cancel()
 	_, err = col.DeleteOne(ctx, bson.M{"_id": objID})
 	if err == nil {
-		// Invalidate cache (strip plural 's' if present for singular key)
+		
 		keyType := collection
 		if collection == "plays" {
 			keyType = "play"

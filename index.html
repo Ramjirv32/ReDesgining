@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Location Test</title>
+<style>
+body{
+font-family:Arial;
+text-align:center;
+padding:40px;
+}
+img{
+width:400px;
+border-radius:10px;
+margin-top:20px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>Reverse Location Test</h2>
+
+<button onclick="getLocation()">Get Location Details</button>
+
+<h3 id="location"></h3>
+<p id="pincode"></p>
+
+<img id="cityImage" alt="City image from Unsplash"/>
+
+<script>
+
+async function getLocation(){
+
+let lat = 11.0624768
+let lon = 77.365248
+
+let res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
+let data = await res.json()
+
+let city =
+data.address.city ||
+data.address.town ||
+data.address.village ||
+data.address.county
+
+let pincode = data.address.postcode
+let state = data.address.state
+
+document.getElementById("location").innerText =
+city + ", " + state
+
+document.getElementById("pincode").innerText =
+"Pincode: " + pincode
+
+// city image
+document.getElementById("cityImage").src =
+`https://source.unsplash.com/400x300/?${city},city`
+
+}
+
+</script>
+
+</body>
+</html>

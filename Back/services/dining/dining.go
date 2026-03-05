@@ -79,7 +79,7 @@ func GetAll(limit int, after string) ([]models.Dining, string, error) {
 }
 
 func GetByID(id string, bypassCache bool) (*models.Dining, error) {
-	// 1. Try cache
+	
 	cacheKey := "dining:" + id
 	if !bypassCache {
 		if val, ok := cache.GlobalCache.Get(cacheKey); ok {
@@ -89,7 +89,7 @@ func GetByID(id string, bypassCache bool) (*models.Dining, error) {
 		}
 	}
 
-	// 2. Fetch from DB
+	
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return nil, err
@@ -102,7 +102,7 @@ func GetByID(id string, bypassCache bool) (*models.Dining, error) {
 		return nil, err
 	}
 
-	// 3. Store in cache (5 min TTL)
+	
 	cache.GlobalCache.Set(cacheKey, &d, 5*time.Minute)
 
 	return &d, nil

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Sunrise, Sun, Sunset, Moon } from 'lucide-react';
 import { useUserSession } from '@/lib/auth/user';
 import AuthModal from '@/components/modals/AuthModal';
 
@@ -79,6 +79,21 @@ function getNextDays(count = 7) {
     return days;
 }
 
+// ─── Time-period definitions ─────────────────────────────────────────────────
+const PERIODS = [
+    { id: 'morning', label: 'Morning', min: 6 * 60, max: 12 * 60 },
+    { id: 'noon', label: 'Noon', min: 12 * 60, max: 17 * 60 },
+    { id: 'evening', label: 'Evening', min: 17 * 60, max: 21 * 60 },
+    { id: 'twilight', label: 'Twilight', min: 21 * 60, max: 25 * 60 },
+] as const;
+
+const PERIOD_ICONS: Record<string, React.FC<{ size?: number; strokeWidth?: number }>> = {
+    morning: Sunrise,
+    noon: Sun,
+    evening: Sunset,
+    twilight: Moon,
+};
+
 export default function PlayBookPage() {
     const router = useRouter();
     const params = useParams();
@@ -96,24 +111,22 @@ export default function PlayBookPage() {
     const [selectedCourtIds, setSelectedCourtIds] = useState<string[]>([]);
     const [bookedSlots, setBookedSlots] = useState<string[]>([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
+    const [activePeriod, setActivePeriod] = useState<string>('morning');
 
-   
+
 
     const isWindowAvailable = (courtName: string, startMin: number, endMin: number): boolean => {
         for (const booked of bookedSlots) {
             const pipeIdx = booked.lastIndexOf('|');
             if (pipeIdx === -1) continue;
-            const slotStr    = booked.substring(0, pipeIdx);
+            const slotStr = booked.substring(0, pipeIdx);
             const bCourtName = booked.substring(pipeIdx + 1);
             if (bCourtName !== courtName) continue;
-            // Dynamically parse start minute so both "09:00 - 10:00 AM" and
-            // "09:00 AM - 10:00 AM" backend formats are handled correctly.
-            let bStart: number;
-            try { bStart = parseSlotStartMin(slotStr); } catch { continue; }
+            // Parse start minute of the booked 30-min backend slot
+            const bStart = parseSlotStartMin(slotStr);
             if (isNaN(bStart)) continue;
-            const bEnd = bStart + 30; // each backend slot is 30 min wide
-            // Overlap: intervals [startMin, endMin) and [bStart, bEnd) overlap when
-            //   startMin < bEnd  AND  bStart < endMin
+            const bEnd = bStart + 30; // each backend slot is exactly 30 min wide
+            // Overlap: [startMin, endMin) overlaps [bStart, bEnd) when startMin < bEnd AND bStart < endMin
             if (startMin < bEnd && bStart < endMin) return false;
         }
         return true;
@@ -207,9 +220,9 @@ export default function PlayBookPage() {
         while (current + durationMins <= venueEnd) {
             const end = current + durationMins;
             blocks.push({
-                label:    `${formatTime(current)} - ${formatTime(end)}`,
+                label: `${formatTime(current)} - ${formatTime(end)}`,
                 startMin: current,
-                endMin:   end,
+                endMin: end,
             });
             current += 30; // step every 30 min
         }
@@ -218,13 +231,28 @@ export default function PlayBookPage() {
 
     const blockSlots = generateBlockSlots();
 
-    // Does a court have ANY free block for the selected duration on this date?
-    const isCourtAvailableAnytime = (courtName: string): boolean =>
-        blockSlots.some(b => isWindowAvailable(courtName, b.startMin, b.endMin));
+    // ── Hour label helper (e.g. "9 AM", "12 PM") ────────────────────────────
+    const hourLabel = (h: number) => {
+        const period = h < 12 ? 'AM' : 'PM';
+        const display = h % 12 || 12;
+        return `${display} ${period}`;
+    };
+
+    // ── Period filtering + hourly grouping ───────────────────────────────────
+    const activePeriodDef = PERIODS.find(p => p.id === activePeriod) ?? PERIODS[0];
+    const periodSlots = blockSlots.filter(
+        b => b.startMin >= activePeriodDef.min && b.startMin < activePeriodDef.max
+    );
+    // Map hour → slots[]
+    const hourGroupMap = new Map<number, typeof blockSlots>();
+    periodSlots.forEach(b => {
+        const h = Math.floor(b.startMin / 60);
+        if (!hourGroupMap.has(h)) hourGroupMap.set(h, []);
+        hourGroupMap.get(h)!.push(b);
+    });
+    const hourGroups = [...hourGroupMap.entries()].sort((a, b) => a[0] - b[0]);
 
     const courts = venue?.courts ?? [];
-    const selectedUniqueId = selectedCourtIds[0] ?? null;
-    const selectedCourt = courts.find((c, idx) => `${c.id}-${idx}` === selectedUniqueId) ?? null;
 
     const doBooking = (v: RealPlay) => {
         const tickets = selectedCourtIds.map(uid => {
@@ -240,19 +268,22 @@ export default function PlayBookPage() {
             };
         });
         const totalPrice = tickets.reduce((s, t) => s + t.price, 0);
-        // Send the 30-min start slot string to backend (e.g. "09:00 AM - 09:30 AM")
+        // backendSlot = the 30-min start slot sent to and stored by the backend
+        // displaySlot = the full user-selected duration span shown in the review page
         const selectedBlock = blockSlots.find(b => b.label === selectedSlot);
         const backendSlot = selectedBlock
             ? `${formatTime(selectedBlock.startMin)} - ${formatTime(selectedBlock.startMin + 30)}`
             : selectedSlot;
+        const displaySlot = selectedSlot ?? backendSlot; // full span e.g. "09:00 AM - 10:00 AM"
         const cartItem = {
             eventId: v.id,
             eventName: v.name,
             city: v.city ?? '',
             type: 'play',
             date: selectedDate,
-            slot: backendSlot,
-            duration: duration, // Include duration for backend models
+            slot: backendSlot,       // used by backend for booking & overlap check
+            display_slot: displaySlot, // shown to user in review / confirmation
+            duration: duration,       // in 30-min units; used by backend for index expansion
             tickets,
             totalPrice,
         };
@@ -353,9 +384,11 @@ export default function PlayBookPage() {
 
                         {/* ── Step 1: Time Slot Selection ── */}
                         <section className="space-y-4">
+
+                            {/* Header + total count */}
                             <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
                                 <h2 className="text-[13px] font-semibold uppercase tracking-[0.12em] text-black">
-                                    AVAILABLE TIME BLOCKS
+                                    SELECT TIME SLOT
                                 </h2>
                                 {!loadingSlots && courts.length > 0 && (() => {
                                     const total = blockSlots.length;
@@ -363,53 +396,131 @@ export default function PlayBookPage() {
                                         courts.some(c => isWindowAvailable(c.name, b.startMin, b.endMin))
                                     ).length;
                                     return (
-                                        <span className={`text-[12px] font-semibold px-2 py-0.5 rounded-full ${
-                                            free === 0 ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-600'
-                                        }`}>
-                                            {free === 0 ? 'Fully Booked' : `${free} / ${total} slots available`}
+                                        <span className={`text-[12px] font-semibold px-2 py-0.5 rounded-full ${free === 0 ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-600'
+                                            }`}>
+                                            {free === 0 ? 'Fully Booked' : `${free} / ${total} free`}
                                         </span>
                                     );
                                 })()}
                             </div>
+
+                            {/* ── Period filter tabs ───────────────────────── */}
+                            <div className="flex gap-2 flex-wrap">
+                                {PERIODS.filter(p =>
+                                    blockSlots.some(b => b.startMin >= p.min && b.startMin < p.max)
+                                ).map(p => {
+                                    const Icon = PERIOD_ICONS[p.id];
+                                    return (
+                                        <button
+                                            key={p.id}
+                                            onClick={() => setActivePeriod(p.id)}
+                                            className={`inline-flex items-center gap-1.5 px-4 h-[34px] rounded-full text-[13px] font-semibold border transition-all ${activePeriod === p.id
+                                                    ? 'bg-black text-white border-black'
+                                                    : 'bg-white text-black border-zinc-300 hover:border-zinc-500'
+                                                }`}
+                                        >
+                                            <Icon size={13} strokeWidth={2} />
+                                            {p.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            {/* ── Hourly timeline grid ─────────────────────── */}
                             {loadingSlots ? (
-                                <div className="flex items-center gap-2 text-[14px] text-zinc-400">
+                                <div className="flex items-center gap-2 text-[14px] text-zinc-400 py-2">
                                     <div className="w-4 h-4 border-2 border-zinc-300 border-t-zinc-600 rounded-full animate-spin" />
                                     Checking availability...
                                 </div>
+                            ) : periodSlots.length === 0 ? (
+                                <p className="text-zinc-400 text-[13px] italic py-2">No time slots in this period.</p>
                             ) : (
-                                <div className="flex flex-wrap gap-3">
-                                    {blockSlots.length === 0 ? (
-                                        <p className="text-zinc-400 text-[14px] italic">No time blocks available for this duration.</p>
-                                    ) : blockSlots.map((b, i) => {
-                                        const isSelected = selectedSlot === b.label;
-                                        // Disable slot when no courts exist OR all courts are fully booked
-                                        const hasFreeCourt = courts.length > 0 && courts.some(c => isWindowAvailable(c.name, b.startMin, b.endMin));
-                                        return (
-                                            <div key={i} className="flex flex-col items-center gap-1">
-                                                <button
-                                                    disabled={!hasFreeCourt}
-                                                    onClick={() => {
-                                                        setSelectedSlot(b.label);
-                                                        setSelectedCourtIds([]);
-                                                    }}
-                                                    className={`px-5 h-[48px] rounded-[12px] text-[15px] font-medium border transition-all ${
-                                                        !hasFreeCourt
-                                                            ? 'bg-zinc-100 border-zinc-200 text-zinc-400 cursor-not-allowed line-through'
-                                                            : isSelected
-                                                                ? 'bg-black text-white border-black shadow-lg scale-[1.02]'
-                                                                : 'bg-white text-black border-zinc-300 hover:border-black'
-                                                    }`}
+                                <div
+                                    className="overflow-x-auto pb-2 -mx-1 px-1"
+                                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}
+                                >
+                                    <style>{`div::-webkit-scrollbar { display: none; }`}</style>
+                                    <div className="inline-flex gap-3 min-w-max">
+                                        {hourGroups.map(([hour, slots]) => (
+                                            <div key={hour} className="flex flex-col gap-1.5">
+
+                                                {/* Hour label */}
+                                                <span
+                                                    className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider text-center"
+                                                    style={{ minWidth: slots.length * 70 + (slots.length - 1) * 6 }}
                                                 >
-                                                    {b.label}
-                                                </button>
-                                                {!hasFreeCourt && (
-                                                    <span className="text-[10px] font-semibold text-red-400 uppercase tracking-wider">Booked</span>
-                                                )}
+                                                    {hourLabel(hour)}
+                                                </span>
+
+                                                {/* 30-min slot buttons for this hour */}
+                                                <div className="flex gap-1.5">
+                                                    {slots.map((b, si) => {
+                                                        const isSelected = selectedSlot === b.label;
+                                                        const hasFreeCourt =
+                                                            courts.length > 0 &&
+                                                            courts.some(c => isWindowAvailable(c.name, b.startMin, b.endMin));
+                                                        const minutePart = String(b.startMin % 60).padStart(2, '0');
+                                                        return (
+                                                            <div key={si} className="flex flex-col items-center gap-0.5">
+                                                                <button
+                                                                    disabled={!hasFreeCourt}
+                                                                    onClick={() => {
+                                                                        setSelectedSlot(b.label);
+                                                                        setSelectedCourtIds([]);
+                                                                    }}
+                                                                    className={`relative w-[68px] h-[52px] rounded-[14px] border-2 text-[13px] font-semibold transition-all overflow-hidden ${!hasFreeCourt
+                                                                        ? 'border-zinc-200 bg-zinc-50 cursor-not-allowed text-zinc-300'
+                                                                        : isSelected
+                                                                            ? 'border-[#E7C200] scale-[1.02] shadow-md'
+                                                                            : 'bg-white text-black border-zinc-300 hover:border-zinc-500 hover:shadow-sm'
+                                                                        }`}
+                                                                    style={isSelected && hasFreeCourt ? { background: '#E7C200', color: '#000' } : {}}
+                                                                >
+                                                                    {/* Diagonal hatch for booked slots */}
+                                                                    {!hasFreeCourt && (
+                                                                        <span
+                                                                            className="absolute inset-0 pointer-events-none"
+                                                                            style={{
+                                                                                backgroundImage:
+                                                                                    'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.07) 5px, rgba(0,0,0,0.07) 10px)',
+                                                                            }}
+                                                                        />
+                                                                    )}
+                                                                    <span className="relative z-10 flex flex-col items-center leading-none">
+                                                                        <span className="text-[15px] font-bold">{`:${minutePart}`}</span>
+                                                                    </span>
+                                                                </button>
+
+                                                                {/* State indicator beneath button */}
+                                                                {!hasFreeCourt ? (
+                                                                    <span className="text-[9px] font-bold text-red-400 uppercase tracking-wide">Booked</span>
+                                                                ) : isSelected ? (
+                                                                    <span className="w-[6px] h-[6px] rounded-full bg-[#E7C200] border border-zinc-300 inline-block" />
+                                                                ) : null}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
                                             </div>
-                                        );
-                                    })}
+                                        ))}
+                                    </div>
                                 </div>
                             )}
+
+                            {/* Selected slot display strip */}
+                            {selectedSlot && (
+                                <div className="flex items-center gap-2 text-[13px] pt-1">
+                                    <span className="font-medium text-zinc-500">Selected:</span>
+                                    <span className="font-semibold text-black bg-zinc-100 px-3 py-1 rounded-full">{selectedSlot}</span>
+                                    <button
+                                        onClick={() => { setSelectedSlot(null); setSelectedCourtIds([]); }}
+                                        className="text-zinc-400 hover:text-red-500 text-[11px] font-semibold uppercase tracking-wide transition-colors"
+                                    >
+                                        Clear
+                                    </button>
+                                </div>
+                            )}
+
                         </section>
 
                         {/* ── Step 2: Court Selection (based on selected slot) ── */}

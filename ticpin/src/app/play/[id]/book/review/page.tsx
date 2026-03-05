@@ -14,7 +14,8 @@ interface CartData {
     city: string;
     type: 'play';
     date: string;
-    slot: string;
+    slot: string;         // 30-min backend slot e.g. "09:00 AM - 09:30 AM"
+    display_slot?: string; // full user-facing span e.g. "09:00 AM - 10:00 AM"
     duration: number;
     tickets: { category?: string; name: string; price: number; quantity: number }[];
     totalPrice: number;
@@ -341,7 +342,7 @@ export default function PlayReviewPage() {
                     {cart && (
                         <div className="bg-zinc-50 rounded-[14px] p-4 text-left space-y-1 mb-6">
                             <p className="font-semibold text-black text-[16px]">{cart.eventName}</p>
-                            <p className="text-[14px] text-[#686868]">{fmtDate(cart.date)} • {cart.slot}</p>
+                            <p className="text-[14px] text-[#686868]">{fmtDate(cart.date)} • {cart.display_slot ?? cart.slot}</p>
                             {cart.tickets.map((t, i) => (
                                 <p key={i} className="text-[13px] text-[#686868]">{t.name}</p>
                             ))}
@@ -393,7 +394,7 @@ export default function PlayReviewPage() {
                                         onClick={() => { sessionStorage.removeItem('ticpin_cart'); router.back(); }} />
                                 </div>
                                 <p className="text-[14px] font-medium text-[#686868] uppercase tracking-wide">
-                                    {fmtDate(cart.date)} &nbsp;•&nbsp; {cart.slot}
+                                    {fmtDate(cart.date)} &nbsp;•&nbsp; {cart.display_slot ?? cart.slot}
                                 </p>
                                 <p className="text-[13px] text-[#686868]">
                                     {cart.tickets.map(t => t.name).join(', ')}
