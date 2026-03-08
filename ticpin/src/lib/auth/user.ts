@@ -6,6 +6,7 @@ export interface UserSession {
     id: string;
     phone: string;
     name?: string;
+    profilePhoto?: string;
 }
 
 function getCookieRaw(name: string): string | null {

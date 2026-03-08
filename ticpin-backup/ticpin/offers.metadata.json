@@ -1,1 +1,0 @@
-{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"entity_ids":{"$numberInt":"1"},"applies_to":{"$numberInt":"1"}},"name":"entity_ids_1_applies_to_1"}],"uuid":"4f80ca4c471040adb0818323e5770624","collectionName":"offers","type":"collection"}

@@ -2,7 +2,7 @@ import CategoryClient from '../CategoryClient';
 
 async function getFootballVenues() {
     try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/play?category=Football`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/play?category=Football&limit=100`, {
             cache: 'no-store'
         });
         if (!res.ok) return [];

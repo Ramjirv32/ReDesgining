@@ -1,7 +1,9 @@
 'use client';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
-import FilterModal from '../modals/FilterModal';
+import dynamic from 'next/dynamic';
+
+const FilterModal = dynamic(() => import('../modals/FilterModal'), { ssr: false });
 
 interface FilterBarProps {
     filters: string[];
@@ -11,7 +13,7 @@ interface FilterBarProps {
     type?: 'play' | 'events' | 'dining';
 }
 
-export default function FilterBar({ filters, activeFilter, onFilterChange, onApply, type = 'play' }: FilterBarProps) {
+const FilterBar: React.FC<FilterBarProps> = ({ filters, activeFilter, onFilterChange, onApply, type = 'play' }) => {
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
     return (
@@ -33,12 +35,14 @@ export default function FilterBar({ filters, activeFilter, onFilterChange, onApp
                 <Image src="/filter arrow.svg" alt="arrow" width={10} height={6} className={`ml-1 transition-transform ${isFilterModalOpen ? 'rotate-180' : ''}`} />
             </button>
 
-            <FilterModal
-                isOpen={isFilterModalOpen}
-                onClose={() => setIsFilterModalOpen(false)}
-                type={type}
-                onApply={onApply}
-            />
+            {isFilterModalOpen && (
+                <FilterModal
+                    isOpen={isFilterModalOpen}
+                    onClose={() => setIsFilterModalOpen(false)}
+                    type={type}
+                    onApply={onApply}
+                />
+            )}
 
             {/* Other Filter Buttons */}
             {filters.map((filter, i) => (
@@ -59,4 +63,6 @@ export default function FilterBar({ filters, activeFilter, onFilterChange, onApp
             ))}
         </div>
     );
-}
+};
+
+export default React.memo(FilterBar);

@@ -210,4 +210,23 @@ export const bookingApi = {
         if (!res.ok) return [];
         return Array.isArray(data) ? data : [];
     },
+    /** Fetch all bookings for a user by email */
+    getUserBookings: async (email: string): Promise<any[]> => {
+        const res = await fetch(`${BASE}/bookings/user/${encodeURIComponent(email)}`, {
+            credentials: 'include',
+        });
+        const data = await res.json();
+        if (!res.ok) return [];
+        return data as any[];
+    },
+    /** Cancel a booking by ID and category */
+    cancelBooking: async (id: string, category: string): Promise<{ message: string }> => {
+        const res = await fetch(`${BASE}/bookings/${id}/cancel?category=${category}`, {
+            method: 'PUT',
+            credentials: 'include',
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to cancel booking');
+        return data;
+    },
 };

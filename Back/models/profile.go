@@ -16,6 +16,7 @@ type Profile struct {
 	State        string             `bson:"state" json:"state"`
 	District     string             `bson:"district" json:"district"`
 	ProfilePhoto string             `bson:"profilePhoto" json:"profilePhoto"`
+	Email        string             `bson:"email" json:"email"`
 	CreatedAt    time.Time          `bson:"createdAt" json:"createdAt"`
 	UpdatedAt    time.Time          `bson:"updatedAt" json:"updatedAt"`
 }

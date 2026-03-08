@@ -86,7 +86,7 @@ func GetAll(category string, status string, limit int, after string) ([]models.P
 }
 
 func GetByID(id string, bypassCache bool) (*models.Play, error) {
-	
+
 	cacheKey := "play:" + id
 	if !bypassCache {
 		if val, ok := cache.GlobalCache.Get(cacheKey); ok {
@@ -96,9 +96,14 @@ func GetByID(id string, bypassCache bool) (*models.Play, error) {
 		}
 	}
 
-	
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
+		// If input is not a valid ObjectID, try fetching by name.
+		p, errNamed := GetByName(id)
+		if errNamed == nil {
+			cache.GlobalCache.Set(cacheKey, p, 5*time.Minute)
+			return p, nil
+		}
 		return nil, err
 	}
 	col := config.PlaysCol
@@ -109,9 +114,19 @@ func GetByID(id string, bypassCache bool) (*models.Play, error) {
 		return nil, err
 	}
 
-	
 	cache.GlobalCache.Set(cacheKey, &p, 5*time.Minute)
 
+	return &p, nil
+}
+
+func GetByName(name string) (*models.Play, error) {
+	col := config.PlaysCol
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var p models.Play
+	if err := col.FindOne(ctx, bson.M{"name": name}).Decode(&p); err != nil {
+		return nil, err
+	}
 	return &p, nil
 }
 
@@ -201,7 +216,7 @@ func Update(id string, organizerID string, update *models.Play) error {
 		bson.M{"$set": updateDoc},
 	)
 	if err == nil {
-		
+
 		cache.GlobalCache.Delete("play:" + id)
 	}
 	return err
@@ -226,7 +241,7 @@ func Delete(id string, organizerID string) error {
 	if res.DeletedCount == 0 {
 		return errors.New("play not found or not owned by this organizer")
 	}
-	
+
 	cache.GlobalCache.Delete("play:" + id)
 	return nil
 }

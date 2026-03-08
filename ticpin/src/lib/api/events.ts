@@ -88,4 +88,8 @@ export const eventsApi = {
     request(`/organizer/events/${id}`, {
       method: 'DELETE',
     }),
+
+  /** Fetch all events for search/listing */
+  publicList: () =>
+    request<{ data: any[] }>('/events'),
 };

@@ -18,13 +18,13 @@ import (
 
 func parseTimeMins(s string) (int, error) {
 	s = strings.TrimSpace(s)
-	
+
 	t, err := time.Parse("03:04 PM", s)
 	if err != nil {
-		
+
 		t, err = time.Parse("3:04 PM", s)
 		if err != nil {
-			
+
 			t, err = time.Parse("15:04", s)
 			if err != nil {
 				return 0, fmt.Errorf("cannot parse time %q", s)
@@ -48,16 +48,15 @@ func formatTimeMins(mins int) string {
 	return fmt.Sprintf("%02d:%02d %s", dh, m, period)
 }
 
-const slotMin = 30 
+const slotMin = 30
 
 func venueHours(play *models.Play) (open, close int) {
-	const fallbackOpen = 6 * 60   
-	const fallbackClose = 22 * 60 
+	const fallbackOpen = 6 * 60
+	const fallbackClose = 22 * 60
 
 	openT := strings.TrimSpace(play.OpeningTime)
 	closeT := strings.TrimSpace(play.ClosingTime)
 
-	
 	if openT == "" || closeT == "" {
 		parts := strings.SplitN(play.Time, " - ", 2)
 		if len(parts) == 2 {
@@ -84,13 +83,9 @@ func slotIndex(open, startMin int) int {
 	}
 	rem := startMin - open
 	if rem%slotMin != 0 {
-		return -1 
+		return -1
 	}
 	return rem / slotMin
-}
-
-func toStartMin(open, idx int) int {
-	return open + idx*slotMin
 }
 
 func generateSlots(open, close int) []string {
@@ -99,6 +94,25 @@ func generateSlots(open, close int) []string {
 		slots = append(slots, formatTimeMins(cur)+" - "+formatTimeMins(cur+slotMin))
 	}
 	return slots
+}
+
+// findNextFromGrid finds the next free window of durationSlots starting from fromIdx,
+// using an already-computed grid — avoids re-fetching the play doc and rebuilding the grid.
+func findNextFromGrid(grid map[string][]bool, venueSlots []string, n, fromIdx, durationSlots int, courtName string) string {
+	courtGrid := grid[courtName]
+	for j := fromIdx; j+durationSlots <= n; j++ {
+		free := true
+		for k := 0; k < durationSlots; k++ {
+			if courtGrid != nil && j+k < len(courtGrid) && courtGrid[j+k] {
+				free = false
+				break
+			}
+		}
+		if free {
+			return venueSlots[j]
+		}
+	}
+	return ""
 }
 
 func slotLabelStartMin(label string) int {
@@ -142,7 +156,7 @@ func buildOccupiedGrid(
 	}
 
 	n := slotCount(open, close)
-	
+
 	labelToIdx := make(map[string]int, len(venueSlots))
 	for i, s := range venueSlots {
 		labelToIdx[s] = i
@@ -151,10 +165,10 @@ func buildOccupiedGrid(
 	grid := map[string][]bool{}
 
 	for _, b := range bookings {
-		
+
 		startIdx, found := labelToIdx[b.Slot]
 		if !found {
-			
+
 			sm := slotLabelStartMin(b.Slot)
 			if sm < 0 {
 				continue
@@ -175,7 +189,7 @@ func buildOccupiedGrid(
 			if _, ok := grid[courtName]; !ok {
 				grid[courtName] = make([]bool, n)
 			}
-			
+
 			for i := 0; i < dur; i++ {
 				idx := startIdx + i
 				if idx < n {
@@ -192,8 +206,8 @@ func IsAvailable(
 	ctx context.Context,
 	playID primitive.ObjectID,
 	date string,
-	startSlotLabel string, 
-	durationSlots int, 
+	startSlotLabel string,
+	durationSlots int,
 	courtName string,
 ) (bool, error) {
 
@@ -205,7 +219,6 @@ func IsAvailable(
 	venueSlots := generateSlots(open, close)
 	n := slotCount(open, close)
 
-	
 	startMin := slotLabelStartMin(startSlotLabel)
 	if startMin < 0 {
 		return false, fmt.Errorf("invalid slot label %q", startSlotLabel)
@@ -220,12 +233,11 @@ func IsAvailable(
 		return false, err
 	}
 
-	courtGrid := grid[courtName] 
+	courtGrid := grid[courtName]
 
-	
 	for i := 0; i < durationSlots; i++ {
 		if courtGrid != nil && si+i < len(courtGrid) && courtGrid[si+i] {
-			return false, nil 
+			return false, nil
 		}
 	}
 	return true, nil
@@ -235,7 +247,7 @@ func FindNextAvailable(
 	ctx context.Context,
 	playID primitive.ObjectID,
 	date string,
-	requestedStartLabel string, 
+	requestedStartLabel string,
 	durationSlots int,
 	courtName string,
 ) (string, error) {
@@ -248,7 +260,6 @@ func FindNextAvailable(
 	venueSlots := generateSlots(open, close)
 	n := slotCount(open, close)
 
-	
 	fromIdx := 0
 	if requestedStartLabel != "" {
 		sm := slotLabelStartMin(requestedStartLabel)
@@ -266,7 +277,6 @@ func FindNextAvailable(
 	}
 	courtGrid := grid[courtName]
 
-	
 	for j := fromIdx; j+durationSlots <= n; j++ {
 		free := true
 		for k := 0; k < durationSlots; k++ {
@@ -276,11 +286,11 @@ func FindNextAvailable(
 			}
 		}
 		if free {
-			
+
 			return venueSlots[j], nil
 		}
 	}
-	return "", nil 
+	return "", nil
 }
 
 func GetPlayBookedSlots(playIDHex string, date string) ([]string, error) {
@@ -304,7 +314,6 @@ func GetPlayBookedSlots(playIDHex string, date string) ([]string, error) {
 		return nil, err
 	}
 
-	
 	var result []string
 	for courtName, slots := range grid {
 		for i, taken := range slots {
@@ -330,13 +339,23 @@ func CreatePlay(b *models.PlayBooking) error {
 		return errors.New("at least one court/ticket is required")
 	}
 
+	// Reject past dates — bookings must be for today or future.
+	todayStr := time.Now().Format("2006-01-02")
+	if b.Date < todayStr {
+		return fmt.Errorf("cannot book a slot in the past (date: %s)", b.Date)
+	}
+
 	duration := b.Duration
 	if duration <= 0 {
 		duration = 1
 	}
+	// Cap at 16 units (8 hours) to prevent abuse.
+	const maxDuration = 16
+	if duration > maxDuration {
+		return fmt.Errorf("duration cannot exceed %d slots (%d hours)", maxDuration, maxDuration/2)
+	}
 	b.Duration = duration
 
-	
 	session, err := config.MongoClient.StartSession()
 	if err != nil {
 		return fmt.Errorf("could not start session: %w", err)
@@ -345,25 +364,21 @@ func CreatePlay(b *models.PlayBooking) error {
 
 	_, err = session.WithTransaction(context.Background(), func(sessCtx mongo.SessionContext) (interface{}, error) {
 
-		
 		var play models.Play
 		if err := config.PlaysCol.FindOne(sessCtx, bson.M{"_id": b.PlayID}).Decode(&play); err != nil {
 			return nil, fmt.Errorf("play not found: %w", err)
 		}
 
-		
 		b.OrganizerID = play.OrganizerID
 		if b.OrganizerID.IsZero() {
 			adminID, _ := primitive.ObjectIDFromHex("000000000000000000000001")
 			b.OrganizerID = adminID
 		}
 
-		
 		open, close := venueHours(&play)
 		venueSlots := generateSlots(open, close)
 		n := slotCount(open, close)
 
-		
 		startMin := slotLabelStartMin(b.Slot)
 		if startMin < 0 {
 			return nil, fmt.Errorf("invalid slot format %q", b.Slot)
@@ -376,23 +391,18 @@ func CreatePlay(b *models.PlayBooking) error {
 			)
 		}
 
-		
 		grid, err := buildOccupiedGrid(sessCtx, b.PlayID, b.Date, open, close, venueSlots)
 		if err != nil {
 			return nil, err
 		}
 
-		
-		
 		for _, ticket := range b.Tickets {
 			courtGrid := grid[ticket.Category]
 			for i := 0; i < duration; i++ {
 				idx := si + i
 				if courtGrid != nil && idx < len(courtGrid) && courtGrid[idx] {
-					
-					nextLabel, _ := FindNextAvailable(
-						sessCtx, b.PlayID, b.Date, venueSlots[si], duration, ticket.Category,
-					)
+					// Use the already-built grid — no extra DB round-trip.
+					nextLabel := findNextFromGrid(grid, venueSlots, n, si+1, duration, ticket.Category)
 					msg := fmt.Sprintf(
 						"court %q is already booked during %s",
 						ticket.Category, b.Slot,
@@ -405,10 +415,44 @@ func CreatePlay(b *models.PlayBooking) error {
 			}
 		}
 
-		
+		// Assign the booking ID before inserting lock docs so the ID is embedded
+		// in each lock document — allows targeted cleanup if needed.
 		b.ID = primitive.NewObjectID()
 		b.Status = "booked"
 		b.BookedAt = time.Now()
+
+		// Insert one slot-lock document per (court × 30-min unit).
+		// The unique compound index on play_slot_locks atomically prevents
+		// concurrent double-bookings — if another request races us to this point,
+		// one of the InsertMany calls will get a duplicate-key error and the
+		// entire transaction (including these lock docs) is rolled back.
+		var lockDocs []interface{}
+		for _, ticket := range b.Tickets {
+			for i := 0; i < duration; i++ {
+				idx := si + i
+				if idx < len(venueSlots) {
+					lockDocs = append(lockDocs, bson.M{
+						"play_id":    b.PlayID,
+						"date":       b.Date,
+						"slot":       venueSlots[idx],
+						"court_name": ticket.Category,
+						"booking_id": b.ID,
+					})
+				}
+			}
+		}
+		if len(lockDocs) > 0 {
+			_, lockErr := config.SlotLocksCol.InsertMany(sessCtx, lockDocs,
+				options.InsertMany().SetOrdered(true))
+			if lockErr != nil {
+				if mongo.IsDuplicateKeyError(lockErr) {
+					return nil, fmt.Errorf(
+						"this slot was just booked by someone else — please select a different time",
+					)
+				}
+				return nil, fmt.Errorf("could not reserve slot: %w", lockErr)
+			}
+		}
 
 		_, err = config.PlayBookingsCol.InsertOne(sessCtx, b)
 		return nil, err

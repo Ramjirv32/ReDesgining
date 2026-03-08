@@ -20,7 +20,7 @@ interface RealPlay {
 
 async function getVenues(): Promise<RealPlay[]> {
     try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/play`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/play?limit=100`, {
             cache: 'no-store'
         });
         if (!res.ok) return [];

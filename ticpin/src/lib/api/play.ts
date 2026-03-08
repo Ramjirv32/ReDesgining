@@ -67,12 +67,8 @@ export const playApi = {
   list: () =>
     request(`/organizer/play/list`),
 
-  getById: async (id: string) => {
-    const items = await request<Record<string, unknown>[]>(`/organizer/play/list`);
-    const found = Array.isArray(items) ? items.find((i) => i.id === id) : null;
-    if (!found) throw new Error('Play listing not found');
-    return found;
-  },
+  getById: (id: string) =>
+    request<Record<string, unknown>>(`/play/${id}`),
 
   update: (id: string, payload: Record<string, unknown>) =>
     request(`/organizer/play/${id}`, {
@@ -84,4 +80,8 @@ export const playApi = {
     request(`/organizer/play/${id}`, {
       method: 'DELETE',
     }),
+
+  /** Fetch all plays for search/listing */
+  publicList: () =>
+    request<{ data: any[] }>('/play'),
 };

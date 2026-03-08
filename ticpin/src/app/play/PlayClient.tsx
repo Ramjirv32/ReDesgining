@@ -44,9 +44,7 @@ export default function PlayClient({ initialVenues }: { initialVenues: RealPlay[
     }, []);
 
     useEffect(() => {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-        if (!backendUrl) return;
-        fetch(`${backendUrl}/api/play`)
+        fetch(`/backend/api/play`)
             .then(r => r.json())
             .then(data => {
                 const list: RealPlay[] = Array.isArray(data) ? data : (data?.data ?? []);
@@ -89,17 +87,13 @@ export default function PlayClient({ initialVenues }: { initialVenues: RealPlay[
     if (selectedSort === 'Rating : High to Low') {
         filteredVenues = [...filteredVenues].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
     } else if (selectedSort === 'Price : Low to High') {
-        filteredVenues = [...filteredVenues].sort((a, b) => {
-            const aAny = a as unknown as Record<string, number>;
-            const bAny = b as unknown as Record<string, number>;
-            return (aAny.price ?? 0) - (bAny.price ?? 0);
-        });
+        filteredVenues = [...filteredVenues].sort((a, b) =>
+            (a.price_starts_from ?? 0) - (b.price_starts_from ?? 0)
+        );
     } else if (selectedSort === 'Price : High to Low') {
-        filteredVenues = [...filteredVenues].sort((a, b) => {
-            const aAny = a as unknown as Record<string, number>;
-            const bAny = b as unknown as Record<string, number>;
-            return (bAny.price ?? 0) - (aAny.price ?? 0);
-        });
+        filteredVenues = [...filteredVenues].sort((a, b) =>
+            (b.price_starts_from ?? 0) - (a.price_starts_from ?? 0)
+        );
     }
 
     return (
@@ -141,7 +135,7 @@ export default function PlayClient({ initialVenues }: { initialVenues: RealPlay[
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 max-w-7xl">
                             {filteredVenues.map((venue) => (
-                                <Link key={venue.id} href={`/play/${venue.id}`}>
+                                <Link key={venue.id} href={`/play/${encodeURIComponent(venue.name)}`}>
                                     <VenueCard
                                         name={venue.name}
                                         location={venue.city ?? ''}

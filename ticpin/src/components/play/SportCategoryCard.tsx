@@ -1,3 +1,4 @@
+import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -8,7 +9,7 @@ interface SportCategoryCardProps {
     priority?: boolean;
 }
 
-export default function SportCategoryCard({ name, image, href, priority }: SportCategoryCardProps) {
+const SportCategoryCard: React.FC<SportCategoryCardProps> = ({ name, image, href, priority }) => {
     const content = (
         <div
             className="w-[172px] h-[235px] rounded-[30px] border border-transparent p-4 flex flex-col items-center justify-between cursor-pointer shadow-sm group mx-auto"
@@ -37,4 +38,6 @@ export default function SportCategoryCard({ name, image, href, priority }: Sport
     }
 
     return content;
-}
+};
+
+export default React.memo(SportCategoryCard);

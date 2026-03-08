@@ -23,6 +23,7 @@ var (
 	BookingsCol       *mongo.Collection
 	EventBookingsCol  *mongo.Collection
 	PlayBookingsCol   *mongo.Collection
+	SlotLocksCol      *mongo.Collection
 	DiningBookingsCol *mongo.Collection
 	CouponsCol        *mongo.Collection
 	OffersCol         *mongo.Collection
@@ -67,6 +68,7 @@ func ConnectDB() error {
 	BookingsCol = db.Collection("bookings")
 	EventBookingsCol = db.Collection("event_bookings")
 	PlayBookingsCol = db.Collection("play_bookings")
+	SlotLocksCol = db.Collection("play_slot_locks")
 	DiningBookingsCol = db.Collection("dining_bookings")
 	CouponsCol = db.Collection("coupons")
 	OffersCol = db.Collection("offers")
@@ -139,6 +141,18 @@ func CreateIndexes() {
 		}},
 		{Keys: bson.D{{Key: "user_email", Value: 1}}},
 		{Keys: bson.D{{Key: "booked_at", Value: -1}}},
+	})
+
+	// Unique per-30min-slot lock — prevents concurrent double-bookings even without
+	// serializable transactions. Each lock document represents one court × one 30-min slot.
+	SlotLocksCol.Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys: bson.D{
+			{Key: "play_id", Value: 1},
+			{Key: "date", Value: 1},
+			{Key: "slot", Value: 1},
+			{Key: "court_name", Value: 1},
+		},
+		Options: options.Index().SetUnique(true),
 	})
 
 	EventBookingsCol.Indexes().CreateMany(ctx, []mongo.IndexModel{

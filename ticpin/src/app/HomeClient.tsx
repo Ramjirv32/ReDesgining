@@ -7,18 +7,7 @@ import FilterBar from '@/components/play/FilterBar';
 import BottomBanner from '@/components/layout/BottomBanner';
 import Footer from '@/components/layout/Footer';
 import Link from 'next/link';
-
-const sportsCategories = [
-    { name: 'CRICKET', image: '/play/playck.png', href: '/play/cricket' },
-    { name: 'FOOTBALL', image: '/play/playfb.png' },
-    { name: 'PICKLEBALL', image: '/play/playpb.png' },
-    { name: 'TENNIS', image: '/play/playtens.png' },
-    { name: 'BADMINTON', image: '/play/playbm.png' },
-    { name: 'TABLE TENNIS', image: '/play/playtt.png' },
-    { name: 'BASKETBALL', image: '/play/playbb.png' },
-];
-
-const filters = ['Top Rated', 'Cricket', 'Pickleball', 'Badminton'];
+import { sportsCategories, venueFilters } from '@/data/constants';
 
 interface RealPlay {
     id: string;
@@ -69,7 +58,7 @@ export default function HomeClient({ initialVenues }: { initialVenues: RealPlay[
                     {/* Filters */}
                     <div>
                         <FilterBar
-                            filters={['All', ...filters]}
+                            filters={['All', ...venueFilters]}
                             activeFilter={activeFilter}
                             onFilterChange={setActiveFilter}
                         />
@@ -81,7 +70,7 @@ export default function HomeClient({ initialVenues }: { initialVenues: RealPlay[
                             <div className="col-span-full text-center py-20 text-zinc-400">No venues found in this category</div>
                         ) : (
                             filteredVenues.map((venue) => (
-                                <Link key={venue.id} href={`/play/${venue.id}`}>
+                                <Link key={venue.id} href={`/play/${encodeURIComponent(venue.name)}`}>
                                     <VenueCard
                                         name={venue.name}
                                         location={venue.city ?? 'Location'}

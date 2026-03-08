@@ -114,4 +114,8 @@ export const diningApi = {
     request(`/organizer/dining/${id}`, {
       method: 'DELETE',
     }),
+
+  /** Fetch all dining listings for search/listing */
+  publicList: () =>
+    request<{ data: any[] }>('/dining'),
 };

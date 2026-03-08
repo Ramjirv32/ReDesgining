@@ -73,7 +73,7 @@ export default function CategoryClient({
                             {venues
                                 .filter(v => activeFilter === 'All' || (activeFilter === 'Top rated' && (v.rating || 0) >= 4))
                                 .map((venue) => (
-                                    <Link key={venue.id} href={`/play/${venue.id}`}>
+                                    <Link key={venue.id} href={`/play/${encodeURIComponent(venue.name)}`}>
                                         <VenueCard
                                             name={venue.name}
                                             location={venue.city ?? ''}

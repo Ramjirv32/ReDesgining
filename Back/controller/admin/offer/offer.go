@@ -8,6 +8,7 @@ import (
 	"ticpin-backend/config"
 	"ticpin-backend/models"
 	offersvc "ticpin-backend/services/offer"
+	playservice "ticpin-backend/services/play"
 
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 	"github.com/gofiber/fiber/v2"
@@ -146,7 +147,13 @@ func GetDiningOffers(c *fiber.Ctx) error {
 
 func GetPlayOffers(c *fiber.Ctx) error {
 	playID := c.Params("id")
-	offers, err := offersvc.GetForEntity("play", playID)
+	// Resolve name to ID if needed
+	play, err := playservice.GetByID(playID, false)
+	if err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "play not found"})
+	}
+
+	offers, err := offersvc.GetForEntity("play", play.ID.Hex())
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}

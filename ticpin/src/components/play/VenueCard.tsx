@@ -1,3 +1,4 @@
+import React from 'react';
 import Image from 'next/image';
 
 interface VenueCardProps {
@@ -8,7 +9,7 @@ interface VenueCardProps {
     priceStartsFrom?: number;
 }
 
-export default function VenueCard({ name, location, image, priceStartsFrom }: VenueCardProps) {
+const VenueCard: React.FC<VenueCardProps> = ({ name, location, image, priceStartsFrom }) => {
     return (
         <div className="mx-auto w-full max-w-[329px] h-[320px]">
             <div className="bg-white rounded-[15px] border border-[#686868] overflow-hidden shadow-sm flex flex-col h-full">
@@ -42,4 +43,6 @@ export default function VenueCard({ name, location, image, priceStartsFrom }: Ve
             </div>
         </div>
     );
-}
+};
+
+export default React.memo(VenueCard);

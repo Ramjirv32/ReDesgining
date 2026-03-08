@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Location Detector | Premium</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #000000;
+            --accent: #E7C200;
+            --bg: #FFFCED;
+            --card: #ffffff;
+            --text-main: #1a1a1a;
+            --text-dim: #686868;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background: var(--card);
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            text-transform: uppercase;
+            letter-spacing: -0.02em;
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 100%;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            opacity: 0.9;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .results {
+            margin-top: 32px;
+            text-align: left;
+            border-top: 1px solid #eee;
+            padding-top: 24px;
+            display: none;
+        }
+
+        .data-item {
+            margin-bottom: 16px;
+        }
+
+        .label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .value {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .loader {
+            display: none;
+            margin: 20px auto;
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(231, 194, 0, 0.1);
+            border-top: 3px solid var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h2>Explore Location</h2>
+        <p style="color: #686868; font-size: 14px; margin-bottom: 24px;">Click the button below to detect your current
+            area, district, and state.</p>
+
+        <button id="btn" onclick="getLocation()">Get Current Location</button>
+
+        <div id="loader" class="loader"></div>
+
+        <div id="results" class="results">
+            <div class="data-item">
+                <span class="label">Locality / Area</span>
+                <div id="locality" class="value">—</div>
+            </div>
+            <div class="data-item">
+                <span class="label">Neighborhood</span>
+                <div id="area" class="value">—</div>
+            </div>
+            <div class="data-item">
+                <span class="label">District</span>
+                <div id="district" class="value">—</div>
+            </div>
+            <div class="data-item">
+                <span class="label">State</span>
+                <div id="state" class="value">—</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = "AIzaSyA0OeH_8hQ9aHlPMuiD45wtYNLGmwhLJFg"
+
+        function getLocation() {
+            const btn = document.getElementById("btn");
+            const loader = document.getElementById("loader");
+            const resultsDiv = document.getElementById("results");
+
+            btn.disabled = true;
+            loader.style.display = "block";
+            resultsDiv.style.display = "none";
+
+            if (!navigator.geolocation) {
+                alert("Geolocation is not supported by your browser");
+                loader.style.display = "none";
+                btn.disabled = false;
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(async function (pos) {
+                try {
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${API_KEY}`;
+
+                    const res = await fetch(url);
+                    const data = await res.json();
+
+                    if (!data.results || data.results.length === 0) {
+                        throw new Error("No results found");
+                    }
+
+                    let area = "";
+                    let locality = "";
+                    let district = "";
+                    let state = "";
+
+                    // Use the most specific result (index 0)
+                    const comp = data.results[0].address_components;
+
+                    comp.forEach(c => {
+                        const types = c.types;
+
+                        // Neighborhood / Area
+                        if (types.includes("sublocality") || types.includes("sublocality_level_1") || types.includes("neighborhood")) {
+                            area = c.long_name;
+                        }
+
+                        // Locality / City
+                        if (types.includes("locality")) {
+                            locality = c.long_name;
+                        }
+
+                        // District / Administrative Level 2
+                        if (types.includes("administrative_area_level_2") || types.includes("administrative_area_level_3")) {
+                            district = c.long_name;
+                        }
+
+                        // State
+                        if (types.includes("administrative_area_level_1")) {
+                            state = c.long_name;
+                        }
+                    });
+
+                    // If locality is empty, try to find it in other results for better coverage
+                    if (!locality || !district) {
+                        data.results.forEach(res => {
+                            res.address_components.forEach(c => {
+                                const types = c.types;
+                                if (!locality && types.includes("locality")) locality = c.long_name;
+                                if (!district && types.includes("administrative_area_level_2")) district = c.long_name;
+                                if (!district && types.includes("administrative_area_level_3")) district = c.long_name;
+                                if (!state && types.includes("administrative_area_level_1")) state = c.long_name;
+                            });
+                        });
+                    }
+
+                    // Final fallback: If District is still not found but Locality is found, 
+                    // often in Indian addresses the Locality IS the District or vice versa
+                    if (!district && locality) district = locality;
+
+                    document.getElementById("locality").innerText = locality || "Not found";
+                    document.getElementById("area").innerText = area || "Not found";
+                    document.getElementById("district").innerText = district || "Not found";
+                    document.getElementById("state").innerText = state || "Not found";
+
+                    resultsDiv.style.display = "block";
+                } catch (error) {
+                    console.error(error);
+                    alert("Error fetching location details.");
+                } finally {
+                    loader.style.display = "none";
+                    btn.disabled = false;
+                }
+            }, function (error) {
+                alert("Location access denied or unavailable.");
+                loader.style.display = "none";
+                btn.disabled = false;
+            }, {
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 0
+            });
+        }
+    </script>
+
+</body>
+
+</html>

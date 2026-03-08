@@ -2,85 +2,39 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { X } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
+
+// Sub-components
+import SearchInput from './Navbar/SearchInput';
+import LocationSelector from './Navbar/LocationSelector';
+import UserMenu from './Navbar/UserMenu';
+
+// Hooks & Utils
+import { useGeolocation } from '@/lib/hooks/useGeolocation';
+import { useSessionSync } from '@/lib/hooks/useSessionSync';
+import { clearOrganizerSession } from '@/lib/auth/organizer';
+import { useUserSession, clearUserSession } from '@/lib/auth/user';
+import { navItems } from '@/data/constants';
+
 const AuthModal = dynamic(() => import('@/components/modals/AuthModal'), { ssr: false });
 const LocationModal = dynamic(() => import('@/components/modals/LocationModal'), { ssr: false });
-import { getOrganizerSession, clearOrganizerSession } from '@/lib/auth/organizer';
-import type { OrganizerSession } from '@/lib/auth/organizer';
-import { useUserSession, clearUserSession } from '@/lib/auth/user';
 
 export default function Navbar() {
     const pathname = usePathname();
     const router = useRouter();
+
+    // UI State
     const [isAuthOpen, setIsAuthOpen] = useState(false);
     const [isLocationOpen, setIsLocationOpen] = useState(false);
-    const [currentLocation, setCurrentLocation] = useState('');
     const [isSearchVisible, setIsSearchVisible] = useState(false);
     const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-
-    const saveLocation = (loc: string) => {
-        setCurrentLocation(loc);
-        localStorage.setItem('ticpin_location', loc);
-        window.dispatchEvent(new CustomEvent('location-change', { detail: loc }));
-    };
-
-    const clearLocation = () => {
-        setCurrentLocation('');
-        localStorage.removeItem('ticpin_location');
-        window.dispatchEvent(new CustomEvent('location-change', { detail: '' }));
-    };
-
-    useEffect(() => {
-        // 1. Check if user already selected a city manually
-        const saved = localStorage.getItem('ticpin_location');
-        if (saved) {
-            setCurrentLocation(saved);
-            return;
-        }
-        // 2. Otherwise auto-detect via GPS
-        if (!navigator.geolocation) {
-            setCurrentLocation('');
-            return;
-        }
-        navigator.geolocation.getCurrentPosition(
-            async ({ coords }) => {
-                try {
-                    const res = await fetch(
-                        `https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`,
-                        { headers: { 'Accept-Language': 'en' } }
-                    );
-                    const data = await res.json();
-                    const city =
-                        data.address?.city ||
-                        data.address?.town ||
-                        data.address?.village ||
-                        data.address?.county ||
-                        '';
-                    const state = data.address?.state || '';
-                    const label = city && state ? `${city}, ${state}` : (city || state || '');
-                    if (label) saveLocation(label);
-                } catch {
-                    // silently fail
-                }
-            },
-            () => { /* permission denied */ }
-        );
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
     const [authView, setAuthView] = useState<'number' | 'otp' | 'profile' | 'location'>('number');
-    const [session, setSession] = useState<OrganizerSession | null>(null);
-    const userSession = useUserSession();
-    const profileRef = useRef<HTMLDivElement>(null);
 
-    const isPlayPage = pathname.startsWith('/play');
-    const isListingPage =
-        pathname.startsWith('/list-your-dining') ||
-        pathname.startsWith('/list-your-events') ||
-        pathname.startsWith('/list-your-play');
-    const isOrganizerDashboard = pathname === '/organizer/dashboard';
+    // Custom Hooks
+    const { currentLocation, saveLocation, clearLocation } = useGeolocation();
+    const userSession = useUserSession();
 
     const hideNavbar =
         pathname === '/contact' ||
@@ -92,14 +46,10 @@ export default function Navbar() {
         pathname.endsWith('/book/tickets') ||
         pathname.endsWith('/book/review');
 
-    useEffect(() => {
-        if (hideNavbar) return;
-        const load = () => setSession(getOrganizerSession());
-        load();
-        window.addEventListener('organizer-auth-change', load);
-        return () => window.removeEventListener('organizer-auth-change', load);
-    }, [hideNavbar]);
+    const { session, setSession } = useSessionSync(hideNavbar);
+    const profileRef = useRef<HTMLDivElement>(null);
 
+    // Closing profile menu on click outside
     useEffect(() => {
         if (hideNavbar) return;
         const handler = (e: MouseEvent) => {
@@ -113,7 +63,8 @@ export default function Navbar() {
 
     if (hideNavbar) return null;
 
-    const handleLogout = () => {
+    // Logout Handlers
+    const handleOrganizerLogout = () => {
         clearOrganizerSession();
         setSession(null);
         setIsProfileMenuOpen(false);
@@ -130,46 +81,42 @@ export default function Navbar() {
         if (session) {
             setIsProfileMenuOpen(prev => !prev);
         } else if (userSession) {
-            setIsProfileMenuOpen(prev => !prev);
+            setAuthView('profile');
+            setIsAuthOpen(true);
         } else {
             setAuthView('number');
             setIsAuthOpen(true);
         }
     };
 
-    const navItems = [
-        { name: 'Dining', href: '/dining' },
-        { name: 'Events', href: '/events' },
-        { name: 'Play', href: '/play' },
-    ];
-
-    const dashboardHref = session
-        ? `/organizer/dashboard?category=${session.vertical}`
-        : '/organizer/dashboard';
+    const isListingPage =
+        pathname.startsWith('/list-your-dining') ||
+        pathname.startsWith('/list-your-events') ||
+        pathname.startsWith('/list-your-play');
+    const isOrganizerDashboard = pathname === '/organizer/dashboard';
+    const isPlayPage = pathname.startsWith('/play');
 
     return (
         <header className="sticky top-0 z-50 w-full border-b border-zinc-200 bg-white h-16 md:h-20 flex items-center">
             <div className="w-full h-full flex items-center justify-between px-3 md:px-4 lg:px-6">
-                {/* Left: Logo, Explore and Tabs */}
-                <div className="flex items-center gap-3 md:gap-8 min-w-max">
-                    <div className="flex items-center gap-3 md:gap-6 relative">
-                        <Link href="/" className={isListingPage ? "flex items-center" : "border-r border-zinc-200 pr-3 md:pr-6 flex items-center"}>
-                            <Image
-                                src="/ticpin-logo-black.png"
-                                alt="TicPin Logo"
-                                width={120}
-                                height={28}
-                                className="h-4 md:h-7 w-auto object-contain"
-                                priority
-                            />
-                        </Link>
-                    </div>
 
-                    {/* Tabs - Hidden for listing pages or organizer-dashboard */}
+                {/* Left: Logo & Nav Items */}
+                <div className="flex items-center gap-3 md:gap-8 min-w-max">
+                    <Link href="/" className={isListingPage ? "flex items-center" : "border-r border-zinc-200 pr-3 md:pr-6 flex items-center"}>
+                        <Image
+                            src="/ticpin-logo-black.png"
+                            alt="TicPin Logo"
+                            width={120}
+                            height={28}
+                            className="h-4 md:h-7 w-auto object-contain"
+                            priority
+                        />
+                    </Link>
+
                     {!isListingPage && !isOrganizerDashboard && (
                         <nav className="hidden md:flex items-center gap-1 overflow-x-auto scrollbar-hide">
                             {navItems.map((item) => {
-                                const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+                                const isActive = pathname.startsWith(item.href);
                                 return (
                                     <Link
                                         key={item.name}
@@ -189,156 +136,51 @@ export default function Navbar() {
                     )}
                 </div>
 
-                {/* Right: Location, Search & Profile */}
+                {/* Right: Location, Search & User Menu */}
                 <div className="flex items-center gap-3 md:gap-6 justify-end">
-                    {!isListingPage && !isOrganizerDashboard && !isSearchVisible ? (
+                    {!isListingPage && !isOrganizerDashboard && !isSearchVisible && (
                         <>
-                            <div className="hidden lg:flex items-center gap-1 min-w-max">
-                                <div
-                                    onClick={() => setIsLocationOpen(true)}
-                                    className="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors"
-                                >
-                                    <Image src="/loc icon.svg" alt="Location" width={18} height={18} className="w-4.5 h-4.5 object-contain" />
-                                    <span className="text-[16px] font-medium text-black">
-                                        {currentLocation || 'Set Location'}
-                                    </span>
-                                </div>
-                                {currentLocation && (
-                                    <button
-                                        onClick={e => { e.stopPropagation(); clearLocation(); }}
-                                        className="ml-1 p-0.5 rounded-full hover:bg-zinc-100 text-zinc-400 hover:text-zinc-700 transition-colors"
-                                        aria-label="Clear location"
-                                    >
-                                        <X size={13} />
-                                    </button>
-                                )}
-                            </div>
+                            <LocationSelector
+                                location={currentLocation}
+                                onOpenModal={() => setIsLocationOpen(true)}
+                                onClear={clearLocation}
+                            />
                             <div
                                 onClick={() => setIsSearchVisible(true)}
                                 className="hidden lg:block w-5 h-5 cursor-pointer"
                                 style={{
                                     backgroundColor: isPlayPage ? '#E7C200' : '#5331EA',
-                                    maskImage: 'url(/search.svg)',
-                                    WebkitMaskImage: 'url(/search.svg)',
-                                    maskRepeat: 'no-repeat',
-                                    WebkitMaskRepeat: 'no-repeat',
-                                    maskPosition: 'center',
-                                    WebkitMaskPosition: 'center',
-                                    maskSize: 'contain',
-                                    WebkitMaskSize: 'contain'
-                                }}
-                            />
-                        </>
-                    ) : null}
-
-                    {!isListingPage && isSearchVisible && (
-                        <div className="relative flex-1 max-w-md animate-in slide-in-from-right-4 duration-300">
-                            <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                                <div className="w-5 h-5" style={{
-                                    backgroundColor: isPlayPage ? '#E7C200' : '#5331EA',
                                     maskImage: 'url(/search.svg)', WebkitMaskImage: 'url(/search.svg)',
                                     maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat',
                                     maskPosition: 'center', WebkitMaskPosition: 'center',
                                     maskSize: 'contain', WebkitMaskSize: 'contain'
-                                }} />
-                            </div>
-                            <input autoFocus type="text" placeholder="Search for events, plays and restaurants"
-                                onBlur={() => setIsSearchVisible(false)}
-                                className="w-full h-10 pl-12 pr-10 border border-[#686868] rounded-[9px] text-sm font-medium focus:outline-none focus:border-[#5331EA] transition-all font-[family-name:var(--font-anek-latin)]" />
-                            <button onClick={() => setIsSearchVisible(false)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#686868] hover:text-black">
-                                <X size={18} />
-                            </button>
-                        </div>
+                                }}
+                            />
+                        </>
                     )}
 
-                    {/* Profile / Organizer icon */}
-                    <div ref={profileRef} className="relative">
-                        <div
-                            onClick={handleProfileClick}
-                            className="h-8 w-8 md:h-10 md:w-10 rounded-full flex items-center justify-center cursor-pointer min-w-max transition-all hover:ring-2 hover:ring-offset-2"
-                            style={{
-                                backgroundColor: session ? '#5331EA' : (userSession ? '#7b2ff7' : '#E1E1E1'),
+                    {!isListingPage && (
+                        <SearchInput
+                            isVisible={isSearchVisible}
+                            isPlayPage={isPlayPage}
+                            onClose={() => setIsSearchVisible(false)}
+                        />
+                    )}
+
+                    <div ref={profileRef}>
+                        <UserMenu
+                            session={session}
+                            userSession={userSession}
+                            isMenuOpen={isProfileMenuOpen}
+                            onToggleMenu={handleProfileClick}
+                            onUserLogout={handleUserLogout}
+                            onOrganizerLogout={handleOrganizerLogout}
+                            onOpenProfile={() => {
+                                setAuthView('profile');
+                                setIsAuthOpen(true);
+                                setIsProfileMenuOpen(false);
                             }}
-                        >
-                            {session ? (
-                                <span className="text-white text-[14px] font-bold uppercase">
-                                    {session.email.charAt(0)}
-                                </span>
-                            ) : userSession ? (
-                                <span className="text-white text-[14px] font-bold uppercase">
-                                    {userSession.name?.charAt(0) || 'U'}
-                                </span>
-                            ) : (
-                                <Image src="/profile icon.svg" alt="Profile" width={24} height={24} className="w-5 h-5 md:w-6 md:h-6 object-contain" />
-                            )}
-                        </div>
-
-                        {/* User dropdown */}
-                        {!session && userSession && isProfileMenuOpen && (
-                            <div className="absolute right-0 top-[calc(100%+8px)] w-52 bg-white border border-zinc-200 rounded-[16px] shadow-xl z-50 py-2">
-                                <div className="px-4 py-2 border-b border-zinc-100">
-                                    <p className="text-[13px] font-semibold text-black truncate">{userSession.name || 'Member'}</p>
-                                    <p className="text-[12px] text-[#686868] truncate">{userSession.phone}</p>
-                                </div>
-                                <Link
-                                    href="/my-pass"
-                                    onClick={() => setIsProfileMenuOpen(false)}
-                                    className="flex items-center gap-2 px-4 py-3 text-[15px] font-medium text-black hover:bg-zinc-50 transition-colors"
-                                >
-                                    🎫 My Pass
-                                </Link>
-                                <button
-                                    onClick={handleUserLogout}
-                                    className="w-full text-left px-4 py-3 text-[15px] font-medium text-red-500 hover:bg-zinc-50 transition-colors"
-                                >
-                                    Logout
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Organizer dropdown */}
-                        {session && isProfileMenuOpen && (
-                            <div className="absolute right-0 top-[calc(100%+8px)] w-56 bg-white border border-zinc-200 rounded-[16px] shadow-xl z-50 py-2 font-[family-name:var(--font-anek-latin)]">
-                                <div className="px-4 py-2 border-b border-zinc-100">
-                                    <p className="text-[13px] text-[#686868] truncate">{session.email}</p>
-                                    <p className="text-[13px] font-semibold text-black capitalize">{session.vertical} organizer</p>
-                                </div>
-
-                                <Link
-                                    href={dashboardHref}
-                                    onClick={() => setIsProfileMenuOpen(false)}
-                                    className="flex items-center gap-2 px-4 py-3 text-[15px] font-medium text-black hover:bg-zinc-50 transition-colors"
-                                >
-                                    Dashboard
-                                </Link>
-
-                                <Link
-                                    href="/organizer/profile"
-                                    onClick={() => setIsProfileMenuOpen(false)}
-                                    className="flex items-center gap-2 px-4 py-3 text-[15px] font-medium text-black hover:bg-zinc-50 transition-colors"
-                                >
-                                    Edit Profile
-                                </Link>
-
-                                {/* Admin Panel — only for admin */}
-                                {session.isAdmin && (
-                                    <Link
-                                        href="/admin"
-                                        onClick={() => setIsProfileMenuOpen(false)}
-                                        className="flex items-center gap-2 px-4 py-3 text-[15px] font-medium text-black hover:bg-zinc-50 transition-colors"
-                                    >
-                                        Admin Panel
-                                    </Link>
-                                )}
-
-                                <button
-                                    onClick={handleLogout}
-                                    className="w-full text-left px-4 py-3 text-[15px] font-medium text-red-500 hover:bg-zinc-50 transition-colors"
-                                >
-                                    Logout
-                                </button>
-                            </div>
-                        )}
+                        />
                     </div>
                 </div>
             </div>
@@ -351,7 +193,7 @@ export default function Navbar() {
             <LocationModal
                 isOpen={isLocationOpen}
                 onClose={() => setIsLocationOpen(false)}
-                onSelect={(city) => saveLocation(city)}
+                onSelect={saveLocation}
             />
         </header>
     );
