@@ -82,6 +82,7 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 
 	booking := &models.PlayBooking{
 		UserEmail:      req.UserEmail,
+		UserID:         req.UserID,
 		PlayID:         playObjID,
 		VenueName:      req.VenueName,
 		Date:           req.Date,

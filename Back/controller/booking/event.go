@@ -73,6 +73,7 @@ func CreateEventBooking(c *fiber.Ctx) error {
 
 	booking := &models.Booking{
 		UserEmail:      req.UserEmail,
+		UserID:         req.UserID,
 		EventID:        eventObjID,
 		EventName:      req.EventName,
 		Tickets:        req.Tickets,

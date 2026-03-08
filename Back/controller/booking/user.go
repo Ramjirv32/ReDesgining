@@ -15,7 +15,7 @@ import (
 func GetBookingsByEmail(c *fiber.Ctx) error {
 	email := c.Params("email")
 	if email == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "email param is required"})
+		return c.Status(400).JSON(fiber.Map{"error": "email or phone param is required"})
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -23,8 +23,15 @@ func GetBookingsByEmail(c *fiber.Ctx) error {
 
 	var allBookings []fiber.Map
 
+	filter := bson.M{
+		"$or": []bson.M{
+			{"user_email": email},
+			{"user_id": email},
+		},
+	}
+
 	// 1. Fetch Event Bookings
-	cursor, err := config.BookingsCol.Find(ctx, bson.M{"user_email": email})
+	cursor, err := config.BookingsCol.Find(ctx, filter)
 	if err == nil {
 		var events []models.Booking
 		if cursor.All(ctx, &events) == nil {
@@ -44,7 +51,7 @@ func GetBookingsByEmail(c *fiber.Ctx) error {
 	}
 
 	// 2. Fetch Dining Bookings
-	cursor, err = config.DiningBookingsCol.Find(ctx, bson.M{"user_email": email})
+	cursor, err = config.DiningBookingsCol.Find(ctx, filter)
 	if err == nil {
 		var dinings []models.DiningBooking
 		if cursor.All(ctx, &dinings) == nil {
@@ -65,7 +72,7 @@ func GetBookingsByEmail(c *fiber.Ctx) error {
 	}
 
 	// 3. Fetch Play Bookings
-	cursor, err = config.PlayBookingsCol.Find(ctx, bson.M{"user_email": email})
+	cursor, err = config.PlayBookingsCol.Find(ctx, filter)
 	if err == nil {
 		var plays []models.PlayBooking
 		if cursor.All(ctx, &plays) == nil {

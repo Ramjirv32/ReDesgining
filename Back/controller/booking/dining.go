@@ -72,6 +72,7 @@ func CreateDiningBooking(c *fiber.Ctx) error {
 
 	booking := &models.DiningBooking{
 		UserEmail:      req.UserEmail,
+		UserID:         req.UserID,
 		DiningID:       diningObjID,
 		VenueName:      req.VenueName,
 		Date:           req.Date,
