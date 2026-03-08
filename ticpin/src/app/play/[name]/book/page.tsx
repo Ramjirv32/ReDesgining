@@ -135,13 +135,22 @@ export default function PlayBookPage() {
     // Fetch venue
     useEffect(() => {
         if (!venueName) return;
-        fetch(`/backend/api/play/${encodeURIComponent(venueName)}`, { credentials: 'include' })
-            .then(r => r.json())
+        const decodedVenueName = decodeURIComponent(venueName);
+        fetch(`/backend/api/play/${encodeURIComponent(decodedVenueName)}`, { credentials: 'include' })
+            .then(res => {
+                if (!res.ok) throw new Error('Venue not found');
+                return res.json();
+            })
             .then((data: RealPlay) => {
+                if (!data || !data.id) throw new Error('Invalid venue data');
                 setVenue(data);
                 setLoading(false);
             })
-            .catch(() => setLoading(false));
+            .catch((err) => {
+                console.error("Venue fetch error:", err);
+                setVenue(null);
+                setLoading(false);
+            });
     }, [venueName]);
 
     // Fetch booked slots whenever venue or date changes
@@ -152,8 +161,12 @@ export default function PlayBookPage() {
         setSelectedSlot(null);
         setSelectedCourtIds([]);
         setActivePeriod('morning');
-        fetch(`/backend/api/play/${encodeURIComponent(venueName)}/booked-slots?date=${selectedDate}`, { credentials: 'include' })
-            .then(r => r.json())
+        const decodedVenueName = decodeURIComponent(venueName);
+        fetch(`/backend/api/play/${encodeURIComponent(decodedVenueName)}/booked-slots?date=${selectedDate}`, { credentials: 'include' })
+            .then(res => {
+                if (!res.ok) return { booked_slots: [] };
+                return res.json();
+            })
             .then(data => {
                 setBookedSlots(Array.isArray(data.booked_slots) ? data.booked_slots : []);
             })

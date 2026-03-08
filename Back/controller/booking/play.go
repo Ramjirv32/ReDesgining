@@ -6,6 +6,8 @@ import (
 	couponsvc "ticpin-backend/services/coupon"
 	playservice "ticpin-backend/services/play"
 
+	"net/url"
+
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -115,6 +117,15 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 
 func GetPlaySlotAvailability(c *fiber.Ctx) error {
 	playID := c.Params("id")
+	// Robustly decode the ID to handle single or double encoding (e.g. %20 or %2520)
+	for {
+		decoded, err := url.PathUnescape(playID)
+		if err != nil || decoded == playID {
+			break
+		}
+		playID = decoded
+	}
+
 	date := c.Query("date")
 	if date == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "date query param is required (YYYY-MM-DD)"})

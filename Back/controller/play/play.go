@@ -1,6 +1,7 @@
 package play
 
 import (
+	"net/url"
 	playservice "ticpin-backend/services/play"
 
 	"github.com/gofiber/fiber/v2"
@@ -23,6 +24,14 @@ func GetAllPlays(c *fiber.Ctx) error {
 
 func GetPlayByID(c *fiber.Ctx) error {
 	id := c.Params("id")
+	// Robustly decode the ID to handle single or double encoding (e.g. %20 or %2520)
+	for {
+		decoded, err := url.PathUnescape(id)
+		if err != nil || decoded == id {
+			break
+		}
+		id = decoded
+	}
 	bypass := c.Query("bypassCache") == "true"
 	p, err := playservice.GetByID(id, bypass)
 	if err != nil {
