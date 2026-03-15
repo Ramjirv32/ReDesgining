@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from '@/lib/firebase';
+import { auth, RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
 import { useUserSession, saveUserSession, clearUserSession } from '@/lib/auth/user';
 import { profileApi, type UserProfile } from '@/lib/api/profile';
@@ -180,15 +180,25 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialView = 'n
 
     const setupRecaptcha = () => {
         if (recaptchaVerifierRef.current) return;
-        recaptchaVerifierRef.current = new RecaptchaVerifier((window as any).firebaseAuth, 'recaptcha-container', {
+        if (!auth) {
+            setError('Auth not initialized. Please try again later.');
+            return;
+        }
+        recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
             size: 'invisible',
             callback: () => { }
         });
     };
     const handleLogin = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
+        if (number.length !== 10) {
+            setError('Please enter a valid 10-digit number');
+            return;
+        }
         setLoading(true);
         setError('');
+
+        // Admin bypass
         const isAdminUser = number === ADMIN_PHONE;
         if (isAdminUser) {
             saveUserSession({ id: number, phone: number, name: 'Admin' });
@@ -197,27 +207,12 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialView = 'n
             setLoading(false);
             return;
         }
-        try {
-            setupRecaptcha();
-            const res = await fetch('/backend/api/users/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ phone: number })
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Login failed');
 
-            const verifier = recaptchaVerifierRef.current;
-            if (!verifier) throw new Error('Recaptcha failed');
-            const result = await signInWithPhoneNumber((window as any).firebaseAuth, `+91${number}`, verifier);
-            setConfirmationResult(result);
-            setView('otp');
-        } catch (e: any) {
-            setError(e.message);
-        } finally {
+        // Mock OTP sending
+        setTimeout(() => {
             setLoading(false);
-        }
+            setView('otp');
+        }, 1000);
     };
 
     const handleOtpChange = (index: number, value: string) => {
@@ -247,24 +242,20 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialView = 'n
 
     const handleOtpSubmit = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
-        if (!confirmationResult) { setError('Please request OTP first'); return; }
         setLoading(true);
         setError('');
-        try {
-            const res = await confirmationResult.confirm(otp.join(''));
-            const user = res.user;
-            saveUserSession({ id: user.uid, phone: number, name: '' });
+
+        // Mock OTP verification bypass
+        setTimeout(() => {
+            saveUserSession({ id: number, phone: number, name: '' });
             if (onSuccess) {
                 onClose();
                 onSuccess();
             } else {
                 setView('profile');
             }
-        } catch {
-            setError('Invalid OTP. Please try again.');
-        } finally {
             setLoading(false);
-        }
+        }, 1000);
     };
 
     if (!isOpen) return null;

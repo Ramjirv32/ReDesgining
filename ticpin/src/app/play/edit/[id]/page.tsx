@@ -257,7 +257,7 @@ export default function EditPlayPage() {
     const accentColor = '#E7C200';
 
     if (loadingData) return (
-        <div className="min-h-screen flex items-center justify-center bg-[#FFF1A8]/10">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#FFFCED] via-white to-white">
             <div className="text-center space-y-4">
                 <div className="w-10 h-10 border-4 border-[#E7C200] border-t-transparent rounded-full animate-spin mx-auto" />
                 <p className="text-[16px] text-zinc-500">Loading venue...</p>
@@ -266,7 +266,7 @@ export default function EditPlayPage() {
     );
 
     return (
-        <div className="min-h-screen bg-[#FFF1A8]/10 overflow-x-hidden">
+        <div className="min-h-screen bg-gradient-to-b from-[#FFFCED] via-white to-white overflow-x-hidden">
             <div className="w-full" style={{ zoom: '0.70' }}>
                 <div className="max-w-[1920px] mx-auto px-10 pt-20">
                     {/* Back + Title */}

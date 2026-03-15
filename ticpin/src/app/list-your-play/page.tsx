@@ -35,8 +35,7 @@ export default function ListYourPlayPage() {
 
     return (
         <div
-            className="overflow-hidden flex flex-col font-[family-name:var(--font-anek-latin)] h-[calc(100vh-80px)]"
-            style={{ background: 'rgba(255, 241, 168, 0.1)' }}
+            className="overflow-hidden flex flex-col font-[family-name:var(--font-anek-latin)] h-[calc(100vh-80px)] bg-gradient-to-b from-[#FFFCED] via-white to-white"
         >
             <main className="flex-1 flex flex-col items-center justify-center px-4 md:px-14 py-5 overflow-hidden">
                 <div className="w-full max-w-[1200px] grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-24 items-center">

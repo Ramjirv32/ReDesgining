@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useLocation } from '@/lib/useLocation';
 import BottomBanner from '@/components/layout/BottomBanner';
@@ -33,6 +34,8 @@ interface RealEvent {
 }
 
 export default function EventsClient({ initialEvents }: { initialEvents: RealEvent[] }) {
+    const searchParams = useSearchParams();
+    const categoryFromUrl = searchParams.get('category');
     const {
         activeFilter,
         modalFilters,
@@ -44,6 +47,27 @@ export default function EventsClient({ initialEvents }: { initialEvents: RealEve
     const selectedLocation = useLocation();
     const [showLeftArrow, setShowLeftArrow] = useState(false);
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+
+    // Handle category from URL query param
+    useEffect(() => {
+        if (categoryFromUrl) {
+            // Convert URL format (e.g., "food-drinks") to category name (e.g., "Food & Drinks")
+            const categoryMap: Record<string, string> = {
+                'music': 'Music',
+                'comedy': 'Comedy',
+                'shows': 'Shows',
+                'sports': 'Sports',
+                'food-drinks': 'Food & Drinks',
+                'night-life': 'Night Life',
+                'fests-fairs': 'Fests & Fairs',
+                'screenings': 'Screenings',
+                'fitness': 'Fitness',
+                'open-mic': 'Open Mic'
+            };
+            const mappedCategory = categoryMap[categoryFromUrl] || categoryFromUrl;
+            setActiveFilter(mappedCategory);
+        }
+    }, [categoryFromUrl, setActiveFilter]);
 
     const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
         const container = e.currentTarget;

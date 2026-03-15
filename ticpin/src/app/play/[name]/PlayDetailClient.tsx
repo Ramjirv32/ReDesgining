@@ -8,6 +8,7 @@ import { ChevronDown, MapPin, Clock } from 'lucide-react';
 import { useUserSession } from '@/lib/auth/user';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
+import MobilePlayDetails from '@/components/mobile/MobilePlayDetails';
 
 const AuthModal = dynamic(() => import('@/components/modals/AuthModal'), { ssr: false });
 
@@ -95,6 +96,11 @@ export default function PlayDetailClient({ venue, id }: { venue: RealPlay, id: s
     const toggleAccordion = (section: string) => {
         setOpenAccordion(openAccordion === section ? null : section);
     };
+
+    // Mobile view
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        return <MobilePlayDetails venue={venue} offers={[]} />;
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-[#FFFCED] via-white to-white font-[family-name:var(--font-anek-latin)]">

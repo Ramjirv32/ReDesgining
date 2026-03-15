@@ -64,7 +64,7 @@ function DashboardContent() {
             accent: '#AC9BF7',
         },
         play: {
-            bg: 'rgba(255, 241, 168, 0.1)',
+            bg: 'linear-gradient(180deg, #FFFCED 0%, #FFFFFF 100%)',
             title: 'Your Turfs / Courts',
             subtitle: 'An overview of your play venues',
             buttonLabel: 'List venue',
@@ -74,7 +74,7 @@ function DashboardContent() {
             accent: '#E7C200',
         },
         dining: {
-            bg: 'rgba(255, 241, 168, 0.05)',
+            bg: 'linear-gradient(180deg, #FFFCED 0%, #FFFFFF 100%)',
             title: 'Your dining',
             subtitle: 'An overview of your dining listings',
             buttonLabel: 'Create listing',

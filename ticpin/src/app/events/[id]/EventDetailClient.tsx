@@ -7,6 +7,7 @@ import Image from 'next/image';
 import DOMPurify from 'isomorphic-dompurify';
 import { useUserSession } from '@/lib/auth/user';
 import AuthModal from '@/components/modals/AuthModal';
+import MobileEventDetails from '@/components/mobile/MobileEventDetails';
 
 interface Artist {
     name: string;
@@ -84,6 +85,11 @@ export default function EventDetailClient({ event, id }: { event: EventData, id:
     }, [event?.description]);
 
     const bannerImg = useMemo(() => event?.portrait_image_url || event?.landscape_image_url || '', [event]);
+
+    // Mobile view
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        return <MobileEventDetails event={event} offers={[]} />;
+    }
 
     return (
         <div className="min-h-screen font-[family-name:var(--font-anek-latin)]" style={{ background: 'linear-gradient(180deg, #ECE8FD 0%, #FFFFFF 100%)' }}>

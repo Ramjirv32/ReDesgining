@@ -8,6 +8,21 @@ import { ArrowLeft, MapPin, Star, ChevronDown, ChevronRight, PhoneCall } from 'l
 import BookingCard from '@/components/dining/venue/BookingCard';
 import CouponCard from '@/components/dining/CouponCard';
 import Image from 'next/image';
+import MobileDiningDetails from '@/components/mobile/MobileDiningDetails';
+
+interface OfferRecord {
+    id: string;
+    title: string;
+    description: string;
+    image?: string;
+    discount_type: 'percent' | 'flat';
+    discount_value: number;
+    applies_to: string;
+    entity_ids?: string[];
+    valid_until: string;
+    is_active: boolean;
+    created_at: string;
+}
 
 interface RealDining {
     id: string;
@@ -19,14 +34,18 @@ interface RealDining {
     portrait_image_url?: string;
     landscape_image_url?: string;
     gallery_urls?: string[];
+    menu_urls?: string[];
     time?: string;
     rating?: number;
     faqs?: { question: string; answer: string }[];
     terms?: string;
     prohibited_items?: string[];
+    guide?: {
+        facilities?: string[];
+    };
 }
 
-export default function DiningVenueDetailClient({ venue, id }: { venue: RealDining, id: string }) {
+export default function DiningVenueDetailClient({ venue, id, offers }: { venue: RealDining, id: string, offers: OfferRecord[] }) {
     const router = useRouter();
     const [activeFaq, setActiveFaq] = useState<number | null>(null);
 
@@ -35,6 +54,14 @@ export default function DiningVenueDetailClient({ venue, id }: { venue: RealDini
         : ['/images.png', '/images.png', '/images.png', '/images.png'];
 
     const mainImg = venue.landscape_image_url || venue.portrait_image_url || "/login/banner.jpeg";
+
+    // Get facilities from guide
+    const facilities = venue.guide?.facilities || [];
+
+    // Mobile view
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        return <MobileDiningDetails venue={venue} offers={offers} />;
+    }
 
     return (
         <div className="min-h-screen bg-[#f8f4ff] font-[family-name:var(--font-anek-latin)] text-sm md:text-base selection:bg-primary selection:text-white">
@@ -96,19 +123,41 @@ export default function DiningVenueDetailClient({ venue, id }: { venue: RealDini
                             </p>
                         </section>
 
-                        <section className="space-y-6">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-[32px] font-semibold text-black uppercase">Offers</h2>
-                                <button className="text-[14px] font-semibold text-black flex items-center gap-1 uppercase">
-                                    See all <ChevronRight size={14} />
-                                </button>
-                            </div>
-                            <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
-                                <CouponCard discount="FLAT 30% OFF" code="DINING30" />
-                                <CouponCard discount="BUY 1 GET 1" code="BOGO" />
-                                <CouponCard discount="20% ON DRINKS" code="CHEERS20" />
-                            </div>
-                        </section>
+                        {/* Offers Section - Now with real API data */}
+                        {offers.length > 0 && (
+                            <section className="space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <h2 className="text-[32px] font-semibold text-black uppercase">Offers</h2>
+                                    <button className="text-[14px] font-semibold text-black flex items-center gap-1 uppercase">
+                                        See all <ChevronRight size={14} />
+                                    </button>
+                                </div>
+                                <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
+                                    {offers.map((offer) => (
+                                        <CouponCard 
+                                            key={offer.id}
+                                            discount={offer.discount_type === 'flat' ? `₹${offer.discount_value}` : `${offer.discount_value}%`} 
+                                            code={offer.title}
+                                            image={offer.image}
+                                        />
+                                    ))}
+                                </div>
+                            </section>
+                        )}
+
+                        {/* Menu Section - New 2x2 grid */}
+                        {venue.menu_urls && venue.menu_urls.length > 0 && (
+                            <section className="space-y-6">
+                                <h2 className="text-[32px] font-semibold text-black uppercase">Menu</h2>
+                                <div className="grid grid-cols-2 gap-4 w-fit">
+                                    {venue.menu_urls.slice(0, 4).map((url, i) => (
+                                        <div key={i} className="relative w-36 h-36 md:w-[188px] md:h-[217px] rounded-[24px] overflow-hidden border border-zinc-100 shadow-sm bg-white">
+                                            <Image src={url} alt={`Menu Item ${i + 1}`} fill className="object-cover" />
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        )}
 
                         {venue.gallery_urls && venue.gallery_urls.length > 0 && (
                             <section className="space-y-6">
@@ -118,6 +167,20 @@ export default function DiningVenueDetailClient({ venue, id }: { venue: RealDini
                                         <div key={i} className="relative aspect-square rounded-[24px] overflow-hidden border border-zinc-100 shadow-sm bg-white">
                                             <Image src={url} alt={`Gallery Item ${i}`} fill className="object-cover" />
                                         </div>
+                                    ))}
+                                </div>
+                            </section>
+                        )}
+
+                        {/* Facilities Section - Improved 4-column grid */}
+                        {facilities.length > 0 && (
+                            <section className="space-y-4">
+                                <h2 className="text-[32px] font-semibold text-black uppercase">Available Facilities</h2>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-y-3 gap-x-4">
+                                    {facilities.map((facility, i) => (
+                                        <span key={i} className="text-[14px] text-zinc-500 font-medium uppercase flex items-center gap-2">
+                                            <div className="w-2 h-2 bg-[#866BFF] rounded-full shrink-0" /> {facility}
+                                        </span>
                                     ))}
                                 </div>
                             </section>

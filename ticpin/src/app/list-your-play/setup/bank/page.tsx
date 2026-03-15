@@ -9,7 +9,7 @@ import { organizerApi } from '@/lib/api/organizer';
 
 const STORAGE_KEY = 'setup_play';
 const NEXT_ROUTE = '/list-your-play/setup/backup';
-const BG = 'rgba(255, 241, 168, 0.1)';
+const BG_GRADIENT = 'bg-gradient-to-b from-[#FFFCED] via-white to-white';
 
 function BankDetailsContent() {
     const router = useRouter();
@@ -69,7 +69,7 @@ function BankDetailsContent() {
     if (loading) return <div className="min-h-screen animate-pulse bg-zinc-50" />;
 
     return (
-        <div className="overflow-hidden flex flex-col font-[family-name:var(--font-anek-latin)] h-[calc(100vh-80px)]" style={{ background: BG }}>
+        <div className={`overflow-hidden flex flex-col font-[family-name:var(--font-anek-latin)] h-[calc(100vh-80px)] ${BG_GRADIENT}`}>
             <main className="flex-1 overflow-y-auto scrollbar-hide px-4 md:px-14 lg:px-32 py-10 md:py-16">
                 <div className="max-w-[1100px] mx-auto flex flex-col lg:flex-row gap-16 lg:gap-24">
                     <aside className="w-fit pt-32 hidden lg:block">

@@ -8,6 +8,7 @@ import VenueCard from '@/components/play/VenueCard';
 import FilterBar from '@/components/play/FilterBar';
 import BottomBanner from '@/components/layout/BottomBanner';
 import Footer from '@/components/layout/Footer';
+import MobileHome from '@/components/mobile/MobileHome';
 
 interface RealPlay {
     id: string;
@@ -94,6 +95,11 @@ export default function PlayClient({ initialVenues }: { initialVenues: RealPlay[
         filteredVenues = [...filteredVenues].sort((a, b) =>
             (b.price_starts_from ?? 0) - (a.price_starts_from ?? 0)
         );
+    }
+
+    // Mobile view
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        return <MobileHome events={[]} dinings={[]} plays={venues} />;
     }
 
     return (

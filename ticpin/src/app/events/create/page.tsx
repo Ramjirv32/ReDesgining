@@ -89,6 +89,11 @@ const CreateEventPage = () => {
 
     // Dropdown States
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+    const [dropdownSearch, setDropdownSearch] = useState({
+        category: '',
+        subCategory: '',
+        city: ''
+    });
     const [selections, setSelections] = useState({
         category: 'Select Category',
         subCategory: 'Select Sub-Category',
@@ -247,7 +252,7 @@ const CreateEventPage = () => {
                 status: 'pending'
             });
             setSubmitMsg('✅ Event created successfully!');
-            setTimeout(() => router.push('/organizer/events'), 2000);
+            setTimeout(() => router.push('/organizer/dashboard?category=play'), 2000);
         } catch (err) {
             setSubmitMsg(err instanceof Error ? err.message : 'Submission failed.');
         } finally {
@@ -255,7 +260,62 @@ const CreateEventPage = () => {
         }
     };
 
-    const toggleDropdown = (name: string) => setOpenDropdown(openDropdown === name ? null : name);
+    // Available languages for multi-select
+    const AVAILABLE_LANGUAGES = ["English", "Hindi", "Tamil", "Telugu", "Kannada", "Malayalam", "Marathi", "Gujarati", "Bengali", "Punjabi", "Other"];
+
+    // Get today's date for min date attribute
+    const getTodayDate = () => {
+        const today = new Date();
+        return today.toISOString().split('T')[0];
+    };
+
+    // Convert 24h to 12h format for display
+    const formatTime12Hour = (time24: string) => {
+        if (!time24) return '';
+        const [hours, minutes] = time24.split(':');
+        const h = parseInt(hours);
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const h12 = h % 12 || 12;
+        return `${h12}:${minutes} ${ampm}`;
+    };
+
+    // Handle time change from 12h dropdowns
+    const handleTimeChange = (hours: string, minutes: string, ampm: string) => {
+        const h24 = ampm === 'PM' ? (parseInt(hours) % 12) + 12 : parseInt(hours) % 12;
+        setEventTime(`${h24.toString().padStart(2, '0')}:${minutes}`);
+    };
+
+    // Parse current time for 12h dropdowns
+    const getTimeParts = () => {
+        if (!eventTime) return { hours: '12', minutes: '00', ampm: 'AM' };
+        const [h, m] = eventTime.split(':');
+        const h24 = parseInt(h);
+        const ampm = h24 >= 12 ? 'PM' : 'AM';
+        const h12 = (h24 % 12 || 12).toString();
+        return { hours: h12, minutes: m, ampm };
+    };
+
+    const timeParts = getTimeParts();
+
+    // Toggle language selection
+    const toggleLanguage = (lang: string) => {
+        setGuide(prev => {
+            const currentLangs = prev.languages;
+            if (currentLangs.includes(lang)) {
+                return { ...prev, languages: currentLangs.filter(l => l !== lang) };
+            } else {
+                return { ...prev, languages: [...currentLangs, lang] };
+            }
+        });
+    };
+
+    const toggleDropdown = (name: string) => {
+        setOpenDropdown(openDropdown === name ? null : name);
+        if (openDropdown !== name) {
+            setDropdownSearch(prev => ({ ...prev, [name]: '' }));
+        }
+    };
+
     const handleSelect = (name: string, value: string) => {
         setSelections(prev => {
             const newSelections = { ...prev, [name]: value };
@@ -263,6 +323,7 @@ const CreateEventPage = () => {
             return newSelections;
         });
         setOpenDropdown(null);
+        setDropdownSearch(prev => ({ ...prev, [name]: '' }));
     };
 
     const addPoc = () => {
@@ -423,8 +484,18 @@ const CreateEventPage = () => {
                                         </div>
                                         {openDropdown === 'category' && (
                                             <div className="dropdown-menu">
-                                                <div className="max-h-[300px] overflow-y-auto scrollbar-hide">
-                                                    {CATEGORIES.map((opt) => (
+                                                <div className="p-2 border-b border-[#E1E1E1]">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search category..."
+                                                        value={dropdownSearch.category}
+                                                        onChange={(e) => setDropdownSearch(prev => ({ ...prev, category: e.target.value }))}
+                                                        className="w-full px-3 py-2 text-[16px] border border-[#686868] rounded-[8px] outline-none"
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                                <div className="max-h-[250px] overflow-y-auto scrollbar-hide">
+                                                    {CATEGORIES.filter(opt => opt.toLowerCase().includes(dropdownSearch.category.toLowerCase())).map((opt) => (
                                                         <div key={opt} onClick={() => handleSelect('category', opt)} className="dropdown-item">{opt}</div>
                                                     ))}
                                                 </div>
@@ -441,9 +512,19 @@ const CreateEventPage = () => {
                                         </div>
                                         {openDropdown === 'subCategory' && (
                                             <div className="dropdown-menu">
-                                                <div className="max-h-[300px] overflow-y-auto scrollbar-hide">
-                                                    {(CATEGORY_DATA[selections.category] || []).length > 0 ? (
-                                                        CATEGORY_DATA[selections.category].map((opt) => (
+                                                <div className="p-2 border-b border-[#E1E1E1]">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search sub-category..."
+                                                        value={dropdownSearch.subCategory}
+                                                        onChange={(e) => setDropdownSearch(prev => ({ ...prev, subCategory: e.target.value }))}
+                                                        className="w-full px-3 py-2 text-[16px] border border-[#686868] rounded-[8px] outline-none"
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                                <div className="max-h-[250px] overflow-y-auto scrollbar-hide">
+                                                    {(CATEGORY_DATA[selections.category] || []).filter(opt => opt.toLowerCase().includes(dropdownSearch.subCategory.toLowerCase())).length > 0 ? (
+                                                        CATEGORY_DATA[selections.category].filter(opt => opt.toLowerCase().includes(dropdownSearch.subCategory.toLowerCase())).map((opt) => (
                                                             <div key={opt} onClick={() => handleSelect('subCategory', opt)} className="dropdown-item">{opt}</div>
                                                         ))
                                                     ) : (
@@ -477,8 +558,18 @@ const CreateEventPage = () => {
                                         </div>
                                         {openDropdown === 'city' && (
                                             <div className="dropdown-menu">
-                                                <div className="max-h-[300px] overflow-y-auto scrollbar-hide">
-                                                    {CITIES.map((opt) => (
+                                                <div className="p-2 border-b border-[#E1E1E1]">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search city..."
+                                                        value={dropdownSearch.city}
+                                                        onChange={(e) => setDropdownSearch(prev => ({ ...prev, city: e.target.value }))}
+                                                        className="w-full px-3 py-2 text-[16px] border border-[#686868] rounded-[8px] outline-none"
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                                <div className="max-h-[250px] overflow-y-auto scrollbar-hide">
+                                                    {CITIES.filter(opt => opt.toLowerCase().includes(dropdownSearch.city.toLowerCase())).map((opt) => (
                                                         <div key={opt} onClick={() => handleSelect('city', opt)} className="dropdown-item">{opt}</div>
                                                     ))}
                                                 </div>
@@ -545,6 +636,7 @@ const CreateEventPage = () => {
                                             <input
                                                 type="date"
                                                 value={eventDate}
+                                                min={getTodayDate()}
                                                 onChange={e => setEventDate(e.target.value)}
                                                 className="w-full bg-transparent outline-none text-[20px] text-black"
                                             />
@@ -552,13 +644,37 @@ const CreateEventPage = () => {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[20px] font-medium text-[#686868]" style={{ fontFamily: 'var(--font-anek-latin)' }}>Start Time</label>
-                                        <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
-                                            <input
-                                                type="time"
-                                                value={eventTime}
-                                                onChange={e => setEventTime(e.target.value)}
-                                                className="w-full bg-transparent outline-none text-[20px] text-black"
-                                            />
+                                        <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px] gap-3">
+                                            {/* Hours */}
+                                            <select
+                                                value={timeParts.hours}
+                                                onChange={e => handleTimeChange(e.target.value, timeParts.minutes, timeParts.ampm)}
+                                                className="bg-transparent outline-none text-[20px] text-black w-[60px]"
+                                            >
+                                                {['12','1','2','3','4','5','6','7','8','9','10','11'].map(h => (
+                                                    <option key={h} value={h}>{h}</option>
+                                                ))}
+                                            </select>
+                                            <span className="text-[20px] text-black">:</span>
+                                            {/* Minutes */}
+                                            <select
+                                                value={timeParts.minutes}
+                                                onChange={e => handleTimeChange(timeParts.hours, e.target.value, timeParts.ampm)}
+                                                className="bg-transparent outline-none text-[20px] text-black w-[60px]"
+                                            >
+                                                {['00','05','10','15','20','25','30','35','40','45','50','55'].map(m => (
+                                                    <option key={m} value={m}>{m}</option>
+                                                ))}
+                                            </select>
+                                            {/* AM/PM */}
+                                            <select
+                                                value={timeParts.ampm}
+                                                onChange={e => handleTimeChange(timeParts.hours, timeParts.minutes, e.target.value)}
+                                                className="bg-transparent outline-none text-[20px] text-black w-[60px]"
+                                            >
+                                                <option value="AM">AM</option>
+                                                <option value="PM">PM</option>
+                                            </select>
                                         </div>
                                     </div>
                                     <div className="space-y-2">
@@ -786,6 +902,25 @@ const CreateEventPage = () => {
                                     </div>
                                 </div>
                             </div>
+                            {/* Gallery Thumbnails */}
+                            {galleryUrls.length > 0 && (
+                                <div className="mt-4">
+                                    <p className="text-[16px] font-medium text-[#686868] mb-2">Uploaded Images:</p>
+                                    <div className="flex flex-wrap gap-3">
+                                        {galleryUrls.map((url, idx) => (
+                                            <div key={idx} className="relative w-[80px] h-[80px] rounded-[8px] overflow-hidden border border-[#686868] group">
+                                                <Image src={url} alt={`Gallery ${idx + 1}`} fill className="object-cover" />
+                                                <button
+                                                    onClick={() => setGalleryUrls(prev => prev.filter((_, i) => i !== idx))}
+                                                    className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-[12px] opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </section>
 
                         {/* Artists Section */}
@@ -964,21 +1099,30 @@ const CreateEventPage = () => {
                                 <div className="w-full h-[1px] bg-[#AEAEAE] mb-8"></div>
 
                                 <div className="space-y-6">
-                                    {/* Q1 */}
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-[25px] font-medium text-black">Which languages will your event be performed in? <span className="text-[#5331EA]">*</span></span>
-                                        <div className="relative border border-[#686868] rounded-[10px] h-[64px] w-[840px] flex items-center px-6">
-                                            <select
-                                                className="w-full appearance-none bg-transparent outline-none text-[25px]"
-                                                value={guide.languages[0] || ''}
-                                                onChange={e => setGuide({ ...guide, languages: [e.target.value] })}
-                                            >
-                                                <option value="" disabled>Select Language</option>
-                                                {["English", "Hindi", "Tamil", "Telugu", "Kannada", "Malayalam", "Marathi", "Gujarati", "Bengali", "Punjabi", "Other"].map(l => (
-                                                    <option key={l} value={l}>{l}</option>
-                                                ))}
-                                            </select>
-                                            <ChevronDown size={24} className="absolute right-6" />
+                                    {/* Q1 - Multiple Languages */}
+                                    <div className="flex items-start justify-between">
+                                        <span className="text-[25px] font-medium text-black pt-4">Which languages will your event be performed in? <span className="text-[#5331EA]">*</span></span>
+                                        <div className="w-[840px]">
+                                            <div className="border border-[#686868] rounded-[10px] p-4 max-h-[200px] overflow-y-auto">
+                                                <div className="grid grid-cols-3 gap-3">
+                                                    {AVAILABLE_LANGUAGES.map((lang) => (
+                                                        <label key={lang} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={guide.languages.includes(lang)}
+                                                                onChange={() => toggleLanguage(lang)}
+                                                                className="w-5 h-5 accent-[#5331EA]"
+                                                            />
+                                                            <span className="text-[18px] text-black">{lang}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            {guide.languages.length > 0 && (
+                                                <p className="text-[16px] text-[#686868] mt-2">
+                                                    Selected: {guide.languages.join(', ')}
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
 

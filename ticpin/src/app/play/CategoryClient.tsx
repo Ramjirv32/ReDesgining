@@ -33,7 +33,7 @@ export default function CategoryClient({
     const [activeFilter, setActiveFilter] = useState('All');
 
     return (
-        <div className="min-h-screen bg-white font-[family-name:var(--font-anek-latin)]">
+        <div className="min-h-screen bg-gradient-to-b from-[#FFFCED] via-white to-white font-[family-name:var(--font-anek-latin)]">
             <main className="space-y-12 md:space-y-20">
                 {/* Hero Banner Section */}
                 <section className="relative w-full h-[300px] md:h-[400px] flex items-center justify-center overflow-hidden"
