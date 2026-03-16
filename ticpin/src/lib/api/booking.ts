@@ -105,6 +105,7 @@ export const bookingApi = {
         const res = await fetch(`${BASE}/payment/create-order`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify(payload),
         });
         const data = await res.json();
@@ -117,6 +118,7 @@ export const bookingApi = {
         const res = await fetch(`${BASE}/bookings/events`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify(payload),
         });
         const data = await res.json();
@@ -134,6 +136,7 @@ export const bookingApi = {
         const res = await fetch(`${BASE}/coupons/validate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ code, event_id: eventId, order_amount: orderAmount, user_id: userId }),
         });
         const data = await res.json();
@@ -146,6 +149,7 @@ export const bookingApi = {
         const res = await fetch(`${BASE}/bookings/dining`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify(payload),
         });
         const data = await res.json();
@@ -158,6 +162,7 @@ export const bookingApi = {
         const res = await fetch(`${BASE}/bookings/play`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify(payload),
         });
         const data = await res.json();

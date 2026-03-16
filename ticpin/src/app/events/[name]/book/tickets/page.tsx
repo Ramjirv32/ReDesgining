@@ -28,7 +28,7 @@ interface EventData {
 export default function TicketSelectionPage() {
     const router = useRouter();
     const params = useParams();
-    const id = params?.id as string;
+    const name = params?.name as string;
 
     const [event, setEvent] = useState<EventData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -37,17 +37,17 @@ export default function TicketSelectionPage() {
     const [coupons, setCoupons] = useState<any[]>([]);
 
     useEffect(() => {
-        if (!id) return;
+        if (!name) return;
         setLoading(true);
         Promise.all([
-            fetch(`/backend/api/events/${id}`, { credentials: 'include' }).then(r => r.json()),
-            bookingApi.getEventAvailability(id),
+            fetch(`/backend/api/events/${encodeURIComponent(name)}`, { credentials: 'include' }).then(r => r.json()),
+            bookingApi.getEventAvailability(event?.id || ''),
         ]).then(([eventData, availability]) => {
             setEvent(eventData);
             setBookedMap(availability.booked ?? {});
             setLoading(false);
         }).catch(() => setLoading(false));
-    }, [id]);
+    }, [name]);
 
     useEffect(() => {
         fetch(`/backend/api/coupons/event`)
@@ -215,7 +215,7 @@ export default function TicketSelectionPage() {
                     disabled={totalTickets === 0}
                     onClick={() => {
                         const cart = {
-                            eventId: id,
+                            eventId: event?.id,
                             eventName: event?.name,
                             city: event?.city,
                             tickets: categories.map((cat, i) => ({
@@ -226,7 +226,7 @@ export default function TicketSelectionPage() {
                             totalPrice
                         };
                         sessionStorage.setItem('ticpin_cart', JSON.stringify(cart));
-                        router.push(`/events/${id}/book/review`);
+                        router.push(`/events/${name}/book/review`);
                     }}
                     className={`group relative w-[130px] md:w-[220px] h-[40px] md:h-[54px] bg-white rounded-[7px] flex items-center justify-center transition-all overflow-hidden ${totalTickets === 0 ? 'opacity-50 grayscale cursor-not-allowed' : 'active:scale-[0.98] hover:bg-[#7B2FF7] hover:text-white'}`}
                 >

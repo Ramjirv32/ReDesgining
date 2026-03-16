@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import { CheckCircle2, ChevronRight, Tag, Trash2, ChevronDown } from 'lucide-react';
 import { bookingApi, OfferItem, PaymentOrderResponse } from '@/lib/api/booking';
+import { profileApi } from '@/lib/api/profile';
 import { useUserSession } from '@/lib/auth/user';
 import Link from 'next/link';
 
@@ -128,15 +129,34 @@ export default function PlayReviewPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Pre-fill from session
+    // Pre-fill from session and profile
     useEffect(() => {
-        if (session) {
-            setBilling(prev => ({
-                ...prev,
-                name: prev.name || session.name || '',
-                phone: prev.phone || session.phone || '',
-            }));
-        }
+        const loadProfileData = async () => {
+            if (session?.id) {
+                const profile = await profileApi.getProfile(session.id);
+                if (profile) {
+                    setBilling(prev => ({
+                        ...prev,
+                        name: prev.name || profile.name || '',
+                        phone: prev.phone || profile.phone || '',
+                        address: prev.address || profile.address || '',
+                        city: prev.city || profile.district || '',
+                        state: prev.state || profile.state || '',
+                        nationality: prev.nationality || profile.country || 'Indian',
+                    }));
+                    if (profile.email && !email) {
+                        setEmail(profile.email);
+                    }
+                } else {
+                    setBilling(prev => ({
+                        ...prev,
+                        name: prev.name || session.name || '',
+                        phone: prev.phone || session.phone || '',
+                    }));
+                }
+            }
+        };
+        loadProfileData();
     }, [session]);
 
     // Persist

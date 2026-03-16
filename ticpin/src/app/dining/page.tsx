@@ -46,7 +46,7 @@ async function getDiningData() {
         const offersData = await offersRes.json();
 
         return {
-            venues: (Array.isArray(venuesData) ? venuesData : []).filter((v: RealDining) => v.status === 'approved'),
+            venues: (Array.isArray(venuesData) ? venuesData : (venuesData?.data || [])).filter((v: RealDining) => v.status === 'approved'),
             offers: Array.isArray(offersData) ? offersData : []
         };
     } catch (error) {

@@ -1,6 +1,7 @@
 package event
 
 import (
+	"net/url"
 	eventservice "ticpin-backend/services/event"
 
 	"github.com/gofiber/fiber/v2"
@@ -27,8 +28,17 @@ func GetAllEvents(c *fiber.Ctx) error {
 }
 
 func GetEventByID(c *fiber.Ctx) error {
+	id := c.Params("id")
+	// Robustly decode the ID to handle single or double encoding (e.g. %20 or %2520)
+	for {
+		decoded, err := url.PathUnescape(id)
+		if err != nil || decoded == id {
+			break
+		}
+		id = decoded
+	}
 	bypass := c.Query("bypassCache") == "true"
-	e, err := eventservice.GetByID(c.Params("id"), bypass)
+	e, err := eventservice.GetByID(id, bypass)
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "event not found"})
 	}

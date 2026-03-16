@@ -21,3 +21,22 @@ export const CITIES = [
     "Kochi",
     "Goa"
 ];
+
+export const FACILITIES = [
+    "Parking",
+    "WiFi",
+    "Air Conditioning",
+    "Outdoor Seating",
+    "Indoor Seating",
+    "Private Dining",
+    "Live Music",
+    "Bar",
+    "Catering",
+    "Wheelchair Accessible",
+    "Pet Friendly",
+    "Valet Parking",
+    "Smoking Area",
+    "Kids Play Area",
+    "TV Screens",
+    "Dance Floor"
+];

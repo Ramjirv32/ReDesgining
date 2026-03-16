@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronLeft, Share2, ChevronRight, Star, ChevronDown, MapPin, Clock } from 'lucide-react';
+import { ChevronLeft, Share2, ChevronRight, Star, ChevronDown, MapPin, Clock, Users, Ticket, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useUserSession } from '@/lib/auth/user';
 import { useState } from 'react';
@@ -53,7 +53,7 @@ export default function MobileEventDetails({ event, offers }: MobileEventDetails
             setIsLoginModalOpen(true);
             return;
         }
-        router.push(`/events/${event.id}/book/tickets`);
+        router.push(`/events/${encodeURIComponent(event.name)}/book/tickets`);
     };
 
     const toggleAccordion = (section: string) => {
@@ -66,15 +66,13 @@ export default function MobileEventDetails({ event, offers }: MobileEventDetails
 
     return (
         <div className="md:hidden min-h-screen w-full bg-[#EAEAEA] font-sans selection:bg-[#866BFF]/20 overflow-x-hidden relative" style={{ fontFamily: 'var(--font-anek-latin), sans-serif' }}>
-            {/* Top Image Section */}
+            {/* 1. Top Image Section */}
             <div className="relative w-full h-[536px] bg-[#110D2C] shrink-0">
                 {event.landscape_image_url || event.portrait_image_url ? (
-                    <Image
+                    <img
                         src={event.landscape_image_url || event.portrait_image_url!}
                         alt={event.name}
-                        fill
-                        className="object-cover"
-                        priority
+                        className="w-full h-full object-cover"
                     />
                 ) : (
                     <div className="w-full h-full p-6 flex flex-col items-center justify-center relative bg-[#110D2C]">
@@ -103,7 +101,10 @@ export default function MobileEventDetails({ event, offers }: MobileEventDetails
 
                 <div className="absolute top-6 right-4 flex gap-3">
                     <button className="w-[31px] h-[31px] bg-white rounded-full flex items-center justify-center shadow-md">
-                        <Share2 size={16} className="text-black" />
+                        <img src="/mobile_icons/event clicking/Vector 1.svg" className="w-4 h-4" alt="Hub" />
+                    </button>
+                    <button className="w-[31px] h-[31px] bg-white rounded-full flex items-center justify-center shadow-md">
+                        <img src="/mobile_icons/event clicking/share.svg" className="w-4 h-4" alt="Share" />
                     </button>
                 </div>
 
@@ -114,7 +115,7 @@ export default function MobileEventDetails({ event, offers }: MobileEventDetails
                 </div>
             </div>
 
-            {/* Content Section */}
+            {/* 2. Content Section */}
             <div className="relative -mt-[11px] w-full bg-white rounded-t-[15px] px-6 pt-6 pb-32 min-h-[1000px]">
                 {/* Event Name & Date */}
                 <div className="mb-6">
@@ -149,7 +150,7 @@ export default function MobileEventDetails({ event, offers }: MobileEventDetails
                                 <Clock size={20} className="text-black opacity-70" />
                             </div>
                             <div>
-                                <p className="text-[15px] font-medium text-black leading-tight">{event.time || 'Doors open at 6:00 PM'}</p>
+                                <p className="text-[15px] font-medium text-black leading-tight">{displayTime}</p>
                                 <p className="text-[10px] font-medium text-[#686868] uppercase tracking-wider">View full schedule & timeline</p>
                             </div>
                         </div>
@@ -158,22 +159,21 @@ export default function MobileEventDetails({ event, offers }: MobileEventDetails
                 </div>
 
                 {/* Offers Section */}
-                {offers.length > 0 && (
-                    <div className="mb-10">
-                        <h2 className="text-[20px] font-semibold text-black mb-4">Offers for you</h2>
-                        <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-                            {offers.map((offer) => (
-                                <div key={offer.id} className="flex-shrink-0 w-[200px] h-[120px] bg-[#AC9BF7] rounded-[8px] p-4 flex flex-col justify-between">
-                                    <div>
-                                        <p className="text-white text-[14px] font-bold">{offer.discount_type === 'flat' ? `₹${offer.discount_value} OFF` : `${offer.discount_value}% OFF`}</p>
-                                        <p className="text-white/80 text-[12px]">{offer.title}</p>
-                                    </div>
-                                    <p className="text-white text-[10px] bg-white/20 px-2 py-1 rounded text-center">{offer.description}</p>
-                                </div>
-                            ))}
-                        </div>
+                <div className="mb-10">
+                    <h2 className="text-[20px] font-semibold text-black mb-4">Offers for you</h2>
+                    <div className="w-full h-[120px] bg-[#AC9BF7] rounded-[8px] p-4 flex flex-col justify-center">
+                        {offers.length > 0 ? (
+                            <div>
+                                <p className="text-white font-bold">{offers[0].title}</p>
+                                <p className="text-white/80 text-sm">{offers[0].description}</p>
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-center h-full">
+                                <p className="text-white/50">No offers currently available</p>
+                            </div>
+                        )}
                     </div>
-                )}
+                </div>
 
                 {/* About the event */}
                 <div className="mb-12">
@@ -187,48 +187,27 @@ export default function MobileEventDetails({ event, offers }: MobileEventDetails
                     </button>
                 </div>
 
-                {/* Artist Section */}
-                {event.artist_details && event.artist_details.length > 0 && (
-                    <div className="mb-12">
-                        <h2 className="text-[20px] font-semibold text-black mb-4" style={{ lineHeight: '22px' }}>Artist</h2>
-                        <div className="flex gap-4 overflow-x-auto scrollbar-hide">
-                            {event.artist_details.map((artist, i) => (
-                                <div key={i} className="flex-shrink-0">
-                                    <div className="w-16 h-16 rounded-full bg-[#AC9BF7] overflow-hidden relative mb-2">
-                                        {artist.image_url && (
-                                            <Image src={artist.image_url} alt={artist.name} fill className="object-cover" />
-                                        )}
-                                    </div>
-                                    <p className="text-[12px] text-center font-medium text-black">{artist.name}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
                 {/* Things to Know */}
                 <div className="mb-12 mt-[-15px]">
                     <h2 className="text-[20px] font-semibold text-black mb-6" style={{ lineHeight: '22px' }}>Things to Know</h2>
                     <div className="space-y-4 mb-4">
-                        {event.language && (
-                            <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 bg-[#E4E4E4] rounded-[10px] flex items-center justify-center">
-                                    <span className="text-[12px] font-bold text-[#686868]">{event.language.slice(0, 2).toUpperCase()}</span>
-                                </div>
-                                <p className="text-[15px] font-medium text-black uppercase">{event.language}</p>
-                            </div>
-                        )}
                         <div className="flex items-center gap-4">
                             <div className="w-10 h-10 bg-[#E4E4E4] rounded-[10px] flex items-center justify-center">
-                                <Users size={20} className="text-[#686868]" />
+                                <img src="/mobile_icons/event clicking/language.svg" className="w-[23px] h-[23px]" alt="Language" />
                             </div>
-                            <p className="text-[15px] font-medium text-black uppercase">{event.age_limit || '18+ Age limit'}</p>
+                            <p className="text-[15px] font-medium text-black uppercase">{event.language || '{EVENT LANGUAGE}'}</p>
                         </div>
                         <div className="flex items-center gap-4">
                             <div className="w-10 h-10 bg-[#E4E4E4] rounded-[10px] flex items-center justify-center">
-                                <Ticket size={20} className="text-[#686868]" />
+                                <img src="/mobile_icons/event clicking/users-alt.svg" className="w-[23px] h-[23px]" alt="Age" />
                             </div>
-                            <p className="text-[15px] font-medium text-black uppercase">Ticket required for entry</p>
+                            <p className="text-[15px] font-medium text-black uppercase">{event.age_limit || '{MIN AGE TICKET REQUIRED}'}</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-[#E4E4E4] rounded-[10px] flex items-center justify-center">
+                                <img src="/mobile_icons/event clicking/ticket.svg" className="w-[22px] h-[22px]" alt="Entry" />
+                            </div>
+                            <p className="text-[15px] font-medium text-black uppercase">{`Ticket Required for Entry`}</p>
                         </div>
                     </div>
                     <button className="text-[15px] font-semibold text-black flex items-center gap-1 leading-none">
@@ -241,24 +220,14 @@ export default function MobileEventDetails({ event, offers }: MobileEventDetails
                 <div className="space-y-4 mb-12 mt-[-15px]">
                     <h2 className="text-[20px] font-semibold text-black" style={{ lineHeight: '22px' }}>More</h2>
                     <div className="space-y-4">
-                        {(event.faqs && event.faqs.length > 0) && (
-                            <div
-                                onClick={() => toggleAccordion('faq')}
-                                className="w-full h-[61px] border border-[#686868] rounded-[15px] flex items-center justify-between px-5 cursor-pointer"
-                            >
-                                <span className="text-[15px] font-semibold text-black">Frequently Asked Questions</span>
-                                <ChevronDown size={20} className={`text-[#686868] transition-transform ${openAccordion === 'faq' ? 'rotate-180' : ''}`} />
-                            </div>
-                        )}
-                        {event.terms && (
-                            <div
-                                onClick={() => toggleAccordion('terms')}
-                                className="w-full h-[61px] border border-[#686868] rounded-[15px] flex items-center justify-between px-5 cursor-pointer"
-                            >
-                                <span className="text-[15px] font-semibold text-black">Event Terms & Conditions</span>
-                                <ChevronDown size={20} className={`text-[#686868] transition-transform ${openAccordion === 'terms' ? 'rotate-180' : ''}`} />
-                            </div>
-                        )}
+                        <div className="w-full h-[61px] border border-[#686868] rounded-[15px] flex items-center justify-between px-5">
+                            <span className="text-[15px] font-semibold text-black">Frequently Asked Questions</span>
+                            <ChevronDown size={20} className="text-[#686868]" />
+                        </div>
+                        <div className="w-full h-[61px] border border-[#686868] rounded-[15px] flex items-center justify-between px-5">
+                            <span className="text-[15px] font-semibold text-black">Event Terms & Conditions</span>
+                            <ChevronDown size={20} className="text-[#686868]" />
+                        </div>
                     </div>
                 </div>
 
@@ -266,7 +235,7 @@ export default function MobileEventDetails({ event, offers }: MobileEventDetails
                 <div className="flex justify-center mb-10">
                     <div className="p-[1px] bg-gradient-to-r from-[#866BFF] to-[#B26BE9] rounded-full">
                         <button className="flex items-center justify-center gap-2 px-6 h-[44px] w-[170px] bg-white rounded-full active:scale-95 transition-all">
-                            <Sparkles size={20} className="text-[#866BFF]" />
+                            <img src="/mobile_icons/event clicking/Vector.svg" className="w-[20px] h-[20px]" alt="AI" />
                             <span className="text-[17px] font-semibold bg-gradient-to-r from-[#866BFF] to-[#B26BE9] bg-clip-text text-transparent whitespace-nowrap">Ask anything</span>
                         </button>
                     </div>
@@ -290,11 +259,9 @@ export default function MobileEventDetails({ event, offers }: MobileEventDetails
             <AuthModal
                 isOpen={isLoginModalOpen}
                 onClose={() => setIsLoginModalOpen(false)}
-                onSuccess={() => router.push(`/events/${event.id}/book/tickets`)}
+                onSuccess={() => router.push(`/events/${encodeURIComponent(event.name)}/book/tickets`)}
             />
         </div>
     );
 }
 
-// Import missing icons
-import { Users, Ticket, Sparkles } from 'lucide-react';

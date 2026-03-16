@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronLeft, ChevronRight, Star, ChevronDown, MapPin, PhoneCall } from 'lucide-react';
+import { ChevronLeft, Share2, ChevronRight, Star, ChevronDown, MapPin, Navigation, PhoneCall, Sparkles, Users, Ticket } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useUserSession } from '@/lib/auth/user';
 import { useState } from 'react';
@@ -55,7 +55,7 @@ export default function MobileDiningDetails({ venue, offers }: MobileDiningDetai
             setIsLoginModalOpen(true);
             return;
         }
-        router.push(`/dining/venue/${venue.id}/book`);
+        router.push(`/dining/venue/${encodeURIComponent(venue.name)}/book`);
     };
 
     const toggleAccordion = (section: string) => {
@@ -67,14 +67,12 @@ export default function MobileDiningDetails({ venue, offers }: MobileDiningDetai
 
     return (
         <div className="md:hidden min-h-screen w-full bg-white font-sans selection:bg-[#866BFF]/20 overflow-x-hidden relative" style={{ fontFamily: 'var(--font-anek-latin), sans-serif' }}>
-            {/* Hero Image Section */}
+            {/* 1. Hero Image Section */}
             <div className="relative w-full h-[225px] shrink-0 bg-white">
-                <Image
+                <img
                     src={venue.landscape_image_url || venue.portrait_image_url || "/login/banner.jpeg"}
                     alt={venue.name}
-                    fill
-                    className="object-cover"
-                    priority
+                    className="w-full h-full object-cover"
                 />
 
                 {/* Overlaid Buttons */}
@@ -82,16 +80,20 @@ export default function MobileDiningDetails({ venue, offers }: MobileDiningDetai
                     <ChevronLeft size={16} className="text-black" />
                 </div>
 
+                <div className="absolute top-[18px] right-[56px] w-[31px] h-[31px] bg-white rounded-full flex items-center justify-center shadow-sm">
+                    <img src="/mobile_icons/event clicking/Vector 1.svg" className="w-[14px] h-[17px]" alt="Hub" />
+                </div>
+
                 <div className="absolute top-[18px] right-[15px] w-[31px] h-[31px] bg-white rounded-full flex items-center justify-center shadow-sm">
-                    <Share2 size={16} className="text-black" />
+                    <img src="/mobile_icons/event clicking/share.svg" className="w-[14px] h-[17px]" alt="Share" />
                 </div>
             </div>
 
-            {/* Gallery Thumbnails */}
+            {/* 2. Gallery Thumbnails */}
             <div className="flex gap-[10px] px-[12px] mt-[10px] items-center overflow-x-auto scrollbar-hide snap-x snap-mandatory">
                 {galleryImages.length > 0 ? galleryImages.map((url, i) => (
                     <div key={i} className="w-[calc((100vw-44px)/3)] aspect-square rounded-[15px] flex-shrink-0 snap-start relative overflow-hidden bg-[#AC9BF7]">
-                        <Image src={url} alt={`Gallery ${i + 1}`} fill className="object-cover" />
+                        <img src={url} alt={`Gallery ${i + 1}`} className="w-full h-full object-cover" />
                     </div>
                 )) : (
                     [1, 2, 3].map((i) => (
@@ -100,7 +102,7 @@ export default function MobileDiningDetails({ venue, offers }: MobileDiningDetai
                 )}
             </div>
 
-            {/* Main Content Section */}
+            {/* 3. Main Content Section */}
             <div className="relative mt-[1px] w-full bg-white rounded-t-[15px] px-[21px] pb-32">
                 {/* Horizontal Divider */}
                 <div className="w-full h-[0.5px] bg-[#AEAEAE] absolute top-[25px] left-0 right-0" />
@@ -113,19 +115,21 @@ export default function MobileDiningDetails({ venue, offers }: MobileDiningDetai
 
                     {/* Rating Badge */}
                     <div className="w-[36px] h-[38px] rounded-[7px] flex flex-col items-center overflow-hidden shrink-0">
+                        {/* Top Green Section */}
                         <div className="w-full bg-[#65B54E] h-[19px] flex items-center justify-center gap-[3px] border-t border-x border-b border-[#65B54E] rounded-t-[7px]">
                             <span className="text-white text-[12px] font-bold leading-none mt-[1px]">{venue.rating || '--'}</span>
-                            <Star size={9} className="text-white fill-white" />
+                            <img src="/mobile_icons/dining click/Star 3.svg" className="w-[9px] h-[9px]" alt="Star" />
                         </div>
+                        {/* Bottom White Section */}
                         <div className="flex-1 flex items-center justify-center w-full h-[19px] bg-white border-b border-x border-[#AEAEAE] rounded-b-[7px]">
-                            <span className="text-[8px] font-bold text-[#4285F4]">G</span>
+                            <img src="/mobile_icons/dining click/Black HD Google Logo 1.svg" className="w-[28px] h-auto" alt="Google" />
                         </div>
                     </div>
                 </div>
 
                 {/* Location */}
                 <p className="text-[15px] font-medium text-[#5331EA] leading-[16px] mb-2 font-anek-latin">
-                    {venue.city || 'Bangalore'}
+                    {venue.city || 'Bangalore'} | {'{DISTANCE FROM CURRENT LOCATION}'}
                 </p>
 
                 {/* Closes By */}
@@ -144,46 +148,47 @@ export default function MobileDiningDetails({ venue, offers }: MobileDiningDetai
                             backgroundClip: 'padding-box, border-box'
                         }}
                     >
-                        <Star size={18} className="text-[#8D6BFF]" />
-                        <span className="text-[16px] font-medium text-[#8D6BFF] whitespace-nowrap">What&apos;s good here?</span>
+                        <img src="/mobile_icons/dining click/star.svg" className="w-[18px] h-[18px]" alt="Star" />
+                        <span className="text-[16px] font-medium text-[#8D6BFF] whitespace-nowrap" style={{ fontFamily: 'Anek Latin' }}>What’s good here?</span>
                     </button>
                     {venue.google_map_link && (
                         <button 
                             onClick={() => window.open(venue.google_map_link, '_blank')}
                             className="flex-shrink-0 px-4 h-[39px] border border-[#AEAEAE] rounded-[10px] flex items-center justify-center gap-2 bg-white"
                         >
-                            <MapPin size={16} className="text-black" />
-                            <span className="text-[18px] font-medium text-black">Directions</span>
+                            <img src="/mobile_icons/dining click/Vector.svg" className="w-[16px] h-[16px]" alt="Directions" />
+                            <span className="text-[18px] font-medium text-black" style={{ fontFamily: 'Anek Latin' }}>Directions</span>
                         </button>
                     )}
+                    <button className="flex-shrink-0 px-4 h-[39px] border border-[#AEAEAE] rounded-[10px] flex items-center justify-center gap-2 bg-white">
+                        <img src="/mobile_icons/dining click/phone.svg" className="w-[18px] h-[18px]" alt="Call" />
+                        <span className="text-[18px] font-medium text-black" style={{ fontFamily: 'Anek Latin' }}>Call</span>
+                    </button>
                 </div>
 
                 {/* Offers Section */}
-                {offers.length > 0 && (
-                    <div className="mb-14">
-                        <h2 className="text-[20px] font-semibold text-black mb-4 tracking-tight mt-[-10px]">Offers for you</h2>
-                        <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-                            {offers.map((offer) => (
-                                <div key={offer.id} className="flex-shrink-0 w-[200px] h-[120px] bg-gradient-to-r from-[#AC9BF7] to-[#866BFF] rounded-[12px] p-4 flex flex-col justify-between">
-                                    <div>
-                                        <p className="text-white text-[14px] font-bold">{offer.discount_type === 'flat' ? `₹${offer.discount_value} OFF` : `${offer.discount_value}% OFF`}</p>
-                                        <p className="text-white/80 text-[12px]">{offer.title}</p>
-                                    </div>
-                                    <p className="text-white text-[10px] bg-white/20 px-2 py-1 rounded text-center">{offer.description}</p>
-                                </div>
-                            ))}
-                        </div>
+                <div className="mb-14">
+                    <h2 className="text-[20px] font-semibold text-black mb-4 tracking-tight mt-[-10px]" style={{ fontFamily: 'Anek Latin' }}>Offers for you</h2>
+                    <div className="w-full h-[120px] bg-[#AC9BF7] rounded-[8px] p-4">
+                        {offers.length > 0 ? (
+                            <div className="flex flex-col h-full justify-center">
+                                <p className="text-white font-bold">{offers[0].title}</p>
+                                <p className="text-white/80 text-sm truncate">{offers[0].description}</p>
+                            </div>
+                        ) : (
+                            <div className="w-full h-full bg-[#AC9BF7] rounded-[8px]" />
+                        )}
                     </div>
-                )}
+                </div>
 
                 {/* Menu Section */}
                 {venue.menu_urls && venue.menu_urls.length > 0 && (
                     <div className="mb-14">
-                        <h2 className="text-[20px] font-semibold text-black mb-4 tracking-tight mt-[-20px]">Menu</h2>
+                        <h2 className="text-[20px] font-semibold text-black mb-4 tracking-tight mt-[-20px]" style={{ fontFamily: 'Anek Latin' }}>Menu</h2>
                         <div className="grid grid-cols-2 gap-[10px] w-fit">
                             {venue.menu_urls.slice(0, 4).map((url, i) => (
-                                <div key={i} className="w-[119px] h-[119px] rounded-[15px] overflow-hidden relative bg-[#AC9BF7]">
-                                    <Image src={url} alt={`Menu ${i + 1}`} fill className="object-cover" />
+                                <div key={i} className="w-[119px] h-[119px] bg-[#AC9BF7] rounded-[15px] overflow-hidden">
+                                     <img src={url} className="w-full h-full object-cover" alt="Menu" />
                                 </div>
                             ))}
                         </div>
@@ -193,71 +198,68 @@ export default function MobileDiningDetails({ venue, offers }: MobileDiningDetai
                 {/* Available Facilities */}
                 {facilities.length > 0 && (
                     <div className="mb-14">
-                        <h2 className="text-[20px] font-semibold text-black mb-4 tracking-tight mt-[-20px]">Available facilities</h2>
+                        <h2 className="text-[20px] font-semibold text-black mb-4 tracking-tight mt-[-20px]" style={{ fontFamily: 'Anek Latin' }}>Available facilities</h2>
                         <div className="grid grid-cols-2 gap-y-3 font-medium mb-6">
                             {facilities.map((item, i) => (
-                                <span key={i} className="text-[12px] text-black font-medium flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 bg-[#866BFF] rounded-full" /> {item}
-                                </span>
+                                <span key={i} className="text-[12px] text-black font-medium">{item}</span>
                             ))}
                         </div>
+                        <button className="text-[14px] font-bold text-black flex items-center gap-1">
+                            Read more
+                            <ChevronRight size={12} className="text-black transform translate-y-[0.5px]" />
+                        </button>
                     </div>
                 )}
 
                 {/* Things to Know */}
                 <div className="mb-14">
-                    <h2 className="text-[20px] font-semibold text-black mb-6 tracking-tight mt-[-20px]">Things to Know</h2>
+                    <h2 className="text-[20px] font-semibold text-black mb-6 tracking-tight mt-[-20px]" style={{ fontFamily: 'Anek Latin' }}>Things to Know</h2>
                     <div className="space-y-6 mb-6">
                         <div className="flex items-center gap-4">
                             <div className="w-10 h-10 bg-[#E4E4E4] rounded-[10px] flex items-center justify-center">
-                                <Users size={20} className="text-[#686868]" />
+                                <img src="/mobile_icons/event clicking/users-alt.svg" className="w-[23px] h-[23px]" alt="Users" />
                             </div>
-                            <p className="text-[15px] font-medium text-black uppercase">All ages welcome</p>
+                            <p className="text-[15px] font-medium text-black uppercase" style={{ fontFamily: 'Anek Latin' }}>All ages welcome</p>
                         </div>
                         <div className="w-full h-[1px] bg-[#D9D9D9]" />
                         <div className="flex items-center gap-4">
                             <div className="w-10 h-10 bg-[#E4E4E4] rounded-[10px] flex items-center justify-center">
-                                <Ticket size={20} className="text-[#686868]" />
+                                <img src="/mobile_icons/event clicking/ticket.svg" className="w-[22px] h-[22px]" alt="Ticket" />
                             </div>
-                            <p className="text-[15px] font-medium text-black uppercase">Reservation required</p>
+                            <p className="text-[15px] font-medium text-black uppercase" style={{ fontFamily: 'Anek Latin' }}>Reservation required</p>
                         </div>
                     </div>
+                    <button className="text-[14px] font-bold text-black flex items-center gap-1">
+                        Read more
+                        <ChevronRight size={12} className="text-black transform translate-y-[0.5px]" />
+                    </button>
                 </div>
 
                 {/* More Section */}
                 <div className="mb-14">
-                    <h2 className="text-[20px] font-semibold text-black tracking-tight mb-4 mt-[-20px]">More</h2>
+                    <h2 className="text-[20px] font-semibold text-black tracking-tight mb-4 mt-[-20px]" style={{ fontFamily: 'Anek Latin' }}>More</h2>
                     <div className="space-y-4">
-                        {(venue.faqs && venue.faqs.length > 0) && (
-                            <div
-                                onClick={() => toggleAccordion('faq')}
-                                className="w-full h-[61px] border border-[#686868] rounded-[15px] flex items-center justify-between px-5 cursor-pointer"
-                            >
-                                <span className="text-[15px] font-semibold text-black">Frequently Asked Questions</span>
-                                <ChevronDown size={20} className={`text-[#686868] transition-transform ${openAccordion === 'faq' ? 'rotate-180' : ''}`} />
-                            </div>
-                        )}
-                        {venue.terms && (
-                            <div
-                                onClick={() => toggleAccordion('terms')}
-                                className="w-full h-[61px] border border-[#686868] rounded-[15px] flex items-center justify-between px-5 cursor-pointer"
-                            >
-                                <span className="text-[15px] font-semibold text-black">Restaurant Terms & Conditions</span>
-                                <ChevronDown size={20} className={`text-[#686868] transition-transform ${openAccordion === 'terms' ? 'rotate-180' : ''}`} />
-                            </div>
-                        )}
+                        <div className="w-full h-[61px] border border-[#686868] rounded-[15px] flex items-center justify-between px-5 cursor-pointer" onClick={() => toggleAccordion('faq')}>
+                            <span className="text-[15px] font-semibold text-black">Frequently Asked Questions</span>
+                            <ChevronDown size={20} className={`text-[#686868] transition-transform ${openAccordion === 'faq' ? 'rotate-180' : ''}`} />
+                        </div>
+                        <div className="w-full h-[61px] border border-[#686868] rounded-[15px] flex items-center justify-between px-5 cursor-pointer" onClick={() => toggleAccordion('terms')}>
+                            <span className="text-[15px] font-semibold text-black">Restaurant Terms & Conditions</span>
+                            <ChevronDown size={20} className={`text-[#686868] transition-transform ${openAccordion === 'terms' ? 'rotate-180' : ''}`} />
+                        </div>
                     </div>
                 </div>
 
                 {/* Footer Booking Bar */}
                 <div className="relative mx-auto mt-10 w-full h-[83px] bg-[#F5F5F5] rounded-[40px] flex items-center justify-between px-4 z-10 gap-2">
                     <div className="flex-1 flex items-center justify-between bg-white rounded-full px-4 h-[51px] border border-[#D9D9D9]">
-                        <span className="text-[17px] font-medium text-black whitespace-nowrap">{guests} guests</span>
+                        <span className="text-[17px] font-medium text-black whitespace-nowrap" style={{ fontFamily: 'Anek Latin' }}>{guests} guests</span>
                         <ChevronDown size={18} className="text-black opacity-60" />
                     </div>
                     <button 
                         onClick={handleBook}
-                        className="flex-1 h-[51px] bg-black text-white rounded-[40px] font-medium text-[18px] active:scale-95 transition-all flex items-center justify-center leading-none px-2"
+                        className="flex-1 h-[51px] bg-black text-white rounded-[40px] font-medium text-[18px] active:scale-95 transition-all flex items-center justify-center leading-none px-2" 
+                        style={{ fontFamily: 'Anek Latin' }}
                     >
                         Book a table
                     </button>
@@ -267,11 +269,9 @@ export default function MobileDiningDetails({ venue, offers }: MobileDiningDetai
             <AuthModal
                 isOpen={isLoginModalOpen}
                 onClose={() => setIsLoginModalOpen(false)}
-                onSuccess={() => router.push(`/dining/venue/${venue.id}/book`)}
+                onSuccess={() => router.push(`/dining/venue/${encodeURIComponent(venue.name)}/book`)}
             />
         </div>
     );
 }
 
-// Import missing icons
-import { Share2, Users, Ticket } from 'lucide-react';

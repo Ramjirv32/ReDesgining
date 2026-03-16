@@ -48,17 +48,22 @@ func Login(phone string) (*models.User, error) {
 }
 
 func GetByID(id string) (*models.User, error) {
-	objID, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return nil, err
-	}
 	collection := config.GetDB().Collection("users")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	var u models.User
-	if err := collection.FindOne(ctx, bson.M{"_id": objID}).Decode(&u); err != nil {
-		return nil, errors.New("user not found")
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err == nil {
+		if err := collection.FindOne(ctx, bson.M{"_id": objID}).Decode(&u); err == nil {
+			return &u, nil
+		}
 	}
-	return &u, nil
+
+	// Fallback to phone search if ID is not a valid hex or not found by _id
+	if err := collection.FindOne(ctx, bson.M{"phone": id}).Decode(&u); err == nil {
+		return &u, nil
+	}
+
+	return nil, errors.New("user not found")
 }

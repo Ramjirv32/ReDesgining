@@ -37,10 +37,10 @@ interface RealDining {
     };
 }
 
-async function getVenueData(id: string): Promise<RealDining | null> {
+async function getVenueData(name: string): Promise<RealDining | null> {
     try {
         const base = process.env.NEXT_PUBLIC_BACKEND_URL;
-        const res = await fetch(`${base}/api/dining/${id}`, {
+        const res = await fetch(`${base}/api/dining/${encodeURIComponent(name)}`, {
             next: { revalidate: 60 },
         });
         if (!res.ok) return null;
@@ -51,10 +51,10 @@ async function getVenueData(id: string): Promise<RealDining | null> {
     }
 }
 
-async function getVenueOffers(id: string): Promise<OfferRecord[]> {
+async function getVenueOffers(name: string): Promise<OfferRecord[]> {
     try {
         const base = process.env.NEXT_PUBLIC_BACKEND_URL;
-        const res = await fetch(`${base}/api/dining/${id}/offers`, {
+        const res = await fetch(`${base}/api/dining/${encodeURIComponent(name)}/offers`, {
             next: { revalidate: 60 },
         });
         if (!res.ok) return [];
@@ -66,9 +66,10 @@ async function getVenueOffers(id: string): Promise<OfferRecord[]> {
     }
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
-    const { id } = await params;
-    const venue = await getVenueData(id);
+export async function generateMetadata({ params }: { params: Promise<{ name: string }> }): Promise<Metadata> {
+    const { name } = await params;
+    const decodedName = decodeURIComponent(name);
+    const venue = await getVenueData(decodedName);
     if (!venue) return { title: 'Not Found | Ticpin' };
     return {
         title: `${venue.name} | Dining | Ticpin`,
@@ -81,13 +82,14 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     };
 }
 
-export default async function DiningVenueDetailPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params;
-    const [venue, offers] = await Promise.all([getVenueData(id), getVenueOffers(id)]);
+export default async function DiningVenueDetailPage({ params }: { params: Promise<{ name: string }> }) {
+    const { name } = await params;
+    const decodedName = decodeURIComponent(name);
+    const [venue, offers] = await Promise.all([getVenueData(decodedName), getVenueOffers(decodedName)]);
 
     if (!venue) {
         notFound();
     }
 
-    return <DiningVenueDetailClient venue={venue} id={id} offers={offers} />;
+    return <DiningVenueDetailClient venue={venue} id={venue.id} offers={offers} />;
 }

@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"ticpin-backend/config"
 	"ticpin-backend/models"
 
@@ -106,10 +107,24 @@ func RequireSelfUser(c *fiber.Ctx) error {
 	}
 
 	authUserID := c.Locals("userId").(string)
-	if authUserID != targetUserID {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "forbidden: you can only access your own profile"})
+	authPhone, _ := c.Locals("phone").(string)
+
+	// Debug logging
+	fmt.Printf("DEBUG: RequireSelfUser - targetUserID: %s, authUserID: %s, authPhone: %s\n", targetUserID, authUserID, authPhone)
+
+	// Allow if matches either hex ID or phone number
+	if authUserID == targetUserID || (authPhone != "" && authPhone == targetUserID) {
+		return c.Next()
 	}
-	return c.Next()
+
+	return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+		"error": "forbidden: you can only access your own data",
+		"debug": fiber.Map{
+			"target": targetUserID,
+			"authId": authUserID,
+			"phone":  authPhone,
+		},
+	})
 }
 
 func RequireCategoryApproval(category string) fiber.Handler {

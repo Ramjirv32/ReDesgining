@@ -32,5 +32,11 @@ func AdminLogin(c *fiber.Ctx) error {
 	if err := config.SetAuthCookies(c, "admin", adminEmail, "admin", true, nil); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "failed to create session"})
 	}
-	return c.JSON(fiber.Map{"message": "admin login successful", "email": adminEmail})
+	return c.JSON(fiber.Map{
+		"message":  "admin login successful",
+		"email":    adminEmail,
+		"id":       "admin",
+		"isAdmin":  true,
+		"vertical": "admin",
+	})
 }

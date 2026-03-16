@@ -26,20 +26,33 @@ func Create(p *models.Profile) error {
 }
 
 func GetByUserID(userID string) (*models.Profile, error) {
-	objID, err := primitive.ObjectIDFromHex(userID)
-	if err != nil {
-		return nil, err
-	}
-
 	collection := config.GetDB().Collection("profiles")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	var p models.Profile
-	if err := collection.FindOne(ctx, bson.M{"userId": objID}).Decode(&p); err != nil {
-		return nil, err
+	objID, err := primitive.ObjectIDFromHex(userID)
+	if err == nil {
+		if err := collection.FindOne(ctx, bson.M{"userId": objID}).Decode(&p); err == nil {
+			return &p, nil
+		}
 	}
-	return &p, nil
+
+	// Fallback: Check if userID is actually a phone number (normalized)
+	phonesToTry := []string{userID}
+	if len(userID) == 10 {
+		phonesToTry = append(phonesToTry, "+91"+userID)
+	} else if len(userID) == 13 && userID[:3] == "+91" {
+		phonesToTry = append(phonesToTry, userID[3:])
+	}
+
+	for _, ph := range phonesToTry {
+		if err := collection.FindOne(ctx, bson.M{"phone": ph}).Decode(&p); err == nil {
+			return &p, nil
+		}
+	}
+
+	return nil, err
 }
 
 func Update(userID string, p *models.Profile) error {

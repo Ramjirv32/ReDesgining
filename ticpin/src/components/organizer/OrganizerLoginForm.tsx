@@ -56,7 +56,9 @@ export default function OrganizerLoginForm({ vertical, api, setupPath, otpPath, 
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : 'Login failed';
             if (msg === 'user_not_found') {
-                router.push(`${signinPath}?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`);
+                // Store password securely in sessionStorage, not in URL
+                sessionStorage.setItem('otp_pending_password', password);
+                router.push(`${signinPath}?email=${encodeURIComponent(email)}`);
             } else {
                 setError(msg === 'invalid_password' ? 'Incorrect password. Please try again.' : msg);
             }

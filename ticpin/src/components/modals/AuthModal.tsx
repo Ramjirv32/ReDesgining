@@ -245,17 +245,33 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialView = 'n
         setLoading(true);
         setError('');
 
-        // Mock OTP verification bypass
-        setTimeout(() => {
-            saveUserSession({ id: number, phone: number, name: '' });
+        try {
+            const res = await fetch('/backend/api/user/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ phone: number }),
+            });
+            
+            const data = await res.json();
+            if (!res.ok) {
+                setError(data.error || 'Login failed');
+                setLoading(false);
+                return;
+            }
+            
+            saveUserSession({ id: data.id || data._id || number, phone: number, name: data.name || '' });
             if (onSuccess) {
                 onClose();
                 onSuccess();
             } else {
                 setView('profile');
             }
+        } catch (err) {
+            setError('Login failed. Please try again.');
+        } finally {
             setLoading(false);
-        }, 1000);
+        }
     };
 
     if (!isOpen) return null;
@@ -369,7 +385,12 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialView = 'n
 
                                     <MenuGrid
                                         isAdmin={isAdmin}
+                                        isOrganizer={!!userSession?.phone}
                                         onViewBookings={() => setView('bookings')}
+                                        onViewDiningBookings={() => { setActiveTab('dining'); setView('bookings'); }}
+                                        onViewEventTickets={() => { setActiveTab('events'); setView('bookings'); }}
+                                        onViewPlayBookings={() => { setActiveTab('play'); setView('bookings'); }}
+                                        onEditProfile={() => { setIsEditingProfile(true); }}
                                         onLogout={() => setShowLogoutConfirm(true)}
                                         onClose={onClose}
                                     />

@@ -3,6 +3,7 @@ package pass
 import (
 	"context"
 	"errors"
+	"fmt"
 	"ticpin-backend/config"
 	"ticpin-backend/models"
 	profilesvc "ticpin-backend/services/profile"
@@ -24,20 +25,34 @@ var defaultBenefits = models.PassBenefits{
 }
 
 func GetActiveByUserID(userID string) (*models.TicpinPass, error) {
-	objID, err := primitive.ObjectIDFromHex(userID)
-	if err != nil {
-		return nil, err
-	}
-
 	col := config.GetDB().Collection("ticpin_passes")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	var p models.TicpinPass
-	if err := col.FindOne(ctx, bson.M{"user_id": objID, "status": "active"}).Decode(&p); err != nil {
-		return nil, err
+	objID, err := primitive.ObjectIDFromHex(userID)
+	if err == nil {
+		if err := col.FindOne(ctx, bson.M{"user_id": objID, "status": "active"}).Decode(&p); err == nil {
+			return &p, nil
+		}
 	}
-	return &p, nil
+
+	// Fallback: search by phone field (normalized)
+	phonesToTry := []string{userID}
+	if len(userID) == 10 {
+		phonesToTry = append(phonesToTry, "+91"+userID)
+	} else if len(userID) == 13 && userID[:3] == "+91" {
+		phonesToTry = append(phonesToTry, userID[3:])
+	}
+
+	for _, ph := range phonesToTry {
+		fmt.Printf("DEBUG: GetActiveByUserID fallback - trying phone: %s\n", ph)
+		if err := col.FindOne(ctx, bson.M{"phone": ph, "status": "active"}).Decode(&p); err == nil {
+			return &p, nil
+		}
+	}
+
+	return nil, errors.New("active pass not found")
 }
 
 func Apply(userID, paymentID string, details models.TicpinPass) (*models.TicpinPass, error) {

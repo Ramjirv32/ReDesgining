@@ -1,15 +1,13 @@
 'use client';
 
 import { ChevronDown } from 'lucide-react';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useUserSession } from '@/lib/auth/user';
 import AuthModal from '@/components/modals/AuthModal';
 
-export default function BookingCard() {
-    const params = useParams();
+export default function BookingCard({ venueName }: { venueName: string }) {
     const router = useRouter();
-    const id = params?.id ?? '';
     const session = useUserSession();
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
@@ -18,7 +16,7 @@ export default function BookingCard() {
             setIsLoginModalOpen(true);
             return;
         }
-        router.push(`/dining/venue/${id}/book`);
+        router.push(`/dining/venue/${encodeURIComponent(venueName)}/book`);
     };
 
     return (
@@ -64,7 +62,7 @@ export default function BookingCard() {
             <AuthModal
                 isOpen={isLoginModalOpen}
                 onClose={() => setIsLoginModalOpen(false)}
-                onSuccess={() => router.push(`/dining/venue/${id}/book`)}
+                onSuccess={() => router.push(`/dining/venue/${encodeURIComponent(venueName)}/book`)}
             />
         </div>
     );

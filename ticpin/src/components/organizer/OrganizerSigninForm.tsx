@@ -42,9 +42,13 @@ export default function OrganizerSigninForm({ vertical, api, setupPath, otpPath,
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const e = params.get('email');
-        const p = params.get('password');
         if (e) setEmail(decodeURIComponent(e));
-        if (p) setPassword(decodeURIComponent(p));
+        // Read password from sessionStorage (set by login form), not from URL
+        const savedPassword = sessionStorage.getItem('otp_pending_password');
+        if (savedPassword) {
+            setPassword(savedPassword);
+            sessionStorage.removeItem('otp_pending_password');
+        }
     }, []);
 
     const handleSignup = async () => {

@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { ChevronDown, ChevronUp, Info, PlusCircle, ExternalLink, Bold, Italic, Underline, Search, Upload } from 'lucide-react';
-import { CATEGORIES, CITIES, CATEGORY_DATA } from './data';
+import { CATEGORIES, CITIES, CATEGORY_DATA, FACILITIES } from './data';
 import { useRouter } from 'next/navigation';
 import { getOrganizerSession } from '@/lib/auth/organizer';
 import { uploadMedia } from '@/lib/api/admin';
@@ -31,7 +31,7 @@ const CreateDiningPage = () => {
     const [venueAddress, setVenueAddress] = useState('');
     const [openingTime, setOpeningTime] = useState('');
     const [minAge, setMinAge] = useState('');
-    const [facilities, setFacilities] = useState('');
+    const [facilities, setFacilities] = useState<string[]>([]);
     const [petFriendly, setPetFriendly] = useState('');
 
     // Payment Details
@@ -69,6 +69,11 @@ const CreateDiningPage = () => {
 
     // Dropdown States
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+    const [dropdownSearch, setDropdownSearch] = useState({
+        category: '',
+        subCategory: '',
+        city: ''
+    });
     const [selections, setSelections] = useState({
         category: 'Select Category',
         subCategory: 'Select Sub-Category',
@@ -87,7 +92,7 @@ const CreateDiningPage = () => {
 
     if (!authChecked) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-[#FFF1A8]/10">
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 via-purple-50 to-pink-50">
                 <div className="bg-white rounded-[24px] p-10 shadow-lg max-w-md text-center space-y-4">
                     <h2 className="text-[24px] font-semibold text-black">Access Restricted</h2>
                     <p className="text-[16px] text-zinc-500">Your dining registration must be approved by the admin before you can create listings.</p>
@@ -184,7 +189,7 @@ const CreateDiningPage = () => {
                 guide: {
                     min_age: Number(minAge) || 0,
                     is_pet_friendly: petFriendly === 'Yes',
-                    facilities: facilities ? [facilities] : [],
+                    facilities: facilities,
                 },
                 event_instructions: diningInstructions,
                 youtube_video_url: youtubeVideoUrl,
@@ -264,7 +269,7 @@ const CreateDiningPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#FFF1A8] bg-opacity-[0.1] overflow-x-hidden">
+        <div className="min-h-screen bg-gradient-to-br from-purple-100 via-purple-50 to-pink-50 overflow-x-hidden">
             <div className="w-full" style={{ zoom: '0.70' }}>
                 <div className="max-w-[1920px] mx-auto px-10 pt-20">
                     {/* Title Section */}
@@ -363,8 +368,18 @@ const CreateDiningPage = () => {
                                         </div>
                                         {openDropdown === 'category' && (
                                             <div className="dropdown-menu">
-                                                <div className="max-h-[300px] overflow-y-auto scrollbar-hide">
-                                                    {CATEGORIES.map((opt) => (
+                                                <div className="p-2 border-b border-[#E1E1E1]">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search category..."
+                                                        value={dropdownSearch.category}
+                                                        onChange={(e) => setDropdownSearch(prev => ({ ...prev, category: e.target.value }))}
+                                                        className="w-full px-3 py-2 text-[16px] border border-[#686868] rounded-[8px] outline-none"
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                                <div className="max-h-[250px] overflow-y-auto scrollbar-hide">
+                                                    {CATEGORIES.filter(opt => opt.toLowerCase().includes(dropdownSearch.category.toLowerCase())).map((opt) => (
                                                         <div key={opt} onClick={() => handleSelect('category', opt)} className="dropdown-item">{opt}</div>
                                                     ))}
                                                 </div>
@@ -381,9 +396,19 @@ const CreateDiningPage = () => {
                                         </div>
                                         {openDropdown === 'subCategory' && (
                                             <div className="dropdown-menu">
-                                                <div className="max-h-[300px] overflow-y-auto scrollbar-hide">
-                                                    {(CATEGORY_DATA[selections.category] || []).length > 0 ? (
-                                                        CATEGORY_DATA[selections.category].map((opt) => (
+                                                <div className="p-2 border-b border-[#E1E1E1]">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search sub-category..."
+                                                        value={dropdownSearch.subCategory}
+                                                        onChange={(e) => setDropdownSearch(prev => ({ ...prev, subCategory: e.target.value }))}
+                                                        className="w-full px-3 py-2 text-[16px] border border-[#686868] rounded-[8px] outline-none"
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                                <div className="max-h-[250px] overflow-y-auto scrollbar-hide">
+                                                    {(CATEGORY_DATA[selections.category] || []).filter(opt => opt.toLowerCase().includes(dropdownSearch.subCategory.toLowerCase())).length > 0 ? (
+                                                        CATEGORY_DATA[selections.category].filter(opt => opt.toLowerCase().includes(dropdownSearch.subCategory.toLowerCase())).map((opt) => (
                                                             <div key={opt} onClick={() => handleSelect('subCategory', opt)} className="dropdown-item">{opt}</div>
                                                         ))
                                                     ) : (
@@ -416,8 +441,18 @@ const CreateDiningPage = () => {
                                         </div>
                                         {openDropdown === 'city' && (
                                             <div className="dropdown-menu">
-                                                <div className="max-h-[300px] overflow-y-auto scrollbar-hide">
-                                                    {CITIES.map((opt) => (
+                                                <div className="p-2 border-b border-[#E1E1E1]">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search city..."
+                                                        value={dropdownSearch.city}
+                                                        onChange={(e) => setDropdownSearch(prev => ({ ...prev, city: e.target.value }))}
+                                                        className="w-full px-3 py-2 text-[16px] border border-[#686868] rounded-[8px] outline-none"
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                                <div className="max-h-[250px] overflow-y-auto scrollbar-hide">
+                                                    {CITIES.filter(opt => opt.toLowerCase().includes(dropdownSearch.city.toLowerCase())).map((opt) => (
                                                         <div key={opt} onClick={() => handleSelect('city', opt)} className="dropdown-item">{opt}</div>
                                                     ))}
                                                 </div>
@@ -683,19 +718,13 @@ const CreateDiningPage = () => {
                                     <div className="flex items-center justify-between">
                                         <span className="text-[25px] font-medium text-black">What time does your dining open? <span className="text-[#E7C200]">*</span></span>
                                         <div className="relative border border-[#686868] rounded-[10px] h-[64px] w-[840px] flex items-center px-6">
-                                            <select value={openingTime} onChange={e => setOpeningTime(e.target.value)} className="w-full appearance-none bg-transparent outline-none text-[25px]">
-                                                <option value="">Select time</option>
-                                                <option value="07:00 AM">07:00 AM</option>
-                                                <option value="08:00 AM">08:00 AM</option>
-                                                <option value="09:00 AM">09:00 AM</option>
-                                                <option value="10:00 AM">10:00 AM</option>
-                                                <option value="11:00 AM">11:00 AM</option>
-                                                <option value="12:00 PM">12:00 PM</option>
-                                                <option value="01:00 PM">01:00 PM</option>
-                                                <option value="05:00 PM">05:00 PM</option>
-                                                <option value="06:00 PM">06:00 PM</option>
-                                            </select>
-                                            <ChevronDown size={24} className="absolute right-6" />
+                                            <input 
+                                                type="text" 
+                                                value={openingTime}
+                                                onChange={(e) => setOpeningTime(e.target.value)}
+                                                placeholder="e.g., 07:00 AM or 12:30 PM"
+                                                className="w-full bg-transparent outline-none text-[25px] placeholder:text-zinc-400"
+                                            />
                                         </div>
                                     </div>
                                     <div className="flex items-center justify-between">
@@ -718,18 +747,39 @@ const CreateDiningPage = () => {
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <span className="text-[25px] font-medium text-black">Choose the facilities available at your restaurant <span className="text-[#E7C200]">*</span></span>
-                                        <div className="relative border border-[#686868] rounded-[10px] h-[64px] w-[840px] flex items-center px-6">
-                                            <select value={facilities} onChange={e => setFacilities(e.target.value)} className="w-full appearance-none bg-transparent outline-none text-[25px]">
-                                                <option value="">Select facilities</option>
-                                                <option value="Parking">Parking</option>
-                                                <option value="WiFi">WiFi</option>
-                                                <option value="AC">Air Conditioning</option>
-                                                <option value="Outdoor Seating">Outdoor Seating</option>
-                                                <option value="Private Dining">Private Dining</option>
-                                                <option value="Live Music">Live Music</option>
-                                                <option value="Valet Parking">Valet Parking</option>
-                                            </select>
-                                            <ChevronDown size={24} className="absolute right-6" />
+                                        <div className="relative">
+                                            <div 
+                                                className="border border-[#686868] rounded-[10px] h-[64px] w-[840px] flex items-center px-6 cursor-pointer"
+                                                onClick={() => setOpenDropdown(openDropdown === 'facilities' ? null : 'facilities')}
+                                            >
+                                                <span className={`text-[25px] ${facilities.length === 0 ? 'text-zinc-400' : 'text-black'}`}>
+                                                    {facilities.length === 0 ? 'Select facilities' : `${facilities.length} selected`}
+                                                </span>
+                                                <ChevronDown size={24} className="absolute right-6" />
+                                            </div>
+                                            {openDropdown === 'facilities' && (
+                                                <div className="absolute top-full left-0 right-0 z-50 bg-white border border-[#686868] rounded-[10px] mt-1 max-h-[300px] overflow-y-auto">
+                                                    <div className="max-h-[250px] overflow-y-auto">
+                                                        {FACILITIES.map((facility) => (
+                                                            <label key={facility} className="flex items-center gap-3 px-6 py-3 hover:bg-zinc-50 cursor-pointer">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={facilities.includes(facility)}
+                                                                    onChange={(e) => {
+                                                                        if (e.target.checked) {
+                                                                            setFacilities([...facilities, facility]);
+                                                                        } else {
+                                                                            setFacilities(facilities.filter(f => f !== facility));
+                                                                        }
+                                                                    }}
+                                                                    className="w-5 h-5 accent-black"
+                                                                />
+                                                                <span className="text-[18px] text-black">{facility}</span>
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="flex items-center justify-between">

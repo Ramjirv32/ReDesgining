@@ -10,11 +10,11 @@ import (
 
 func UserRoutes(app *fiber.App) {
 	api := app.Group("/api")
-	users := api.Group("/users")
+	user := api.Group("/user")
 
-	users.Post("", ctrl.CreateUser)
-	users.Post("/login", ctrl.LoginUser)
-	users.Get("/:id", ctrl.GetUser)
+	user.Post("", ctrl.CreateUser)
+	user.Post("/login", ctrl.LoginUser)
+	user.Get("/:id", ctrl.GetUser)
 
 	api.Get("/coupons/:category", admincoupon.GetCouponsByCategory)
 	api.Get("/offers/:category", adminoffer.GetOffersByCategory)

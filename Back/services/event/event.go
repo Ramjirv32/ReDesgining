@@ -117,6 +117,12 @@ func GetByID(id string, bypassCache bool) (*models.Event, error) {
 	
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
+		// If input is not a valid ObjectID, try fetching by name.
+		e, errNamed := GetByName(id)
+		if errNamed == nil {
+			cache.GlobalCache.Set(cacheKey, e, 5*time.Minute)
+			return e, nil
+		}
 		return nil, err
 	}
 	col := config.EventsCol
@@ -130,6 +136,17 @@ func GetByID(id string, bypassCache bool) (*models.Event, error) {
 	
 	cache.GlobalCache.Set(cacheKey, &e, 5*time.Minute)
 
+	return &e, nil
+}
+
+func GetByName(name string) (*models.Event, error) {
+	col := config.EventsCol
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var e models.Event
+	if err := col.FindOne(ctx, bson.M{"name": name}).Decode(&e); err != nil {
+		return nil, err
+	}
 	return &e, nil
 }
 

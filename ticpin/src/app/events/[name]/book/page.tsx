@@ -7,7 +7,7 @@ import { User, X } from 'lucide-react';
 export default function BookingPage() {
     const router = useRouter();
     const params = useParams();
-    const id = params?.id;
+    const name = params?.name;
 
     return (
         <div className="min-h-screen flex flex-col font-[family-name:var(--font-anek-latin)]" style={{ background: 'linear-gradient(180deg, #ECE8FD 0%, #FFFFFF 100%)' }}>
@@ -38,7 +38,7 @@ export default function BookingPage() {
                 {/* Large Layout Box 1 */}
                 <div
                     className="w-full h-[165px] bg-[#D9D9D9] rounded-[10px] flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={() => router.push(`/events/${id}/book/tickets`)}
+                    onClick={() => router.push(`/events/${name}/book/tickets`)}
                 >
                     <span className="text-[25px] font-medium text-black text-center" style={{ fontFamily: 'var(--font-anek-latin)' }}>
                         {`{SAMPLE LAYOUT IMAGE}`}
@@ -49,7 +49,7 @@ export default function BookingPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div
                         className="h-[165px] bg-[#D9D9D9] rounded-[10px] flex items-center justify-center px-2 cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => router.push(`/events/${id}/book/tickets`)}
+                        onClick={() => router.push(`/events/${name}/book/tickets`)}
                     >
                         <span className="text-[12px] font-medium text-black text-center" style={{ fontFamily: 'var(--font-anek-latin)' }}>
                             {`{SAMPLE LAYOUT IMAGE}`}
@@ -57,7 +57,7 @@ export default function BookingPage() {
                     </div>
                     <div
                         className="h-[165px] bg-[#D9D9D9] rounded-[10px] flex items-center justify-center px-2 cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => router.push(`/events/${id}/book/tickets`)}
+                        onClick={() => router.push(`/events/${name}/book/tickets`)}
                     >
                         <span className="text-[12px] font-medium text-black text-center" style={{ fontFamily: 'var(--font-anek-latin)' }}>
                             {`{SAMPLE LAYOUT IMAGE}`}
@@ -65,7 +65,7 @@ export default function BookingPage() {
                     </div>
                     <div
                         className="h-[165px] bg-[#D9D9D9] rounded-[10px] flex items-center justify-center px-2 cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => router.push(`/events/${id}/book/tickets`)}
+                        onClick={() => router.push(`/events/${name}/book/tickets`)}
                     >
                         <span className="text-[12px] font-medium text-black text-center" style={{ fontFamily: 'var(--font-anek-latin)' }}>
                             {`{SAMPLE LAYOUT IMAGE}`}
@@ -76,7 +76,7 @@ export default function BookingPage() {
                 {/* Large Layout Box 2 */}
                 <div
                     className="w-full h-[224px] bg-[#D9D9D9] rounded-[10px] flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={() => router.push(`/events/${id}/book/tickets`)}
+                    onClick={() => router.push(`/events/${name}/book/tickets`)}
                 >
                     <span className="text-[15px] font-medium text-black text-center" style={{ fontFamily: 'var(--font-anek-latin)' }}>
                         {`{SAMPLE LAYOUT IMAGE}`}

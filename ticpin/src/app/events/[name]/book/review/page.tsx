@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { ChevronRight, Trash2, X, Tag, CheckCircle2, ChevronDown } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { bookingApi, OfferItem, PaymentOrderResponse } from '@/lib/api/booking';
+import { profileApi } from '@/lib/api/profile';
 import Link from 'next/link';
 import { useUserSession } from '@/lib/auth/user';
 
@@ -38,10 +39,11 @@ function loadScript(src: string): Promise<void> {
 export default function ReviewBookingPage() {
     const router = useRouter();
     const params = useParams();
-    const id = params?.id as string;
+    const name = params?.name as string;
     const session = useUserSession();
     const billingRef = useRef<HTMLDivElement>(null);
     const [cart, setCart] = useState<CartData | null>(null);
+    const [eventData, setEventData] = useState<{id: string; name: string} | null>(null);
 
 
     const [offers, setOffers] = useState<OfferItem[]>([]);
@@ -161,13 +163,33 @@ export default function ReviewBookingPage() {
 
     // Also pre-fill with session data if available and state is empty
     useEffect(() => {
-        if (session) {
-            setBilling(prev => ({
-                ...prev,
-                name: prev.name && prev.name !== '' ? prev.name : (session.name || ''),
-                phone: prev.phone && prev.phone !== '' ? prev.phone : (session.phone || ''),
-            }));
-        }
+        const loadProfileData = async () => {
+            if (session?.id) {
+                const profile = await profileApi.getProfile(session.id);
+                if (profile) {
+                    setBilling(prev => ({
+                        ...prev,
+                        name: prev.name && prev.name !== '' ? prev.name : (profile.name || ''),
+                        phone: prev.phone && prev.phone !== '' ? prev.phone : (profile.phone || ''),
+                        address: prev.address && prev.address !== '' ? prev.address : (profile.address || ''),
+                        city: prev.city && prev.city !== '' ? prev.city : (profile.district || ''),
+                        state: prev.state && prev.state !== '' ? prev.state : (profile.state || ''),
+                        nationality: prev.nationality && prev.nationality !== 'Indian' ? prev.nationality : (profile.country || 'Indian'),
+                    }));
+                    if (profile.email && !email) {
+                        setEmail(profile.email);
+                    }
+                } else {
+                    // Fallback to session data
+                    setBilling(prev => ({
+                        ...prev,
+                        name: prev.name && prev.name !== '' ? prev.name : (session.name || ''),
+                        phone: prev.phone && prev.phone !== '' ? prev.phone : (session.phone || ''),
+                    }));
+                }
+            }
+        };
+        loadProfileData();
     }, [session]);
 
     // Persist changes
@@ -186,12 +208,13 @@ export default function ReviewBookingPage() {
     }, [step]);
 
     useEffect(() => {
-        if (id && cart?.type) {
+        const eventId = eventData?.id;
+        if (eventId && cart?.type) {
             const fetchOffers = cart.type === 'dining'
-                ? bookingApi.getDiningOffers(id)
+                ? bookingApi.getDiningOffers(eventId)
                 : cart.type === 'play'
-                    ? bookingApi.getPlayOffers(id)
-                    : bookingApi.getEventOffers(id);
+                    ? bookingApi.getPlayOffers(eventId)
+                    : bookingApi.getEventOffers(eventId);
 
             fetchOffers.then(res => {
                 setOffers(res || []);
@@ -206,7 +229,7 @@ export default function ReviewBookingPage() {
                 setAvailableCoupons([]);
             });
         }
-    }, [id, cart?.type, session?.id]);
+    }, [eventData?.id, cart?.type, session?.id]);
 
     const orderAmount = cart?.totalPrice ?? 0;
     const bookingFee = Math.round(orderAmount * 0.1);
@@ -263,7 +286,7 @@ export default function ReviewBookingPage() {
         setCouponError('');
         setCouponSuccess('');
         try {
-            const result = await bookingApi.validateCoupon(c, id, amount, session?.id);
+            const result = await bookingApi.validateCoupon(c, eventData?.id || cart?.eventId || '', amount, session?.id);
             setCouponDiscount(Math.round(result.discount_amount));
             setAppliedCoupon(c.toUpperCase());
             setCouponSuccess(`✓ Coupon applied! You save ₹${Math.round(result.discount_amount)}`);

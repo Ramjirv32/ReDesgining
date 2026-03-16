@@ -47,11 +47,11 @@ interface EventData {
     terms?: string;
 }
 
-async function getEventData(id: string): Promise<EventData | null> {
+async function getEventData(name: string): Promise<EventData | null> {
     try {
         const base = process.env.NEXT_PUBLIC_BACKEND_URL;
-        const res = await fetch(`${base}/api/events/${id}`, {
-            next: { revalidate: 60 },
+        const res = await fetch(`${base}/api/events/${encodeURIComponent(name)}`, {
+            next: { revalidate: 60 }, // ISR: revalidate every 60s
         });
         if (!res.ok) return null;
         return await res.json();
@@ -61,9 +61,9 @@ async function getEventData(id: string): Promise<EventData | null> {
     }
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
-    const { id } = await params;
-    const event = await getEventData(id);
+export async function generateMetadata({ params }: { params: Promise<{ name: string }> }): Promise<Metadata> {
+    const { name } = await params;
+    const event = await getEventData(name);
     if (!event) return { title: 'Not Found | Ticpin' };
     return {
         title: `${event.name} | Events | Ticpin`,
@@ -76,13 +76,14 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     };
 }
 
-export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params;
-    const event = await getEventData(id);
+export default async function EventDetailPage({ params }: { params: Promise<{ name: string }> }) {
+    const { name } = await params;
+    const decodedName = decodeURIComponent(name);
+    const event = await getEventData(decodedName);
 
     if (!event) {
         notFound();
     }
 
-    return <EventDetailClient event={event} id={id} />;
+    return <EventDetailClient event={event} id={event.id} />;
 }

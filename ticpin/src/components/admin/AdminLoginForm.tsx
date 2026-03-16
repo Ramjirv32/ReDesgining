@@ -39,7 +39,7 @@ export default function AdminLoginForm() {
         if (!email || !password) { setError('Email and password are required'); return; }
         setLoading(true); setError('');
         try {
-            const res = await fetch('/backend/api/organizer/login', {
+            const res = await fetch('/backend/api/admin/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),
@@ -47,13 +47,15 @@ export default function AdminLoginForm() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Login failed');
 
-            // For admin, we skip the normal OTP flow if possible or handle it here
-            // The user requested admin can login using these methods, 
-            // the existing backend Login service handles admin credentials specifically.
+            saveOrganizerSession({
+                id: data.id || data._id || 'admin',
+                email: data.email,
+                vertical: 'admin',
+                isAdmin: true,
+                categoryStatus: {},
+            });
 
-            // Trigger OTP send like we do for regular organizers but for admin
-            sessionStorage.setItem('otp_pending_email', email);
-            router.push('/admin/login/verify-otp'); // We'll create this or use the existing one
+            router.replace('/admin');
         } catch (e: any) {
             setError(e.message);
         } finally { setLoading(false); }

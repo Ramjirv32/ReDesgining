@@ -55,6 +55,11 @@ export default function EditDiningPage() {
     const [submitLoading, setSubmitLoading] = useState(false);
     const [submitMsg, setSubmitMsg] = useState('');
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+    const [dropdownSearch, setDropdownSearch] = useState({
+        category: '',
+        subCategory: '',
+        city: ''
+    });
     const [selections, setSelections] = useState({ category: 'Select Category', subCategory: 'Select Sub-Category', city: 'Select City' });
 
     useEffect(() => {
@@ -213,7 +218,7 @@ export default function EditDiningPage() {
     const accentColor = '#E7C200';
 
     if (loadingData) return (
-        <div className="min-h-screen flex items-center justify-center bg-[#FFF1A8]/10">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 via-purple-50 to-pink-50">
             <div className="text-center space-y-4">
                 <div className="w-10 h-10 border-4 border-[#E7C200] border-t-transparent rounded-full animate-spin mx-auto" />
                 <p className="text-[16px] text-zinc-500">Loading dining listing...</p>
@@ -222,7 +227,7 @@ export default function EditDiningPage() {
     );
 
     return (
-        <div className="min-h-screen bg-[#FFF1A8]/10 overflow-x-hidden">
+        <div className="min-h-screen bg-gradient-to-br from-purple-100 via-purple-50 to-pink-50 overflow-x-hidden">
             <div className="w-full" style={{ zoom: '0.70' }}>
                 <div className="max-w-[1920px] mx-auto px-10 pt-20">
                     {/* Back + Title */}
@@ -273,24 +278,68 @@ export default function EditDiningPage() {
                             <h2 className="text-[30px] font-medium text-black mb-6">Dining type <span style={{ color: accentColor }}>*</span></h2>
                             <div className="w-full h-[1px] bg-[#AEAEAE] mb-8" />
                             <div className="grid grid-cols-2 gap-12">
-                                {['category', 'subCategory'].map((key) => (
-                                    <div key={key} className="space-y-2">
-                                        <label className="text-[20px] font-medium text-[#686868]">{key === 'category' ? 'Category' : 'Sub-Category'} <span style={{ color: accentColor }}>*</span></label>
-                                        <div className="relative w-full">
-                                            <div onClick={() => toggleDropdown(key)} className="relative border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[8px] cursor-pointer">
-                                                <span className={`text-[20px] ${selections[key as 'category' | 'subCategory'].startsWith('Select') ? 'text-[#686868]' : 'text-black'}`}>{selections[key as 'category' | 'subCategory']}</span>
-                                                {openDropdown === key ? <ChevronUp className="absolute right-6" size={24} /> : <ChevronDown className="absolute right-6" size={24} />}
-                                            </div>
-                                            {openDropdown === key && (
-                                                <div className="absolute top-full left-0 right-0 z-50 bg-white border border-[#686868] rounded-[10px] mt-1 max-h-[300px] overflow-y-auto">
-                                                    {(key === 'category' ? CATEGORIES : (CATEGORY_DATA[selections.category] || [])).map(opt => (
-                                                        <div key={opt} onClick={() => handleSelect(key, opt)} className="px-6 py-3 hover:bg-zinc-50 cursor-pointer text-[18px]">{opt}</div>
+                                {/* Category Dropdown */}
+                                <div className="space-y-2">
+                                    <label className="text-[20px] font-medium text-[#686868]">Category <span style={{ color: accentColor }}>*</span></label>
+                                    <div className="relative w-full">
+                                        <div onClick={() => toggleDropdown('category')} className="relative border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[8px] cursor-pointer">
+                                            <span className={`text-[20px] ${selections.category.startsWith('Select') ? 'text-[#686868]' : 'text-black'}`}>{selections.category}</span>
+                                            {openDropdown === 'category' ? <ChevronUp className="absolute right-6" size={24} /> : <ChevronDown className="absolute right-6" size={24} />}
+                                        </div>
+                                        {openDropdown === 'category' && (
+                                            <div className="absolute top-full left-0 right-0 z-50 bg-white border border-[#686868] rounded-[10px] mt-1 max-h-[300px] overflow-y-auto">
+                                                <div className="p-2 border-b border-[#E1E1E1]">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search category..."
+                                                        value={dropdownSearch.category}
+                                                        onChange={(e) => setDropdownSearch(prev => ({ ...prev, category: e.target.value }))}
+                                                        className="w-full px-3 py-2 text-[16px] border border-[#686868] rounded-[8px] outline-none"
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                                <div className="max-h-[250px] overflow-y-auto">
+                                                    {CATEGORIES.filter(opt => opt.toLowerCase().includes(dropdownSearch.category.toLowerCase())).map(opt => (
+                                                        <div key={opt} onClick={() => handleSelect('category', opt)} className="px-6 py-3 hover:bg-zinc-50 cursor-pointer text-[18px]">{opt}</div>
                                                     ))}
                                                 </div>
-                                            )}
-                                        </div>
+                                            </div>
+                                        )}
                                     </div>
-                                ))}
+                                </div>
+                                {/* Sub-Category Dropdown */}
+                                <div className="space-y-2">
+                                    <label className="text-[20px] font-medium text-[#686868]">Sub-Category <span style={{ color: accentColor }}>*</span></label>
+                                    <div className="relative w-full">
+                                        <div onClick={() => toggleDropdown('subCategory')} className="relative border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[8px] cursor-pointer">
+                                            <span className={`text-[20px] ${selections.subCategory.startsWith('Select') ? 'text-[#686868]' : 'text-black'}`}>{selections.subCategory}</span>
+                                            {openDropdown === 'subCategory' ? <ChevronUp className="absolute right-6" size={24} /> : <ChevronDown className="absolute right-6" size={24} />}
+                                        </div>
+                                        {openDropdown === 'subCategory' && (
+                                            <div className="absolute top-full left-0 right-0 z-50 bg-white border border-[#686868] rounded-[10px] mt-1 max-h-[300px] overflow-y-auto">
+                                                <div className="p-2 border-b border-[#E1E1E1]">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search sub-category..."
+                                                        value={dropdownSearch.subCategory}
+                                                        onChange={(e) => setDropdownSearch(prev => ({ ...prev, subCategory: e.target.value }))}
+                                                        className="w-full px-3 py-2 text-[16px] border border-[#686868] rounded-[8px] outline-none"
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                                <div className="max-h-[250px] overflow-y-auto">
+                                                    {(CATEGORY_DATA[selections.category] || []).filter(opt => opt.toLowerCase().includes(dropdownSearch.subCategory.toLowerCase())).length > 0 ? (
+                                                        CATEGORY_DATA[selections.category].filter(opt => opt.toLowerCase().includes(dropdownSearch.subCategory.toLowerCase())).map(opt => (
+                                                            <div key={opt} onClick={() => handleSelect('subCategory', opt)} className="px-6 py-3 hover:bg-zinc-50 cursor-pointer text-[18px]">{opt}</div>
+                                                        ))
+                                                    ) : (
+                                                        <div className="px-6 py-3 text-[#AEAEAE] text-[18px]">Nil</div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         </section>
 
@@ -308,7 +357,19 @@ export default function EditDiningPage() {
                                         </div>
                                         {openDropdown === 'city' && (
                                             <div className="absolute top-full left-0 right-0 z-50 bg-white border border-[#686868] rounded-[10px] mt-1 max-h-[300px] overflow-y-auto">
-                                                {CITIES.map(opt => <div key={opt} onClick={() => handleSelect('city', opt)} className="px-6 py-3 hover:bg-zinc-50 cursor-pointer text-[18px]">{opt}</div>)}
+                                                <div className="p-2 border-b border-[#E1E1E1]">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search city..."
+                                                        value={dropdownSearch.city}
+                                                        onChange={(e) => setDropdownSearch(prev => ({ ...prev, city: e.target.value }))}
+                                                        className="w-full px-3 py-2 text-[16px] border border-[#686868] rounded-[8px] outline-none"
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                                <div className="max-h-[250px] overflow-y-auto">
+                                                    {CITIES.filter(opt => opt.toLowerCase().includes(dropdownSearch.city.toLowerCase())).map(opt => <div key={opt} onClick={() => handleSelect('city', opt)} className="px-6 py-3 hover:bg-zinc-50 cursor-pointer text-[18px]">{opt}</div>)}
+                                                </div>
                                             </div>
                                         )}
                                     </div>

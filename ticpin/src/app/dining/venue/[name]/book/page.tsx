@@ -15,7 +15,7 @@ interface RealDining {
 const DiningBooking: React.FC = () => {
     const router = useRouter();
     const params = useParams();
-    const id = params?.id ?? '';
+    const name = params?.name ?? '';
 
     const [venue, setVenue] = useState<RealDining | null>(null);
     const [loading, setLoading] = useState(true);
@@ -27,15 +27,15 @@ const DiningBooking: React.FC = () => {
     const [coupons, setCoupons] = useState<any[]>([]);
 
     useEffect(() => {
-        if (!id) return;
-        fetch(`/backend/api/dining/${id}`, { credentials: 'include' })
+        if (!name || typeof name !== 'string') return;
+        fetch(`/backend/api/dining/${encodeURIComponent(name)}`, { credentials: 'include' })
             .then(r => r.json())
             .then((data: RealDining) => {
                 setVenue(data);
                 setLoading(false);
             })
             .catch(() => setLoading(false));
-    }, [id]);
+    }, [name]);
 
     useEffect(() => {
         fetch('/backend/api/coupons/dining')
@@ -70,7 +70,7 @@ const DiningBooking: React.FC = () => {
         };
 
         sessionStorage.setItem('ticpin_cart', JSON.stringify(cartItem));
-        router.push(`/events/${venue.id}/book/review`);
+        router.push(`/events/${encodeURIComponent(venue.name)}/book/review`);
     };
 
     if (loading) {

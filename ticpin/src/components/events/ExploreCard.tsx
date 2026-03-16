@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import Image from 'next/image';
 
 const categories = [
   {
@@ -76,7 +75,7 @@ const categories = [
 
 export default function ExploreCard() {
   return (
-    <div className="flex flex-wrap gap-6 md:gap-8 justify-center sm:justify-start">
+    <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-4 md:gap-8 justify-center sm:justify-start">
       {categories.map((cat, index) => (
         <Link
           key={index}
@@ -84,20 +83,18 @@ export default function ExploreCard() {
           className="group block"
         >
           <div
-            className="w-[173px] h-[232px] rounded-[30px] border border-[#E1E1E1] relative overflow-hidden flex flex-col items-center pt-6 transition-all duration-300 hover:shadow-lg"
+            className="w-full sm:w-[180px] h-[220px] sm:h-[240px] rounded-[30px] md:rounded-[40px] border border-[#E1E1E1] relative overflow-hidden flex flex-col items-center pt-6 transition-all duration-300 hover:shadow-lg active:scale-95"
             style={{
               background: `linear-gradient(180deg, #FFFFFF 0%, ${cat.color} 100%)`
             }}
           >
-            <h3 className="text-[18px] md:text-[22px] font-medium text-black text-center z-10 px-2 leading-tight">
+            <h3 className="text-[16px] sm:text-[18px] md:text-[22px] font-medium text-black text-center z-10 px-2 leading-tight uppercase tracking-tight">
               {cat.title}
             </h3>
             <div className={`flex-1 w-full flex items-center justify-center ${cat.padding || 'p-10'}`}>
-              <Image
+              <img
                 src={cat.icon}
                 alt={cat.title}
-                width={140}
-                height={140}
                 className="max-w-full max-h-full object-contain"
               />
             </div>

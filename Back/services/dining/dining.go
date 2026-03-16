@@ -46,7 +46,7 @@ func GetAll(limit int, after string) ([]models.Dining, string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	filter := bson.M{}
+	filter := bson.M{"status": "approved"}
 	if after != "" {
 		if oid, err := primitive.ObjectIDFromHex(after); err == nil {
 			filter["_id"] = bson.M{"$gt": oid}
@@ -79,7 +79,7 @@ func GetAll(limit int, after string) ([]models.Dining, string, error) {
 }
 
 func GetByID(id string, bypassCache bool) (*models.Dining, error) {
-	
+
 	cacheKey := "dining:" + id
 	if !bypassCache {
 		if val, ok := cache.GlobalCache.Get(cacheKey); ok {
@@ -89,9 +89,14 @@ func GetByID(id string, bypassCache bool) (*models.Dining, error) {
 		}
 	}
 
-	
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
+		// If input is not a valid ObjectID, try fetching by name.
+		d, errNamed := GetByName(id)
+		if errNamed == nil {
+			cache.GlobalCache.Set(cacheKey, d, 5*time.Minute)
+			return d, nil
+		}
 		return nil, err
 	}
 	col := config.DiningsCol
@@ -102,9 +107,19 @@ func GetByID(id string, bypassCache bool) (*models.Dining, error) {
 		return nil, err
 	}
 
-	
 	cache.GlobalCache.Set(cacheKey, &d, 5*time.Minute)
 
+	return &d, nil
+}
+
+func GetByName(name string) (*models.Dining, error) {
+	col := config.DiningsCol
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var d models.Dining
+	if err := col.FindOne(ctx, bson.M{"name": name}).Decode(&d); err != nil {
+		return nil, err
+	}
 	return &d, nil
 }
 

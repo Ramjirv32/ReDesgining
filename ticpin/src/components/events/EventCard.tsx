@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import Image from 'next/image';
 
 interface EventCardProps {
   id?: string;
@@ -21,37 +20,35 @@ export default function EventCard({
   image,
 }: EventCardProps) {
   return (
-    <Link href={`/events/${id}`} className="block h-full">
+    <Link href={`/events/${encodeURIComponent(name)}`} className="block">
       <div
         className="overflow-hidden cursor-pointer w-full sm:w-auto flex flex-col hover:shadow-lg transition-all"
         style={{
           width: '285px',
-          height: '560px',
           background: 'white',
           borderRadius: '10px',
           border: '1px solid #686868'
         }}
       >
-        <div className="flex-shrink-0 bg-gray-100 overflow-hidden flex items-center justify-center relative"
+        <div className="flex-shrink-0 bg-gray-100 overflow-hidden flex items-center justify-center"
           style={{ height: '380px' }}
         >
-          <Image
+          <img
             src={image}
             alt={name}
-            fill
-            className="object-contain"
+            className="w-full h-full object-contain"
           />
         </div>
-        <div className="p-4 flex flex-col flex-1">
+        <div className="p-4 flex flex-col">
           <div className="text-xs font-semibold text-purple-600 mb-2">
             {date} / {time}
           </div>
-          <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">
+          <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 uppercase">
             {name}
           </h3>
           <p className="text-sm text-gray-600 mb-3">{location}</p>
-          <p className="text-xs text-gray-500 mt-auto">
-            Tickets starting at <span className="font-semibold text-gray-700">{ticketPrice}</span>
+          <p className="text-xs text-zinc-500 mt-auto">
+            Tickets starting at <span className="font-semibold text-zinc-800">{ticketPrice}</span>
           </p>
         </div>
       </div>

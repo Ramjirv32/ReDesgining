@@ -35,14 +35,50 @@ export default function PassPage() {
     const router = useRouter();
     const session = useUserSession();
     const [isAuthOpen, setIsAuthOpen] = useState(false);
+    const [hasActivePass, setHasActivePass] = useState(false);
+    const [checkingPass, setCheckingPass] = useState(false);
 
     useEffect(() => {
         window.scrollTo(0, 0);
     }, []);
 
+    useEffect(() => {
+        if (session?.id) {
+            checkPassStatus();
+        } else {
+            setHasActivePass(false);
+            setCheckingPass(false);
+        }
+    }, [session?.id]);
+
+    const checkPassStatus = async () => {
+        if (!session?.id) {
+            setCheckingPass(false);
+            return;
+        }
+        setCheckingPass(true);
+        try {
+            const res = await fetch(`/backend/api/pass/user/${session.id}`, { credentials: 'include' });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.status === 'active') {
+                    setHasActivePass(true);
+                }
+            }
+        } catch (e) {
+            console.error('Failed to check pass status:', e);
+        } finally {
+            setCheckingPass(false);
+        }
+    };
+
     const handleBuy = () => {
         if (!session) {
             setIsAuthOpen(true);
+            return;
+        }
+        if (hasActivePass) {
+            router.push('/my-pass');
             return;
         }
         router.push('/pass/checkout');
@@ -70,10 +106,11 @@ export default function PassPage() {
 
                 <button
                     onClick={handleBuy}
-                    className="px-10 py-4 rounded-full text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all"
+                    disabled={checkingPass}
+                    className="px-10 py-4 rounded-full text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-60"
                     style={{ background: 'linear-gradient(135deg, #7B2FF7 0%, #5B1FD4 100%)' }}
                 >
-                    Get Ticpin Pass
+                    {checkingPass ? 'Checking...' : hasActivePass ? 'View My Pass' : 'Get Ticpin Pass'}
                 </button>
                 <p className="text-xs text-zinc-400 mt-3">No auto-renewal. Cancel-free. One-time purchase.</p>
             </section>
@@ -117,9 +154,10 @@ export default function PassPage() {
                     <p className="text-white/70 text-sm mb-6">Valid for 3 months. Covers turf, dining & events.</p>
                     <button
                         onClick={handleBuy}
-                        className="w-full py-4 rounded-full bg-white text-[#7B2FF7] font-bold text-base hover:bg-zinc-100 transition"
+                        disabled={checkingPass}
+                        className="w-full py-4 rounded-full bg-white text-[#7B2FF7] font-bold text-base hover:bg-zinc-100 transition disabled:opacity-60"
                     >
-                        Buy for ₹999
+                        {checkingPass ? 'Checking...' : hasActivePass ? 'View My Pass' : 'Buy for ₹999'}
                     </button>
                 </div>
             </section>

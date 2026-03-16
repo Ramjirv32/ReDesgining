@@ -45,9 +45,9 @@ interface MobileHomeProps {
 
 export default function MobileHome({ events, dinings, plays }: MobileHomeProps) {
     const router = useRouter();
-    const { city } = useLocation();
+    const city = useLocation();
     const session = useUserSession();
-    const [windowWidth, setWindowWidth] = useState(390);
+    const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 390);
     const [placeholderIndex, setPlaceholderIndex] = useState(0);
     const [searchQuery, setSearchQuery] = useState('');
     const placeholders = ["events", "dining", "play"];
@@ -63,9 +63,9 @@ export default function MobileHome({ events, dinings, plays }: MobileHomeProps) 
         ? [...events.slice(0, 5), ...events.slice(0, 5), ...events.slice(0, 5)]
         : [];
     const limelightItems = dinings.slice(0, 5);
-    const scrollLimelight = [...limelightItems, ...limelightItems, ...limelightItems];
+    const scrollLimelight = limelightItems.length > 0 ? [...limelightItems, ...limelightItems, ...limelightItems] : [];
     const playItems = plays.slice(0, 5);
-    const scrollPlay = [...playItems, ...playItems, ...playItems];
+    const scrollPlay = playItems.length > 0 ? [...playItems, ...playItems, ...playItems] : [];
 
     useEffect(() => {
         const handleResize = () => setWindowWidth(window.innerWidth);
@@ -161,7 +161,7 @@ export default function MobileHome({ events, dinings, plays }: MobileHomeProps) 
             className="md:hidden min-h-screen w-full overflow-x-hidden font-sans selection:bg-[#866BFF]/20"
             style={{ background: 'white' }}
         >
-            {/* Header Section */}
+            {/* 1. Header Section */}
             <header className="px-6 pt-7 pb-4">
                 <div className="flex justify-between items-center mb-10">
                     <div className="flex items-center gap-2">
@@ -172,17 +172,15 @@ export default function MobileHome({ events, dinings, plays }: MobileHomeProps) 
                         className="w-[35px] h-[35px] rounded-full bg-[#D9D9D9] flex items-center justify-center overflow-hidden cursor-pointer"
                         onClick={() => router.push('/profile')}
                     >
-                        {session?.photoURL ? (
-                            <Image src={session.photoURL} alt="Profile" width={35} height={35} className="object-cover" />
+                        {session?.profilePhoto ? (
+                            <Image src={session.profilePhoto} alt="Profile" width={35} height={35} className="object-cover" />
                         ) : (
-                            <span className="text-[14px] font-bold text-zinc-600">
-                                {session?.displayName?.charAt(0) || session?.email?.charAt(0) || '?'}
-                            </span>
+                            <img src="/profile icon.svg" alt="Profile" className="w-5 h-5" />
                         )}
                     </div>
                 </div>
 
-                {/* Search Bar */}
+                {/* 2. Search Bar */}
                 <div className="relative w-full h-[48px] bg-white rounded-[28px] border border-[#AEAEAE] flex items-center px-5 mb-14">
                     <Search size={22} className="text-[#AEAEAE] flex-shrink-0" />
                     <input
@@ -210,10 +208,10 @@ export default function MobileHome({ events, dinings, plays }: MobileHomeProps) 
                     )}
                 </div>
 
-                {/* Horizontal Divider */}
+                {/* 3. Horizontal Divider */}
                 <div className="w-full h-[1px] bg-[#AEAEAE] opacity-100 mb-6 mt-[-20px]" />
 
-                {/* Categories Section */}
+                {/* 4. Categories Section */}
                 <div className="grid grid-cols-3 gap-4 px-1">
                     {/* Dining */}
                     <div className="flex flex-col items-center" onClick={() => router.push('/dining')}>
@@ -221,7 +219,7 @@ export default function MobileHome({ events, dinings, plays }: MobileHomeProps) 
                             className="w-full aspect-[106/125] rounded-[25px] border-[#D9D9D9] border flex flex-col items-center justify-center gap-2 cursor-pointer active:scale-95 transition-transform"
                             style={{ background: 'linear-gradient(180deg, #FFFFFF 50%, #E2D9FF 100%)' }}
                         >
-                            <Utensils size={40} className="text-[#866BFF]" />
+                            <img src="/mobile_icons/Dining 1.svg" alt="Dining" className="w-[60%] h-[60%] object-contain" />
                             <span className="text-[15px] font-medium text-black uppercase tracking-tight">DINING</span>
                         </div>
                     </div>
@@ -232,7 +230,7 @@ export default function MobileHome({ events, dinings, plays }: MobileHomeProps) 
                             className="w-full aspect-[106/125] rounded-[30px] border-[#D9D9D9] border flex flex-col items-center justify-center gap-2 cursor-pointer active:scale-95 transition-transform"
                             style={{ background: 'linear-gradient(180deg, #FFFFFF 50%, #E2D9FF 100%)' }}
                         >
-                            <Music size={40} className="text-[#866BFF]" />
+                            <img src="/mobile_icons/Events 1.svg" alt="Events" className="w-[60%] h-[60%] object-contain" />
                             <span className="text-[15px] font-medium text-black uppercase tracking-tight">EVENTS</span>
                         </div>
                     </div>
@@ -243,14 +241,14 @@ export default function MobileHome({ events, dinings, plays }: MobileHomeProps) 
                             className="w-full aspect-[106/125] rounded-[30px] border-[#D9D9D9] border flex flex-col items-center justify-center gap-2 cursor-pointer active:scale-95 transition-transform"
                             style={{ background: 'linear-gradient(180deg, #FFFFFF 50%, #FFF4C1 100%)' }}
                         >
-                            <Trophy size={40} className="text-[#DFFF00]" />
+                            <img src="/mobile_icons/Pickelball 1.svg" alt="Play" className="w-[60%] h-[60%] object-contain" />
                             <span className="text-[15px] font-medium text-black uppercase tracking-tight">PLAY</span>
                         </div>
                     </div>
                 </div>
             </header>
 
-            {/* Sections Container */}
+            {/* 5. Sections Container */}
             <main className="mt-12 space-y-16 pb-12">
                 {/* Hot Right Now Section */}
                 <section>
@@ -278,7 +276,7 @@ export default function MobileHome({ events, dinings, plays }: MobileHomeProps) 
                             return (
                                 <div
                                     key={`${event.id}-${idx}`}
-                                    onClick={() => router.push(`/events/${event.id}`)}
+                                    onClick={() => router.push(`/events/${encodeURIComponent(event.name)}`)}
                                     className="flex-shrink-0 w-[280px] max-w-[85vw] bg-white rounded-[20px] border-[0.5px] border-[#AEAEAE] overflow-hidden snap-center snap-always transition-all duration-150 ease-out origin-center cursor-pointer active:scale-95"
                                     style={{
                                         transform: `scale(${scale})`,
@@ -288,11 +286,10 @@ export default function MobileHome({ events, dinings, plays }: MobileHomeProps) 
                                     {/* Top Poster Section */}
                                     <div className="w-full aspect-[280/390] relative overflow-hidden bg-[#110D2C]">
                                         {event.portrait_image_url ? (
-                                            <Image
+                                            <img
                                                 src={event.portrait_image_url}
                                                 alt={event.name}
-                                                fill
-                                                className="object-cover"
+                                                className="w-full h-full object-cover"
                                             />
                                         ) : (
                                             <div className="w-full h-full p-6 flex flex-col items-center justify-center relative">
@@ -308,13 +305,28 @@ export default function MobileHome({ events, dinings, plays }: MobileHomeProps) 
                                                         }}>
                                                         THE TICPIN<br />PLAY<br />FESTIVAL
                                                     </h1>
+                                                    
+                                                    {/* Divider and Logo from Ticpin-website design */}
+                                                    <div className="flex items-center gap-2.5 w-full max-w-[180px] my-6 relative">
+                                                        <div className="h-[0.5px] bg-gradient-to-r from-transparent via-white/50 to-white flex-1" />
+                                                        <div className="w-[8px] h-[8px] bg-white rotate-45 border-[0.5px] border-white/20 shadow-[0_0_6px_white]" />
+                                                        <div className="h-[0.5px] bg-gradient-to-l from-transparent via-white/50 to-white flex-1" />
+                                                    </div>
+
+                                                    <div className="text-center">
+                                                        <p className="text-[20px] font-light text-white italic tracking-tight leading-tight opacity-90" style={{ fontFamily: 'serif' }}>
+                                                            GET UP TO
+                                                        </p>
+                                                        <p className="text-[34px] font-bold text-white leading-[0.85] mt-1" style={{ fontFamily: 'serif' }}>
+                                                            50% off*
+                                                        </p>
+                                                    </div>
                                                 </div>
                                             </div>
                                         )}
 
-                                        {/* Overlay Icons */}
                                         <div className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white flex items-center justify-center border border-white">
-                                            <Bell size={16} className="text-black" />
+                                            <img src="/mobile_icons/fluent_speaker-2-28-regular.svg" alt="Mute/Unmute" className="w-[20px] h-[20px]" />
                                         </div>
                                     </div>
 
@@ -333,17 +345,16 @@ export default function MobileHome({ events, dinings, plays }: MobileHomeProps) 
                                             {event.ticket_starts_from ? `Starts at ₹${event.ticket_starts_from}` : "Price TBA"}
                                         </p>
 
-                                        {/* Fire/Hot Icon */}
                                         <div className="absolute top-5 right-5 w-10 h-10 rounded-[12px] bg-[#EFEFEF] flex items-center justify-center mt-[-10px]">
-                                            <span className="text-[16px]">🔥</span>
+                                            <img src="/mobile_icons/Vector 2.svg" alt="Hot" className="w-[20px] h-[20px] object-contain" />
                                         </div>
                                     </div>
                                 </div>
                             );
                         }) : (
-                            <div className="w-full flex items-center justify-center py-10">
-                                <p className="text-zinc-400 text-[14px]">No events available</p>
-                            </div>
+                             <div className="w-full flex items-center justify-center py-10">
+                                 <p className="text-zinc-400 text-[14px]">No events available</p>
+                             </div>
                         )}
                     </div>
                 </section>
@@ -374,7 +385,7 @@ export default function MobileHome({ events, dinings, plays }: MobileHomeProps) 
                             return (
                                 <div
                                     key={`limelight-${idx}`}
-                                    onClick={() => router.push(`/dining/venue/${item.id}`)}
+                                    onClick={() => router.push(`/dining/venue/${encodeURIComponent(item.name)}`)}
                                     className="flex-shrink-0 w-[326px] max-w-[85vw] bg-white rounded-[15px] border-[0.5px] border-[#AEAEAE] snap-center snap-always transition-all duration-150 ease-out origin-center overflow-hidden cursor-pointer active:scale-95"
                                     style={{
                                         transform: `scale(${scale})`,
@@ -383,7 +394,7 @@ export default function MobileHome({ events, dinings, plays }: MobileHomeProps) 
                                 >
                                     <div className="w-full aspect-[326/182] bg-zinc-100 relative">
                                         {item.landscape_image_url ? (
-                                            <Image src={item.landscape_image_url} alt={item.name} fill className="object-cover" />
+                                            <img src={item.landscape_image_url} alt={item.name} className="w-full h-full object-cover" />
                                         ) : (
                                             <div className="absolute inset-0 flex items-center justify-center text-zinc-300 font-bold tracking-widest text-xs">DINING PREVIEW</div>
                                         )}
@@ -416,8 +427,8 @@ export default function MobileHome({ events, dinings, plays }: MobileHomeProps) 
                 {/* Offers Section */}
                 <section className="px-6 mt-[-50px]">
                     <h2 className="text-[20px] font-medium text-black text-center mb-8 uppercase tracking-wide">OFFERS</h2>
-                    <div className="w-full h-[109px] bg-gradient-to-r from-[#AC9BF7] to-[#866BFF] rounded-[15px] border border-[#AC9BF7] relative overflow-hidden flex items-center justify-center px-8 mt-[-10px]">
-                        <p className="text-white text-[20px] font-bold uppercase">Exclusive Deals</p>
+                    <div className="w-full h-[109px] bg-[#AC9BF7] rounded-[15px] border border-[#AC9BF7] relative overflow-hidden flex items-center justify-center px-8 mt-[-10px]">
+                         <p className="text-white text-[20px] font-bold uppercase">Exclusive Deals</p>
                     </div>
                 </section>
 
@@ -457,7 +468,7 @@ export default function MobileHome({ events, dinings, plays }: MobileHomeProps) 
                                     {/* Top Image Section */}
                                     <div className="w-full aspect-[326/182] rounded-t-[19px] relative bg-zinc-100">
                                         {item.landscape_image_url ? (
-                                            <Image src={item.landscape_image_url} alt={item.name} fill className="object-cover rounded-t-[19px]" />
+                                            <img src={item.landscape_image_url} alt={item.name} className="w-full h-full object-cover rounded-t-[19px]" />
                                         ) : (
                                             <div className="absolute inset-0 flex items-center justify-center text-zinc-400 font-bold uppercase tracking-widest text-xs">TURF IMAGE</div>
                                         )}
@@ -501,10 +512,10 @@ export default function MobileHome({ events, dinings, plays }: MobileHomeProps) 
                     </div>
                 </section>
 
-                {/* Footer Banner (Ticpin Pass) */}
+                {/* Footer Banner */}
                 <div className="px-6">
-                    <div className="rounded-[15px] overflow-hidden group relative h-[120px] mt-[-25px] bg-gradient-to-r from-[#866BFF] to-[#5331EA] flex items-center justify-center">
-                        <p className="text-white text-[24px] font-bold">TICPIN PASS</p>
+                    <div className="rounded-[15px] overflow-hidden group relative h-[120px] mt-[-25px]">
+                        <img src="/ticpin banner.jpg" alt="Ticpin Pass" className="w-full h-full object-cover" />
                     </div>
                 </div>
             </main>
@@ -512,7 +523,7 @@ export default function MobileHome({ events, dinings, plays }: MobileHomeProps) 
             {/* Footer Section */}
             <footer className="bg-[#212121] px-8 py-10 flex flex-col items-center text-center">
                 <div className="mb-6">
-                    <span className="text-white text-[24px] font-black tracking-tighter">TICPIN</span>
+                    <img src="/ticpin-logo-white1.svg" alt="TICPIN" className="h-[32px] w-auto" />
                 </div>
 
                 <div className="flex flex-col gap-4 mb-8 font-medium">
@@ -539,6 +550,3 @@ export default function MobileHome({ events, dinings, plays }: MobileHomeProps) 
         </div>
     );
 }
-
-// Import missing icons
-import { Utensils, Music, Trophy } from 'lucide-react';

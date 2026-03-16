@@ -99,17 +99,23 @@ const CreatePlayPage = () => {
 
     const saveDraft = useCallback(() => {
         if (!draftKey.current) return;
-        const draft = {
+        
+        // Separate sensitive data (payment) from non-sensitive data
+        const sensitiveData = { payment, pocs, salesNotifs, paymentVerified };
+        const nonSensitiveData = {
             venueName, portraitUrl, landscapeUrl, secondaryBannerUrl, videoUrl,
             galleryUrls, instagramLink, googleMapLink, venueAddress,
             timeHour, timeMinute, timePeriod, closeHour, closeMinute, closePeriod, facilities, petFriendly,
-            payment, pocs, salesNotifs,
             showInstructions, showYoutube, showProhibited, showFaqs,
             playInstructions, youtubeVideoUrl, prohibitedItems, faqs,
-            courts, selections, paymentVerified,
+            courts, selections,
             descriptionHtml: editorRef.current?.innerHTML ?? '',
         };
-        try { localStorage.setItem(draftKey.current, JSON.stringify(draft)); } catch { /* storage full – silent */ }
+        
+        // Sensitive data in sessionStorage (cleared on tab close, not sent to server)
+        try { sessionStorage.setItem(`${draftKey.current}_sensitive`, JSON.stringify(sensitiveData)); } catch { /* silent */ }
+        // Non-sensitive data in localStorage (persists)
+        try { localStorage.setItem(draftKey.current, JSON.stringify(nonSensitiveData)); } catch { /* silent */ }
     }, [venueName, portraitUrl, landscapeUrl, secondaryBannerUrl, videoUrl,
         galleryUrls, instagramLink, googleMapLink, venueAddress,
         timeHour, timeMinute, timePeriod, facilities, petFriendly,
@@ -127,7 +133,10 @@ const CreatePlayPage = () => {
     }, [saveDraft]);
 
     const clearAllDraft = useCallback(() => {
-        if (draftKey.current) localStorage.removeItem(draftKey.current);
+        if (draftKey.current) {
+            localStorage.removeItem(draftKey.current);
+            sessionStorage.removeItem(`${draftKey.current}_sensitive`);
+        }
         setVenueName(''); setPortraitUrl(''); setLandscapeUrl(''); setSecondaryBannerUrl('');
         setVideoUrl(''); setGalleryUrls([]); setInstagramLink(''); setGoogleMapLink('');
         setVenueAddress(''); setTimeHour(''); setTimeMinute(''); setTimePeriod('AM');
@@ -153,6 +162,8 @@ const CreatePlayPage = () => {
 
         // ── Restore draft if it exists ──
         let draftPaymentHasData = false;
+        
+        // Restore non-sensitive data from localStorage
         try {
             const raw = localStorage.getItem(draftKey.current);
             if (raw) {
@@ -174,9 +185,6 @@ const CreatePlayPage = () => {
                 if (d.closePeriod) setClosePeriod(d.closePeriod);
                 if (d.facilities?.length) setFacilities(d.facilities);
                 if (d.petFriendly) setPetFriendly(d.petFriendly);
-                if (d.payment) setPayment(d.payment);
-                if (d.pocs?.length) setPocs(d.pocs);
-                if (d.salesNotifs?.length) setSalesNotifs(d.salesNotifs);
                 setShowInstructions(!!d.showInstructions);
                 setShowYoutube(!!d.showYoutube);
                 setShowProhibited(!!d.showProhibited);
@@ -187,7 +195,6 @@ const CreatePlayPage = () => {
                 if (d.faqs?.length) setFaqs(d.faqs);
                 if (d.courts?.length) setCourts(d.courts);
                 if (d.selections) setSelections(d.selections);
-                if (d.paymentVerified) setPaymentVerified(d.paymentVerified);
                 // Restore rich-text editor HTML after DOM is ready
                 if (d.descriptionHtml) {
                     requestAnimationFrame(() => {
@@ -197,10 +204,23 @@ const CreatePlayPage = () => {
                         }
                     });
                 }
-                draftPaymentHasData = !!(d.payment?.accountNumber || d.payment?.ifsc || d.payment?.gstin);
-                return; // draft restored — skip verified-setup fetch
             }
-        } catch { /* corrupted draft – fall through to fetch */ }
+        } catch { /* corrupted draft – continue */ }
+        
+        // Restore sensitive data (payment, pocs) from sessionStorage
+        try {
+            const sensitiveRaw = sessionStorage.getItem(`${draftKey.current}_sensitive`);
+            if (sensitiveRaw) {
+                const s = JSON.parse(sensitiveRaw);
+                if (s.payment) setPayment(s.payment);
+                if (s.pocs?.length) setPocs(s.pocs);
+                if (s.salesNotifs?.length) setSalesNotifs(s.salesNotifs);
+                if (s.paymentVerified) setPaymentVerified(s.paymentVerified);
+                draftPaymentHasData = !!(s.payment?.accountNumber || s.payment?.ifsc || s.payment?.gstin);
+            }
+        } catch { /* corrupted – continue */ }
+        
+        if (draftPaymentHasData) return; // draft restored — skip verified-setup fetch
 
         // ── No draft: fetch verified bank/GST from organizer setup ──
         if (!draftPaymentHasData) {

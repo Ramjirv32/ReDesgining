@@ -1,6 +1,7 @@
 package dining
 
 import (
+	"net/url"
 	diningservice "ticpin-backend/services/dining"
 
 	"github.com/gofiber/fiber/v2"
@@ -21,8 +22,17 @@ func GetAllDinings(c *fiber.Ctx) error {
 }
 
 func GetDiningByID(c *fiber.Ctx) error {
+	id := c.Params("id")
+	// Robustly decode the ID to handle single or double encoding
+	for {
+		decoded, err := url.PathUnescape(id)
+		if err != nil || decoded == id {
+			break
+		}
+		id = decoded
+	}
 	bypass := c.Query("bypassCache") == "true"
-	d, err := diningservice.GetByID(c.Params("id"), bypass)
+	d, err := diningservice.GetByID(id, bypass)
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "dining not found"})
 	}
