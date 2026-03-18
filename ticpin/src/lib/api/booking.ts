@@ -8,6 +8,7 @@ export interface BookingTicketItem {
 
 export interface CreateBookingPayload {
     user_email: string;
+    user_name: string;
     event_id: string;
     event_name: string;
     tickets: BookingTicketItem[];
@@ -22,6 +23,7 @@ export interface CreateBookingPayload {
 
 export interface CreateDiningPayload {
     user_email: string;
+    user_name: string;
     dining_id: string;
     venue_name: string;
     date: string;
@@ -38,6 +40,7 @@ export interface CreateDiningPayload {
 
 export interface CreatePlayPayload {
     user_email: string;
+    user_name: string;
     play_id: string;
     venue_name: string;
     date: string;
@@ -215,9 +218,14 @@ export const bookingApi = {
         if (!res.ok) return [];
         return Array.isArray(data) ? data : [];
     },
-    /** Fetch all bookings for a user by email */
-    getUserBookings: async (email: string): Promise<any[]> => {
-        const res = await fetch(`${BASE}/bookings/user/${encodeURIComponent(email)}`, {
+    /** Fetch all bookings for a user by multiple identifiers */
+    getUserBookings: async ({ email, phone, userId }: { email?: string; phone?: string; userId?: string }): Promise<any[]> => {
+        const params = new URLSearchParams();
+        if (email) params.append('email', email);
+        if (phone) params.append('phone', phone);
+        if (userId) params.append('userId', userId);
+        
+        const res = await fetch(`${BASE}/bookings/user/history?${params.toString()}`, {
             credentials: 'include',
         });
         const data = await res.json();

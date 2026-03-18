@@ -19,19 +19,29 @@ export default function BookingCard({ venueName }: { venueName: string }) {
         router.push(`/dining/venue/${encodeURIComponent(venueName)}/book`);
     };
 
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    const formatDate = (date: Date) => {
+        const isToday = date.toDateString() === today.toDateString();
+        return `${isToday ? 'Today' : 'Tomorrow'}, ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase()}`;
+    };
+
     return (
         <div className="w-full md:w-[392px] h-auto bg-white border border-[#d9d9d9] rounded-[24px] shadow-sm p-[24px] flex flex-col overflow-visible">
             {/* Title */}
-            <h3 className="text-[32px] font-medium text-black leading-normal tracking-tight mb-6">Book a table</h3>
+            <h3 className="text-[32px] font-medium text-black leading-normal tracking-tight mb-6 uppercase">Book a table</h3>
 
             {/* Inputs Grid */}
             <div className="grid grid-cols-2 gap-x-4 mb-4">
                 {/* Date Input */}
                 <div className="space-y-1">
-                    <label className="text-[20px] font-medium text-[#666666]/80 leading-none block">Date</label>
+                    <label className="text-[20px] font-medium text-[#666666]/80 leading-none block uppercase">Date</label>
                     <div className="relative">
                         <select className="w-full h-[40px] px-3 bg-white rounded-[12px] border border-[#d9d9d9] text-[15px] text-zinc-900 font-medium appearance-none cursor-pointer focus:outline-none">
-                            <option>Today, FEB 27</option>
+                            <option>{formatDate(today)}</option>
+                            <option>{formatDate(tomorrow)}</option>
                         </select>
                         <ChevronDown size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-900 pointer-events-none" />
                     </div>
@@ -39,10 +49,12 @@ export default function BookingCard({ venueName }: { venueName: string }) {
 
                 {/* Guests Input */}
                 <div className="space-y-1">
-                    <label className="text-[20px] font-medium text-[#666666]/80 leading-none block">Guests</label>
+                    <label className="text-[20px] font-medium text-[#666666]/80 leading-none block uppercase">Guests</label>
                     <div className="relative">
                         <select className="w-full h-[40px] px-3 bg-white rounded-[12px] border border-[#d9d9d9] text-[15px] text-zinc-900 font-medium appearance-none cursor-pointer focus:outline-none">
-                            <option>2 guests</option>
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                                <option key={n}>{n} {n === 1 ? 'guest' : 'guests'}</option>
+                            ))}
                         </select>
                         <ChevronDown size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-900 pointer-events-none" />
                     </div>

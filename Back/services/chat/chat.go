@@ -3,6 +3,7 @@ package chat
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"time"
 
 	"ticpin-backend/config"
@@ -100,16 +101,20 @@ func getSessions(c *fiber.Ctx) error {
 	userType := c.Query("userType", "")
 	userID := c.Query("userId", "")
 	category := c.Query("category", "")
-	
-	// Check isAdmin from cookie or locals if token is provided
-	// For now, check if user is admin based on special token or credentials
-	// In the future, this should use middleware.RequireAuth
-	isAdmin := c.Query("admin", "false") == "true"
+	limitStr := c.Query("limit", "10")
+	pageStr := c.Query("page", "1")
+	limit, _ := strconv.Atoi(limitStr)
+	page, _ := strconv.Atoi(pageStr)
+	if limit <= 0 { limit = 10 }
+	if page <= 0 { page = 1 }
+	skip := (page - 1) * limit
 
+	isAdmin := c.Query("admin", "false") == "true"
 	filter := bson.M{}
 
 	if isAdmin {
-		// Admin can see all sessions, optionally filtered by category
+		// Admin can see all active sessions, only where message exists
+		filter["last_message"] = bson.M{"$ne": ""}
 		if category != "" {
 			filter["category"] = category
 		}
@@ -123,7 +128,13 @@ func getSessions(c *fiber.Ctx) error {
 		}
 	}
 
-	opts := options.Find().SetSort(bson.M{"updated_at": -1})
+	opts := options.Find().
+		SetSort(bson.M{"updated_at": -1}).
+		SetLimit(int64(limit)).
+		SetSkip(int64(skip))
+
+	count, _ := config.ChatSessionsCol.CountDocuments(context.Background(), filter)
+	totalPages := (count + int64(limit) - 1) / int64(limit)
 
 	cursor, err := config.ChatSessionsCol.Find(context.Background(), filter, opts)
 	if err != nil {
@@ -132,7 +143,7 @@ func getSessions(c *fiber.Ctx) error {
 	}
 	defer cursor.Close(context.Background())
 
-	var sessions []models.ChatSession
+	sessions := []models.ChatSession{}
 	if err := cursor.All(context.Background(), &sessions); err != nil {
 		log.Error().Err(err).Msg("Failed to decode sessions")
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch sessions"})
@@ -144,7 +155,7 @@ func getSessions(c *fiber.Ctx) error {
 			models.ChatSession
 			UnreadCount int64 `json:"unreadCount" bson:"unreadCount"`
 		}
-		var sessionsWithUnread []SessionWithUnread
+		sessionsWithUnread := []SessionWithUnread{}
 
 		for _, session := range sessions {
 			unreadCount, _ := config.ChatMessagesCol.CountDocuments(context.Background(), bson.M{
@@ -157,10 +168,18 @@ func getSessions(c *fiber.Ctx) error {
 				UnreadCount: unreadCount,
 			})
 		}
-		return c.JSON(sessionsWithUnread)
+		return c.JSON(fiber.Map{
+			"sessions":    sessionsWithUnread,
+			"totalPages":  totalPages,
+			"currentPage": page,
+		})
 	}
 
-	return c.JSON(sessions)
+	return c.JSON(fiber.Map{
+		"sessions":    sessions,
+		"totalPages":  totalPages,
+		"currentPage": page,
+	})
 }
 
 func getMessages(c *fiber.Ctx) error {

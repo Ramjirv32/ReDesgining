@@ -152,31 +152,32 @@ const CreatePlayPage = () => {
     }, []);
 
     useEffect(() => {
-        const session = getOrganizerSession();
-        if (!session || session.categoryStatus?.play !== 'approved') {
-            setAuthChecked(false);
-            return;
-        }
-        setAuthChecked(true);
-        draftKey.current = `play_create_draft_${session.id}`;
+        const timer = setTimeout(() => {
+            const session = getOrganizerSession();
+            if (!session || session.categoryStatus?.play !== 'approved') {
+                setAuthChecked(false);
+                return;
+            }
+            setAuthChecked(true);
+            draftKey.current = `play_create_draft_${session.id}`;
 
-        // ── Restore draft if it exists ──
-        let draftPaymentHasData = false;
-        
-        // Restore non-sensitive data from localStorage
-        try {
-            const raw = localStorage.getItem(draftKey.current);
-            if (raw) {
-                const d = JSON.parse(raw);
-                if (d.venueName) setVenueName(d.venueName);
-                if (d.portraitUrl) setPortraitUrl(d.portraitUrl);
-                if (d.landscapeUrl) setLandscapeUrl(d.landscapeUrl);
-                if (d.secondaryBannerUrl) setSecondaryBannerUrl(d.secondaryBannerUrl);
-                if (d.videoUrl) setVideoUrl(d.videoUrl);
-                if (d.galleryUrls?.length) setGalleryUrls(d.galleryUrls);
-                if (d.instagramLink) setInstagramLink(d.instagramLink);
-                if (d.googleMapLink) setGoogleMapLink(d.googleMapLink);
-                if (d.venueAddress) setVenueAddress(d.venueAddress);
+            // ── Restore draft if it exists ──
+            let draftPaymentHasData = false;
+            
+            // Restore non-sensitive data from localStorage
+            try {
+                const raw = localStorage.getItem(draftKey.current);
+                if (raw) {
+                    const d = JSON.parse(raw);
+                    if (d.venueName) setVenueName(d.venueName);
+                    if (d.portraitUrl) setPortraitUrl(d.portraitUrl);
+                    if (d.landscapeUrl) setLandscapeUrl(d.landscapeUrl);
+                    if (d.secondaryBannerUrl) setSecondaryBannerUrl(d.secondaryBannerUrl);
+                    if (d.videoUrl) setVideoUrl(d.videoUrl);
+                    if (d.galleryUrls?.length) setGalleryUrls(d.galleryUrls);
+                    if (d.instagramLink) setInstagramLink(d.instagramLink);
+                    if (d.googleMapLink) setGoogleMapLink(d.googleMapLink);
+                    if (d.venueAddress) setVenueAddress(d.venueAddress);
                 if (d.timeHour) setTimeHour(d.timeHour);
                 if (d.timeMinute) setTimeMinute(d.timeMinute);
                 if (d.timePeriod) setTimePeriod(d.timePeriod);
@@ -241,6 +242,8 @@ const CreatePlayPage = () => {
                     setPayment(p => ({ ...p, organizerName: session.email.split('@')[0] }));
                 });
         }
+        }, 100);
+        return () => clearTimeout(timer);
     }, []);
 
     if (!authChecked) {

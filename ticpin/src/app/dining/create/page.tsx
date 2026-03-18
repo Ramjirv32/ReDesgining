@@ -81,13 +81,16 @@ const CreateDiningPage = () => {
     });
 
     useEffect(() => {
-        const session = getOrganizerSession();
-        if (!session || session.categoryStatus?.dining !== 'approved') {
-            setAuthChecked(false);
-        } else {
-            setAuthChecked(true);
-            setPayment(p => ({ ...p, organizerName: session.email.split('@')[0] }));
-        }
+        const timer = setTimeout(() => {
+            const session = getOrganizerSession();
+            if (!session || session.categoryStatus?.dining !== 'approved') {
+                setAuthChecked(false);
+            } else {
+                setAuthChecked(true);
+                setPayment(p => ({ ...p, organizerName: session.email.split('@')[0] }));
+            }
+        }, 100);
+        return () => clearTimeout(timer);
     }, []);
 
     if (!authChecked) {
@@ -166,6 +169,8 @@ const CreateDiningPage = () => {
         if (selections.category === 'Select Category') { setSubmitMsg('Please select a category.'); return; }
         if (selections.city === 'Select City') { setSubmitMsg('Please select a city.'); return; }
         if (!portraitUrl || !landscapeUrl) { setSubmitMsg('Please upload both portrait and landscape card images.'); return; }
+        if (galleryUrls.length < 2) { setSubmitMsg('Please upload at least 2 gallery images.'); return; }
+        if (menuUrls.length < 2) { setSubmitMsg('Please upload at least 2 menu images.'); return; }
 
         setSubmitLoading(true); setSubmitMsg('');
         try {
@@ -673,6 +678,21 @@ const CreateDiningPage = () => {
                                     </div>
                                 </div>
                             </div>
+                            
+                            {/* Gallery Image Preview */}
+                            {galleryUrls.length > 0 && (
+                                <div className="mt-6 grid grid-cols-4 gap-4">
+                                    {galleryUrls.map((url, idx) => (
+                                        <div key={idx} className="relative group">
+                                            <img src={url} alt={`Gallery ${idx + 1}`} className="w-full h-24 object-cover rounded-lg" />
+                                            <button
+                                                onClick={() => setGalleryUrls(prev => prev.filter((_, i) => i !== idx))}
+                                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >✕</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </section>
 
                         {/* Menu Section */}
@@ -706,6 +726,21 @@ const CreateDiningPage = () => {
                                     </div>
                                 </div>
                             </div>
+                            
+                            {/* Menu Image Preview */}
+                            {menuUrls.length > 0 && (
+                                <div className="mt-6 grid grid-cols-4 gap-4">
+                                    {menuUrls.map((url, idx) => (
+                                        <div key={idx} className="relative group">
+                                            <img src={url} alt={`Menu ${idx + 1}`} className="w-full h-24 object-cover rounded-lg" />
+                                            <button
+                                                onClick={() => setMenuUrls(prev => prev.filter((_, i) => i !== idx))}
+                                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >✕</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </section>
 
                         {/* Dining Guide Section */}

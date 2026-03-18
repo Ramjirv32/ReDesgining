@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Anek_Latin, Anek_Tamil, Inter } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
-import Navbar from "@/components/layout/Navbar";
+import NavbarWrapper from "@/components/layout/NavbarWrapper";
+import Providers from "@/components/providers/Providers";
 
 const anekLatin = Anek_Latin({
   subsets: ["latin"],
@@ -59,9 +60,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${anekLatin.variable} ${inter.variable} ${anekTamil.variable} ${anekTamilCondensed.variable} font-sans antialiased`}>
-        <Navbar />
-        {children}
+      <body className={`${anekLatin.variable} ${inter.variable} ${anekTamil.variable} ${anekTamilCondensed.variable} font-sans antialiased text-black`}>
+        <Providers>
+          <NavbarWrapper />
+          {children}
+        </Providers>
       </body>
     </html>
   );

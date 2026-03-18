@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 export interface UserSession {
     id: string;
     phone: string;
+    email?: string;
     name?: string;
     profilePhoto?: string;
 }

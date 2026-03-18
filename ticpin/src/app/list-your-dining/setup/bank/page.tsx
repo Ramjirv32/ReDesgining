@@ -21,8 +21,18 @@ function BankDetailsContent() {
     const [loading, setLoading] = useState(true);
     const [certChecked, setCertChecked] = useState(false);
     const [error, setError] = useState('');
+    const [hasCheckedSession, setHasCheckedSession] = useState(false);
 
     useEffect(() => {
+        const timer = setTimeout(() => {
+            setHasCheckedSession(true);
+        }, 100);
+        return () => clearTimeout(timer);
+    }, []);
+
+    useEffect(() => {
+        if (!hasCheckedSession) return;
+        
         const session = getOrganizerSession();
         if (!session) { router.replace('/list-your-dining/Login'); return; }
         organizerApi.getExistingSetup(session.id, 'dining')

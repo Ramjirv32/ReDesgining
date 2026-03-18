@@ -2,17 +2,35 @@ import { UserSession } from "@/lib/auth/user";
 
 const BASE = '/backend/api';
 
+export interface GPS {
+    lat: number;
+    lng: number;
+}
+
+export interface NotificationPreferences {
+    email: boolean;
+    push: boolean;
+    sms: boolean;
+}
+
 export interface UserProfile {
     id?: string;
     userId: string;
     phone: string;
     name: string;
-    address?: string;
-    country?: string;
-    state?: string;
-    district?: string;
-    profilePhoto?: string;
     email?: string;
+    address?: string;
+    street?: string;
+    city?: string;
+    district?: string;
+    state?: string;
+    country?: string;
+    gps?: GPS;
+    profilePhoto?: string;
+    dob?: string;
+    gender?: string;
+    notificationPreferences?: NotificationPreferences;
+    preferredLanguage?: string;
 }
 
 export const profileApi = {

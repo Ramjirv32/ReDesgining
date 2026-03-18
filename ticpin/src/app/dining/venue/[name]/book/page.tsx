@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
+import { Minus, Plus, ChevronLeft } from 'lucide-react';
 
 interface RealDining {
     id: string;
@@ -12,19 +13,51 @@ interface RealDining {
     time?: string;
 }
 
+interface Offer {
+    id: string;
+    title: string;
+    description?: string;
+    image?: string;
+    discount_type: 'percent' | 'flat';
+    discount_value: number;
+    valid_until: string;
+}
+
 const DiningBooking: React.FC = () => {
     const router = useRouter();
     const params = useParams();
     const name = params?.name ?? '';
 
+    // Generate next 3 days for date selection
+    const getNextDays = () => {
+        const days = [];
+        const today = new Date();
+        for (let i = 0; i < 2; i++) {
+            const date = new Date(today);
+            date.setDate(today.getDate() + i);
+            days.push({
+                key: date.getDate().toString(),
+                label: date.getDate(),
+                day: date.toLocaleDateString('en-US', { weekday: 'short' }),
+                month: date.toLocaleDateString('en-US', { month: 'short' }),
+                fullDate: date
+            });
+        }
+        return days;
+    };
+
     const [venue, setVenue] = useState<RealDining | null>(null);
     const [loading, setLoading] = useState(true);
     const [selectedMeal, setSelectedMeal] = useState<'lunch' | 'dinner'>('lunch');
-    const [selectedSlot, setSelectedSlot] = useState<string | null>('1:30 PM');
-    const [selectedOffer, setSelectedOffer] = useState<'offers' | 'regular' | null>('offers');
-    const [selectedDate, setSelectedDate] = useState<string>('27');
-    const [guests, setGuests] = useState(2);
-    const [coupons, setCoupons] = useState<any[]>([]);
+    const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+    const [selectedOfferType, setSelectedOfferType] = useState<'regular' | 'offers'>('offers');
+    const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
+    const [selectedDate, setSelectedDate] = useState<any>(getNextDays()[0]);
+    const [guests, setGuests] = useState(1);
+    const [customGuests, setCustomGuests] = useState('');
+    const [showCustomGuest, setShowCustomGuest] = useState(false);
+    const [offers, setOffers] = useState<Offer[]>([]);
+    const [nextDays] = useState(getNextDays());
 
     useEffect(() => {
         if (!name || typeof name !== 'string') return;
@@ -38,11 +71,37 @@ const DiningBooking: React.FC = () => {
     }, [name]);
 
     useEffect(() => {
-        fetch('/backend/api/coupons/dining')
+        if (!name || typeof name !== 'string') return;
+        fetch(`/backend/api/dining/${encodeURIComponent(name)}/offers`, { credentials: 'include' })
             .then(r => r.json())
-            .then(data => setCoupons(Array.isArray(data) ? data : []))
-            .catch(() => setCoupons([]));
-    }, []);
+            .then((data: Offer[]) => {
+                const arr = Array.isArray(data) ? data : [];
+                setOffers(arr);
+                if (arr.length > 0 && !selectedOfferId) {
+                    setSelectedOfferId(arr[0].id);
+                    setSelectedOfferType('offers');
+                } else if (arr.length === 0) {
+                    setSelectedOfferType('regular');
+                }
+            })
+            .catch(() => setOffers([]));
+    }, [name]);
+
+    const handleGuestChange = (delta: number) => {
+        const newGuests = Math.max(1, Math.min(10, guests + delta));
+        setGuests(newGuests);
+        setShowCustomGuest(false);
+        setCustomGuests('');
+    };
+
+    const handleCustomGuest = () => {
+        const num = parseInt(customGuests);
+        if (!isNaN(num) && num >= 1) {
+            setGuests(num);
+            setShowCustomGuest(false);
+            setCustomGuests('');
+        }
+    };
 
     const handleBooking = () => {
         if (!venue || !selectedSlot) {
@@ -50,28 +109,33 @@ const DiningBooking: React.FC = () => {
             return;
         }
 
-        const pricePerPerson = 0;
         const cartItem = {
             eventId: venue.id,
             eventName: venue.name,
             city: venue.city || 'Bangalore',
             type: 'dining',
-            date: selectedDate,
+            date: selectedDate.fullDate.toISOString().split('T')[0],
             timeSlot: selectedSlot,
             guests: guests,
+            offerId: selectedOfferId,
+            offerType: selectedOfferType,
             tickets: [
                 {
                     name: `Table Reservation (${guests} Guests)`,
-                    price: pricePerPerson,
+                    price: venue.price_starts_from || 0,
                     quantity: 1
                 }
             ],
-            totalPrice: 0
+            totalPrice: (venue.price_starts_from || 0) * guests
         };
 
         sessionStorage.setItem('ticpin_cart', JSON.stringify(cartItem));
         router.push(`/events/${encodeURIComponent(venue.name)}/book/review`);
     };
+
+    const lunchSlots = ['12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM', '2:00 PM', '2:30 PM', '3:00 PM'];
+    const dinnerSlots = ['6:00 PM', '6:30 PM', '7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM', '9:00 PM', '9:30 PM', '10:00 PM'];
+    const currentSlots = selectedMeal === 'lunch' ? lunchSlots : dinnerSlots;
 
     if (loading) {
         return (
@@ -122,22 +186,18 @@ const DiningBooking: React.FC = () => {
                     className="absolute w-[53px] h-[66px] bg-[#D9D9D9] rounded-[15px] flex items-center justify-center"
                     style={{ left: `${134 - offsetX}px`, top: `${386 - offsetY}px` }}
                 >
-                    <span className="font-anek-condensed font-medium text-[20px] text-black rotate-[-90deg]">FEB</span>
+                    <span className="font-anek-condensed font-medium text-[20px] text-black rotate-[-90deg]">{selectedDate.month.toUpperCase()}</span>
                 </div>
 
-                {[
-                    { key: '27', label: '27', day: 'Fri' },
-                    { key: '28', label: '28', day: 'Sat' },
-                    { key: '01', label: '01', day: 'Sun' },
-                ].map((d, i) => (
+                {nextDays.map((d, i) => (
                     <div
                         key={d.key}
-                        className={`absolute w-[53px] h-[66px] rounded-[15px] flex flex-col items-center justify-center pt-1 cursor-pointer transition-all ${selectedDate === d.key ? 'bg-black' : 'bg-white border-[0.5px] border-[#686868]'}`}
+                        className={`absolute w-[53px] h-[66px] rounded-[15px] flex flex-col items-center justify-center pt-1 cursor-pointer transition-all ${selectedDate.key === d.key ? 'bg-black' : 'bg-white border-[0.5px] border-[#686868]'}`}
                         style={{ left: `${(197 + (i * 63)) - offsetX}px`, top: `${386 - offsetY}px` }}
-                        onClick={() => setSelectedDate(d.key)}
+                        onClick={() => setSelectedDate(d)}
                     >
-                        <span className={`font-anek-condensed font-medium text-[30px] leading-none ${selectedDate === d.key ? 'text-white' : 'text-black'}`}>{d.label}</span>
-                        <span className={`font-medium text-[15px] ${selectedDate === d.key ? 'text-white' : 'text-[#686868]'}`} style={{ fontFamily: 'var(--font-anek-latin)' }}>{d.day}</span>
+                        <span className={`font-anek-condensed font-medium text-[30px] leading-none ${selectedDate.key === d.key ? 'text-white' : 'text-black'}`}>{d.label}</span>
+                        <span className={`font-medium text-[15px] ${selectedDate.key === d.key ? 'text-white' : 'text-[#686868]'}`} style={{ fontFamily: 'var(--font-anek-latin)' }}>{d.day}</span>
                     </div>
                 ))}
 
@@ -154,19 +214,53 @@ const DiningBooking: React.FC = () => {
                 />
 
                 <div
-                    className="absolute w-[396px] h-[66px] border-[0.5px] border-[#686868] rounded-[15px] bg-white flex items-center justify-between px-6 cursor-pointer"
-                    style={{ left: `${132 - offsetX}px`, top: `${546 - offsetY}px` }}
+                    className="absolute h-[66px] border-[0.5px] border-[#686868] rounded-[15px] bg-white flex items-center px-6 transition-all"
+                    style={{ left: `${132 - offsetX}px`, top: `${546 - offsetY}px`, width: showCustomGuest ? '500px' : '396px' }}
                 >
-                    <select
-                        className="w-full h-full bg-transparent appearance-none font-medium text-[25px] text-black outline-none"
-                        style={{ fontFamily: 'var(--font-anek-latin)' }}
-                        value={guests}
-                        onChange={(e) => setGuests(Number(e.target.value))}
-                    >
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
-                            <option key={n} value={n}>{n} Guests</option>
-                        ))}
-                    </select>
+                    {!showCustomGuest ? (
+                        <select
+                            className="w-full h-full bg-transparent appearance-none font-medium text-[25px] text-black outline-none cursor-pointer"
+                            style={{ fontFamily: 'var(--font-anek-latin)' }}
+                            value={guests > 10 ? 'more' : guests}
+                            onChange={(e) => {
+                                if (e.target.value === 'more') {
+                                    setShowCustomGuest(true);
+                                } else {
+                                    setGuests(Number(e.target.value));
+                                }
+                            }}
+                        >
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                                <option key={n} value={n}>{n} {n === 1 ? 'Guest' : 'Guests'}</option>
+                            ))}
+                            <option value="more">More...</option>
+                        </select>
+                    ) : (
+                        <div className="flex items-center w-full gap-4">
+                            <input
+                                type="number"
+                                placeholder="Number of guests"
+                                className="flex-1 bg-transparent border-none outline-none text-[25px] font-medium"
+                                style={{ fontFamily: 'var(--font-anek-latin)' }}
+                                value={customGuests}
+                                onChange={(e) => setCustomGuests(e.target.value)}
+                                min="1"
+                                autoFocus
+                            />
+                            <button
+                                onClick={handleCustomGuest}
+                                className="bg-black text-white px-4 py-1 rounded-[8px] text-[18px] font-medium"
+                            >
+                                Set
+                            </button>
+                            <button
+                                onClick={() => setShowCustomGuest(false)}
+                                className="text-[#686868] text-[18px]"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 <h2
@@ -224,31 +318,61 @@ const DiningBooking: React.FC = () => {
                     style={{ width: '1062px', left: `${302 - offsetX}px`, top: `${1047 - offsetY}px` }}
                 />
 
-                <div
-                    className={`absolute w-[477px] h-[254px] border-[0.5px] rounded-[30px] overflow-hidden bg-white cursor-pointer transition-all ${selectedOffer === 'offers' ? 'border-black shadow-lg' : 'border-[#686868]'}`}
-                    style={{ left: `${193 - offsetX}px`, top: `${1116 - offsetY}px` }}
-                    onClick={() => setSelectedOffer('offers')}
-                >
-                    <div className={`h-[55px] flex items-center justify-between px-8 transition-colors ${selectedOffer === 'offers' ? 'bg-[#AC9BF7]' : 'bg-[#D9D9D9]'}`}>
-                        <span className="font-medium text-[25px] text-black">Offers Available</span>
-                        {selectedOffer === 'offers' && <div className="w-4 h-4 bg-white rounded-full" />}
-                    </div>
-                    <div className="p-8">
-                        <p className="text-[#686868] text-lg">Indulge in our special booking offers. Discounts applied at venue.</p>
-                    </div>
-                </div>
+                <div className="absolute flex gap-8 items-start" style={{ left: `${117 - offsetX}px`, top: `${1100 - offsetY}px` }}>
+                    {/* Offers List */}
+                    <div className="flex gap-8 overflow-x-auto pb-8 scrollbar-hide max-w-[1100px]">
+                        {offers.length > 0 ? (
+                            offers.map((offer) => (
+                                <div
+                                    key={offer.id}
+                                    className={`w-[477px] h-[254px] border-[0.5px] rounded-[30px] overflow-hidden bg-white cursor-pointer transition-all flex-shrink-0 flex flex-col ${selectedOfferId === offer.id ? 'border-black shadow-lg scale-[1.02]' : 'border-[#686868] shadow-sm'}`}
+                                    onClick={() => {
+                                        setSelectedOfferId(offer.id);
+                                        setSelectedOfferType('offers');
+                                    }}
+                                >
+                                    <div className={`h-[55px] flex items-center justify-between px-8 transition-colors ${selectedOfferId === offer.id ? 'bg-[#AC9BF7]' : 'bg-[#D9D9D9]'}`}>
+                                        <span className="font-medium text-[20px] text-black uppercase truncate max-w-[300px]">{offer.title}</span>
+                                        <div className={`w-5 h-5 rounded-full border-2 border-white flex items-center justify-center ${selectedOfferId === offer.id ? 'bg-black' : 'bg-transparent'}`}>
+                                            {selectedOfferId === offer.id && <div className="w-2 h-2 bg-white rounded-full" />}
+                                        </div>
+                                    </div>
+                                    <div className="p-6 flex gap-6 h-full items-center">
+                                        {offer.image && (
+                                            <div className="w-[120px] h-[120px] rounded-[15px] overflow-hidden bg-zinc-100 flex-shrink-0 relative">
+                                                <Image src={offer.image} alt={offer.title} fill className="object-cover" />
+                                            </div>
+                                        )}
+                                        <div className="flex flex-col flex-1">
+                                            <p className="text-[18px] font-bold text-black uppercase">
+                                                {offer.discount_type === 'percent' ? `${offer.discount_value}% OFF` : `₹${offer.discount_value} OFF`}
+                                            </p>
+                                            <p className="text-[#686868] text-[15px] mt-2 line-clamp-2 leading-tight">{offer.description || 'Special booking offer available at venue.'}</p>
+                                            <p className="text-[12px] text-[#AEAEAE] mt-auto font-medium">VALID UNTIL {new Date(offer.valid_until).toLocaleDateString().toUpperCase()}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        ) : null}
 
-                <div
-                    className={`absolute w-[477px] h-[254px] border-[0.5px] rounded-[30px] overflow-hidden bg-white cursor-pointer transition-all ${selectedOffer === 'regular' ? 'border-black shadow-lg' : 'border-[#686868]'}`}
-                    style={{ left: `${770 - offsetX}px`, top: `${1116 - offsetY}px` }}
-                    onClick={() => setSelectedOffer('regular')}
-                >
-                    <div className={`h-[55px] flex items-center justify-between px-8 transition-colors ${selectedOffer === 'regular' ? 'bg-[#AC9BF7]' : 'bg-[#D9D9D9]'}`}>
-                        <span className="font-medium text-[25px] text-black">Regular Booking</span>
-                        {selectedOffer === 'regular' && <div className="w-4 h-4 bg-white rounded-full" />}
-                    </div>
-                    <div className="p-8">
-                        <p className="text-[#686868] text-lg">Standard table reservation. No special offers included.</p>
+                        {/* Regular Booking Option */}
+                        <div
+                            className={`w-[477px] h-[254px] border-[0.5px] rounded-[30px] overflow-hidden bg-white cursor-pointer transition-all flex-shrink-0 ${selectedOfferType === 'regular' ? 'border-black shadow-lg' : 'border-[#686868] shadow-sm'}`}
+                                onClick={() => {
+                                    setSelectedOfferType('regular');
+                                    setSelectedOfferId(null);
+                                }}
+                        >
+                            <div className={`h-[55px] flex items-center justify-between px-8 transition-colors ${selectedOfferType === 'regular' ? 'bg-[#AC9BF7]' : 'bg-[#D9D9D9]'}`}>
+                                <span className="font-medium text-[25px] text-black">Regular Booking</span>
+                                <div className={`w-5 h-5 rounded-full border-2 border-white flex items-center justify-center ${selectedOfferType === 'regular' ? 'bg-black' : 'bg-transparent'}`}>
+                                    {selectedOfferType === 'regular' && <div className="w-2 h-2 bg-white rounded-full" />}
+                                </div>
+                            </div>
+                            <div className="p-8">
+                                <p className="text-[#686868] text-lg leading-tight">Standard table reservation. No special offers included at this time.</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -261,45 +385,38 @@ const DiningBooking: React.FC = () => {
                 </button>
             </div>
 
-            {/* Available Coupons Section */}
-            {coupons.length > 0 && (
+            {/* Bottom Offers Info (Only if offers exist and none selected yet, or just as info) */}
+            {offers.length > 0 && (
                 <div className="w-full max-w-[1278px] mt-8 bg-white rounded-[20px] p-8 space-y-4 shadow-[0px_4px_24px_rgba(0,0,0,0.05)]">
                     <h2 className="text-[24px] font-semibold text-black uppercase" style={{ fontFamily: 'var(--font-anek-latin)' }}>
-                        Available Coupons
+                        Featured Offers
                     </h2>
-                    <div className="grid gap-4">
-                        {coupons.map((coupon: any, idx: number) => {
-                            const validUntil = new Date(coupon.valid_until);
-                            const month = validUntil.toLocaleString('en-US', { month: 'short' });
-                            const day = validUntil.getDate();
-                            
-                            return (
-                                <div key={idx} className="flex items-center gap-4 p-4 bg-gradient-to-r from-[#FFF8E7] to-white border border-[#FFD700] rounded-[10px]">
-                                    <div className="flex-grow">
-                                        <p className="text-[16px] font-semibold text-black uppercase" style={{ fontFamily: 'var(--font-anek-latin)' }}>
-                                            {coupon.code}
-                                        </p>
-                                        <p className="text-[13px] text-[#686868] font-medium">
-                                            {coupon.discount_type === 'percent' 
-                                                ? `${coupon.discount_value}% OFF` 
-                                                : `₹${coupon.discount_value} OFF`}
-                                        </p>
-                                        <p className="text-[12px] text-[#888] font-medium mt-1">
-                                            Valid until {month} {day}
-                                        </p>
+                    <div className="grid md:grid-cols-2 gap-4">
+                        {offers.map((offer, idx) => (
+                            <div key={idx} className={`flex items-center gap-4 p-4 border rounded-[15px] transition-all ${selectedOfferId === offer.id ? 'bg-[#F5F3FF] border-[#7B2FF7]' : 'bg-white border-[#E5E5E5]'}`}>
+                                {offer.image && (
+                                    <div className="w-16 h-16 rounded-lg overflow-hidden relative flex-shrink-0">
+                                        <Image src={offer.image} alt={offer.title} fill className="object-cover" />
                                     </div>
-                                    <button
-                                        onClick={() => {
-                                            // TODO: Apply coupon logic
-                                            alert(`Coupon ${coupon.code} will be applied at checkout`);
-                                        }}
-                                        className="px-6 py-2 bg-[#FFD700] hover:bg-[#FFC700] text-black font-semibold text-[14px] rounded-[7px] transition-colors uppercase whitespace-nowrap"
-                                    >
-                                        APPLY
-                                    </button>
+                                )}
+                                <div className="flex-grow">
+                                    <p className="text-[16px] font-semibold text-black uppercase">{offer.title}</p>
+                                    <p className="text-[13px] text-[#686868]">
+                                        {offer.discount_type === 'percent' ? `${offer.discount_value}% OFF` : `₹${offer.discount_value} OFF`}
+                                    </p>
                                 </div>
-                            );
-                        })}
+                                <button
+                                    onClick={() => {
+                                        setSelectedOfferId(offer.id);
+                                        setSelectedOfferType('offers');
+                                        window.scrollTo({ top: 1000, behavior: 'smooth' });
+                                    }}
+                                    className={`px-6 py-2 rounded-lg font-bold text-[12px] uppercase transition-all ${selectedOfferId === offer.id ? 'bg-[#7B2FF7] text-white' : 'bg-zinc-100 text-black'}`}
+                                >
+                                    {selectedOfferId === offer.id ? 'SELECTED' : 'SELECT'}
+                                </button>
+                            </div>
+                        ))}
                     </div>
                 </div>
             )}

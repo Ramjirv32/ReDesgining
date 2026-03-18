@@ -74,9 +74,19 @@ export default function EditEventPage() {
     const [submitMsg, setSubmitMsg] = useState('');
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
     const [selections, setSelections] = useState({ category: 'Select Category', subCategory: 'Select Sub-Category', city: 'Select City' });
+    const [hasCheckedSession, setHasCheckedSession] = useState(false);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setHasCheckedSession(true);
+        }, 100);
+        return () => clearTimeout(timer);
+    }, []);
 
     // Load existing event data
     useEffect(() => {
+        if (!hasCheckedSession) return;
+        
         const load = async () => {
             try {
                 const d = await eventsApi.getEventDirect(id) as Record<string, unknown>;

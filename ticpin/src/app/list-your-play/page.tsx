@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import CreatorSteps from '@/app/list-your-play/list-your-Setups/CreatorSteps';
 import { ChevronRight } from 'lucide-react';
@@ -8,8 +8,18 @@ import { getOrganizerSession } from '@/lib/auth/organizer';
 
 export default function ListYourPlayPage() {
     const router = useRouter();
+    const [hasCheckedSession, setHasCheckedSession] = useState(false);
 
     useEffect(() => {
+        const timer = setTimeout(() => {
+            setHasCheckedSession(true);
+        }, 100);
+        return () => clearTimeout(timer);
+    }, []);
+
+    useEffect(() => {
+        if (!hasCheckedSession) return;
+        
         const session = getOrganizerSession();
         if (session) {
             if (session.categoryStatus?.play) {
@@ -18,7 +28,7 @@ export default function ListYourPlayPage() {
                 router.replace('/list-your-play/setup');
             }
         }
-    }, [router]);
+    }, [hasCheckedSession, router]);
 
     const handleStart = () => {
         const session = getOrganizerSession();

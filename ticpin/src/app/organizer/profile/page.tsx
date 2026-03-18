@@ -2,87 +2,54 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { getOrganizerSession } from '@/lib/auth/organizer';
 import { organizerApi, OrganizerProfile } from '@/lib/api/organizer';
-import { ChevronRight, Save, User, Mail, Phone, MapPin, Globe } from 'lucide-react';
+import { 
+    Edit3, User, Mail, Phone, MapPin, Globe, 
+    Calendar, UserCircle, Bell, Languages, Map,
+    CheckCircle2, ArrowLeft, MoreVertical, Shield, ExternalLink
+} from 'lucide-react';
 
 function ProfileContent() {
     const router = useRouter();
-    const session = getOrganizerSession();
+    const [session, setSession] = useState<ReturnType<typeof getOrganizerSession>>(null);
+    const [hasCheckedSession, setHasCheckedSession] = useState(false);
 
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
-    const [isNewProfile, setIsNewProfile] = useState(true);
-
-    const [formData, setFormData] = useState<OrganizerProfile>({
-        organizerId: session?.id ?? '',
-        name: '',
-        email: session?.email ?? '',
-        phone: '',
-        address: '',
-        country: 'India',
-        state: '',
-        district: '',
-    });
+    const [profile, setProfile] = useState<OrganizerProfile | null>(null);
 
     useEffect(() => {
-        if (!session) {
+        const s = getOrganizerSession();
+        setSession(s);
+        setHasCheckedSession(true);
+        
+        if (!s) {
             router.replace('/');
             return;
         }
+    }, [router]);
+
+    useEffect(() => {
+        if (!session || !hasCheckedSession) return;
 
         const fetchProfile = async () => {
             try {
-                const profile = await organizerApi.getProfile(session.id);
-                if (profile) {
-                    setFormData(prev => ({
-                        ...prev,
-                        ...profile,
-                        name: profile.name || prev.name,
-                        phone: profile.phone || prev.phone,
-                        address: profile.address || prev.address,
-                        state: profile.state || prev.state,
-                        district: profile.district || prev.district,
-                    }));
-                    setIsNewProfile(false);
+                const data = await organizerApi.getProfile(session.id);
+                if (data) {
+                    setProfile(data);
                 }
             } catch (err) {
-                // profile not found — new user
+                // Profile might not exist yet
             } finally {
                 setLoading(false);
             }
         };
 
         fetchProfile();
-    }, [session?.id, router]);
+    }, [session?.id, hasCheckedSession]);
 
-    const handleSave = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!session) return;
-
-        setSaving(true);
-        setError('');
-        setSuccess('');
-
-        try {
-            if (isNewProfile) {
-                await organizerApi.createProfile(formData);
-                setIsNewProfile(false);
-            } else {
-                await organizerApi.updateProfile(session.id, formData);
-            }
-            setSuccess('Profile updated successfully!');
-            setTimeout(() => setSuccess(''), 3000);
-        } catch (err: any) {
-            setError(err.message || 'Failed to save profile');
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    if (loading) {
+    if (loading || !hasCheckedSession) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-[#F8F9FA]">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#5331EA]"></div>
@@ -90,150 +57,153 @@ function ProfileContent() {
         );
     }
 
-    const countries = ['India', 'United States', 'United Kingdom', 'Canada', 'Australia'];
-    // Simplified states for example
-    const states = ['Tamil Nadu', 'Karnataka', 'Maharashtra', 'Delhi', 'Kerala', 'Gujarat', 'Punjab'];
+    if (!profile) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8F9FA] p-6 text-center">
+                <div className="w-24 h-24 bg-zinc-100 rounded-full flex items-center justify-center text-zinc-400 mb-6">
+                    <User size={48} />
+                </div>
+                <h2 className="text-2xl font-bold text-zinc-900 mb-2">No Profile Found</h2>
+                <p className="text-zinc-500 mb-8 max-w-sm">You haven't set up your organizer profile yet. Let's get started!</p>
+                <Link 
+                    href="/organizer/profile/edit"
+                    className="bg-[#5331EA] text-white px-10 h-14 rounded-2xl font-bold flex items-center gap-3 hover:bg-[#4325C7] transition-all"
+                >
+                    Create Profile
+                </Link>
+            </div>
+        );
+    }
 
     return (
-        <div className="min-h-[calc(100vh-80px)] bg-[#F8F9FA] font-[family-name:var(--font-anek-latin)] py-12 px-4 md:px-8">
-            <div className="max-w-4xl mx-auto">
-                <div className="bg-white rounded-[24px] shadow-sm border border-zinc-200 overflow-hidden">
-                    {/* Header */}
-                    <div className="bg-[#5331EA] px-8 py-10 text-white">
-                        <h1 className="text-3xl font-bold flex items-center gap-3">
-                            <User size={32} />
-                            Organizer Profile
-                        </h1>
-                        <p className="mt-2 text-white/80">Manage your business information and contact details</p>
+        <div className="min-h-screen bg-[#F8F9FA] font-[family-name:var(--font-anek-latin)] py-8 px-4 md:px-8">
+            <div className="max-w-4xl mx-auto space-y-8">
+                {/* Header Card */}
+                <div className="bg-white rounded-[40px] p-8 md:p-12 shadow-sm border border-zinc-100 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-[#5331EA]/5 blur-[80px] rounded-full -translate-y-1/2 translate-x-1/2" />
+                    
+                    <div className="relative flex flex-col md:flex-row gap-8 items-center md:items-start text-center md:text-left">
+                        <div className="w-32 h-32 md:w-40 md:h-40 rounded-[40px] bg-zinc-50 border-4 border-white shadow-xl overflow-hidden flex items-center justify-center text-zinc-300">
+                            {profile.profilePhoto ? (
+                                <img src={profile.profilePhoto} alt={profile.name} className="w-full h-full object-cover" />
+                            ) : (
+                                <UserCircle size={80} />
+                            )}
+                        </div>
+                        
+                        <div className="flex-1 space-y-4">
+                            <div className="space-y-1">
+                                <h1 className="text-3xl md:text-4xl font-black text-zinc-900">{profile.name}</h1>
+                                <p className="text-zinc-500 font-medium flex items-center justify-center md:justify-start gap-2">
+                                    <Mail size={16} /> {profile.email}
+                                </p>
+                            </div>
+                            
+                            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+                                <div className="px-4 py-1.5 bg-green-50 text-green-600 rounded-full text-xs font-bold uppercase tracking-widest border border-green-100 flex items-center gap-2">
+                                    <Shield size={14} /> Verified Organizer
+                                </div>
+                                <div className="px-4 py-1.5 bg-blue-50 text-blue-600 rounded-full text-xs font-bold uppercase tracking-widest border border-blue-100">
+                                    {profile.country}
+                                </div>
+                            </div>
+
+                            <Link 
+                                href="/organizer/profile/edit"
+                                className="inline-flex items-center gap-3 bg-[#5331EA] text-white px-8 h-14 rounded-2xl font-bold hover:bg-[#4325C7] transition-all hover:scale-105 active:scale-95 shadow-xl shadow-[#5331EA]/25"
+                            >
+                                <Edit3 size={20} />
+                                Edit Profile
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Contact Info */}
+                    <div className="bg-white rounded-[32px] p-8 shadow-sm border border-zinc-100 space-y-6">
+                        <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-3">
+                            <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                                <User size={20} />
+                            </div>
+                            Contact Details
+                        </h3>
+                        <div className="space-y-4">
+                            <DetailRow icon={<Phone size={18} />} label="Phone" value={profile.phone} />
+                            <DetailRow icon={<Calendar size={18} />} label="DOB" value={profile.dob || 'Not specified'} />
+                            <DetailRow icon={<UserCircle size={18} />} label="Gender" value={profile.gender || 'Not specified'} />
+                            <DetailRow icon={<Languages size={18} />} label="Preferred Language" value={profile.preferredLanguage || 'English'} />
+                        </div>
                     </div>
 
-                    <form onSubmit={handleSave} className="p-8 space-y-8">
-                        {/* Basic Info Section */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="space-y-2">
-                                <label className="flex items-center gap-2 text-[16px] font-semibold text-[#686868]">
-                                    <User size={18} /> Full Name
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.name}
-                                    onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                                    placeholder="Enter your full name"
-                                    className="w-full h-14 px-5 rounded-[16px] border border-zinc-200 focus:outline-none focus:border-[#5331EA] transition-all"
-                                />
+                    {/* Location Info */}
+                    <div className="bg-white rounded-[32px] p-8 shadow-sm border border-zinc-100 space-y-6">
+                        <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-3">
+                            <div className="p-2 bg-purple-50 text-purple-600 rounded-xl">
+                                <MapPin size={20} />
                             </div>
-
-                            <div className="space-y-2">
-                                <label className="flex items-center gap-2 text-[16px] font-semibold text-[#686868]">
-                                    <Mail size={18} /> Email Address
-                                </label>
-                                <input
-                                    type="email"
-                                    disabled
-                                    value={formData.email}
-                                    className="w-full h-14 px-5 rounded-[16px] border border-zinc-100 bg-zinc-50 text-zinc-400 cursor-not-allowed"
-                                />
+                            Location Details
+                        </h3>
+                        <div className="space-y-4">
+                            <DetailRow icon={<Globe size={18} />} label="Country / State" value={`${profile.country}, ${profile.state}`} />
+                            <DetailRow icon={<Map size={18} />} label="City / District" value={`${profile.city || profile.district}`} />
+                            <div className="pt-2">
+                                <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">Street Address</p>
+                                <p className="text-zinc-600 font-medium leading-relaxed">{profile.address}</p>
                             </div>
-
-                            <div className="space-y-2">
-                                <label className="flex items-center gap-2 text-[16px] font-semibold text-[#686868]">
-                                    <Phone size={18} /> Phone Number
-                                </label>
-                                <input
-                                    type="tel"
-                                    required
-                                    value={formData.phone}
-                                    onChange={e => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                                    placeholder="+91 00000 00000"
-                                    className="w-full h-14 px-5 rounded-[16px] border border-zinc-200 focus:outline-none focus:border-[#5331EA] transition-all"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Location Section */}
-                        <div className="pt-4 border-t border-zinc-100">
-                            <h2 className="text-[20px] font-bold text-black mb-6 flex items-center gap-2">
-                                <MapPin size={22} className="text-[#5331EA]" /> Location Details
-                            </h2>
-
-                            <div className="space-y-6">
-                                <div className="space-y-2">
-                                    <label className="text-[16px] font-semibold text-[#686868]">Complete Address</label>
-                                    <textarea
-                                        required
-                                        rows={3}
-                                        value={formData.address}
-                                        onChange={e => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                                        placeholder="Enter your business or residential address"
-                                        className="w-full p-5 rounded-[16px] border border-zinc-200 focus:outline-none focus:border-[#5331EA] transition-all resize-none"
-                                    />
+                            {profile.gps && (
+                                <div className="p-4 bg-zinc-50 rounded-2xl flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-white rounded-lg shadow-sm text-green-500">
+                                            <CheckCircle2 size={16} />
+                                        </div>
+                                        <p className="text-sm font-bold text-zinc-600">GPS Coordinates Pinnded</p>
+                                    </div>
+                                    <button className="text-[#5331EA] text-xs font-bold hover:underline">View on Map</button>
                                 </div>
+                            )}
+                        </div>
+                    </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div className="space-y-2">
-                                        <label className="flex items-center gap-2 text-[16px] font-semibold text-[#686868]">
-                                            <Globe size={18} /> Country
-                                        </label>
-                                        <select
-                                            value={formData.country}
-                                            onChange={e => setFormData(prev => ({ ...prev, country: e.target.value }))}
-                                            className="w-full h-14 px-5 rounded-[16px] border border-zinc-200 focus:outline-none focus:border-[#5331EA] transition-all appearance-none bg-white"
-                                        >
-                                            {countries.map(c => <option key={c} value={c}>{c}</option>)}
-                                        </select>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <label className="text-[16px] font-semibold text-[#686868]">State</label>
-                                        <select
-                                            required
-                                            value={formData.state}
-                                            onChange={e => setFormData(prev => ({ ...prev, state: e.target.value }))}
-                                            className="w-full h-14 px-5 rounded-[16px] border border-zinc-200 focus:outline-none focus:border-[#5331EA] transition-all appearance-none bg-white"
-                                        >
-                                            <option value="" disabled>Select State</option>
-                                            {states.map(s => <option key={s} value={s}>{s}</option>)}
-                                        </select>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <label className="text-[16px] font-semibold text-[#686868]">District</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            value={formData.district}
-                                            onChange={e => setFormData(prev => ({ ...prev, district: e.target.value }))}
-                                            placeholder="Enter District"
-                                            className="w-full h-14 px-5 rounded-[16px] border border-zinc-200 focus:outline-none focus:border-[#5331EA] transition-all"
-                                        />
-                                    </div>
-                                </div>
+                    {/* Notification Settings */}
+                    <div className="bg-white rounded-[32px] p-8 shadow-sm border border-zinc-100 space-y-6 md:col-span-2">
+                        <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-3">
+                            <div className="p-2 bg-amber-50 text-amber-600 rounded-xl">
+                                <Bell size={20} />
                             </div>
+                            Notification Preferences
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <PreferenceCard active={profile.notificationPreferences?.email} label="Email Notifications" />
+                            <PreferenceCard active={profile.notificationPreferences?.push} label="Push Notifications" />
+                            <PreferenceCard active={profile.notificationPreferences?.sms} label="SMS Notifications" />
                         </div>
-
-                        {/* Status Messages */}
-                        {error && <div className="p-4 bg-red-50 text-red-600 rounded-[12px] text-sm font-medium">{error}</div>}
-                        {success && <div className="p-4 bg-green-50 text-green-600 rounded-[12px] text-sm font-medium">{success}</div>}
-
-                        {/* Actions */}
-                        <div className="pt-6 flex justify-end">
-                            <button
-                                type="submit"
-                                disabled={saving}
-                                className="bg-[#5331EA] text-white px-10 h-14 rounded-[16px] font-bold flex items-center gap-3 hover:bg-[#4325C7] transition-all active:scale-95 disabled:opacity-70"
-                            >
-                                {saving ? (
-                                    <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                ) : (
-                                    <Save size={20} />
-                                )}
-                                Save Profile Changes
-                            </button>
-                        </div>
-                    </form>
+                    </div>
                 </div>
             </div>
+        </div>
+    );
+}
+
+function DetailRow({ icon, label, value }: { icon: React.ReactNode, label: string, value: string }) {
+    return (
+        <div className="flex items-center gap-4">
+            <div className="text-zinc-400">{icon}</div>
+            <div className="flex-1">
+                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{label}</p>
+                <p className="text-zinc-800 font-bold">{value}</p>
+            </div>
+        </div>
+    );
+}
+
+function PreferenceCard({ active, label }: { active?: boolean, label: string }) {
+    return (
+        <div className={`p-5 rounded-2xl border flex items-center justify-between ${
+            active ? 'bg-green-50 border-green-100 text-green-700' : 'bg-zinc-50 border-zinc-100 text-zinc-400'
+        }`}>
+            <span className="font-bold">{label}</span>
+            {active ? <CheckCircle2 size={18} /> : <div className="w-4 h-4 rounded-full border-2 border-zinc-300" />}
         </div>
     );
 }

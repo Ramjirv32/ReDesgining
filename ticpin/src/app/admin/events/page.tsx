@@ -337,7 +337,7 @@ function AdminEventsContent() {
   useEffect(() => { load(); }, [load]);
 
   const getId = (item: AdminListing) => item.id || item._id || '';
-  const filtered = events.filter(l =>
+  const filtered = (events || []).filter(l =>
     activeTab === 'pending'
       ? (l.status === 'pending' || l.status === 'draft')
       : l.status === activeTab
@@ -459,7 +459,7 @@ function AdminEventsContent() {
                 return (
                   <div key={id} className="relative group">
                     <div
-                      onClick={() => router.push(`?id=${id}`)}
+                      onClick={() => router.push(`/admin/events?list=true`)}
                       className="bg-[#EEEDFC] rounded-[19px] p-12 flex items-center gap-16 border border-white hover:shadow-md transition-shadow cursor-pointer"
                     >
                       <div className="w-[220px] h-[290px] bg-white rounded-[15px] flex-shrink-0 flex items-center justify-center overflow-hidden p-2 relative">
@@ -482,9 +482,7 @@ function AdminEventsContent() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        const idx = filtered.findIndex(l => getId(l) === id);
-                        const nextItem = filtered[idx + 1] ?? filtered[0];
-                        router.push(`?id=${getId(nextItem)}`);
+                        router.push(`?id=${id}`);
                       }}
                       className="absolute -right-7 top-1/2 -translate-y-1/2 w-[57px] h-[57px] bg-black rounded-full flex items-center justify-center text-white shadow-xl hover:scale-110 active:scale-95 transition-transform z-10"
                     >

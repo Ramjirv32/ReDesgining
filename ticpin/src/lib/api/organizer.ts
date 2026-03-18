@@ -29,6 +29,17 @@ export interface ExistingSetup {
   backupPhone?: string;
 }
 
+export interface GPS {
+  lat: number;
+  lng: number;
+}
+
+export interface NotificationPreferences {
+  email: boolean;
+  push: boolean;
+  sms: boolean;
+}
+
 export interface OrganizerProfile {
   id?: string;
   organizerId: string;
@@ -36,10 +47,17 @@ export interface OrganizerProfile {
   email: string;
   phone: string;
   address: string;
+  street?: string;
+  city?: string;
   country: string;
   state: string;
   district: string;
+  gps?: GPS;
   profilePhoto?: string;
+  dob?: string;
+  gender?: string;
+  notificationPreferences?: NotificationPreferences;
+  preferredLanguage?: string;
 }
 
 export const organizerApi = {

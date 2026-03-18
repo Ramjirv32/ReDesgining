@@ -31,7 +31,7 @@ const RecentBookings: React.FC<RecentBookingsProps> = ({
         { id: 'play', label: 'Play', icon: <Gamepad2 size={18} /> }
     ];
 
-    const filtered = bookings.filter(b => b.category === activeTab);
+    const filtered = bookings?.filter(b => b.category === activeTab) || [];
 
     return (
         <div className="space-y-6">

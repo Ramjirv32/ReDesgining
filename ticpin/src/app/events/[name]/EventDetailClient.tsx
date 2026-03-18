@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { Share2, MapPin, ChevronDown, Ticket, Timer, ArrowLeft } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import DOMPurify from 'isomorphic-dompurify';
 import { useUserSession } from '@/lib/auth/user';
@@ -60,6 +60,11 @@ export default function EventDetailClient({ event, id }: { event: EventData, id:
     const [activeFaq, setActiveFaq] = useState<number | null>(null);
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
     const session = useUserSession();
+
+    // Scroll to top when page loads
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, []);
 
     const handleBook = () => {
         if (!session) {

@@ -34,17 +34,32 @@ export default function PassCheckoutPage() {
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState('');
+    const [hasCheckedSession, setHasCheckedSession] = useState(false);
 
     useEffect(() => {
-        window.scrollTo(0, 0);
+        // Wait for session to load first
+        const timer = setTimeout(() => {
+            setHasCheckedSession(true);
+        }, 100);
+        return () => clearTimeout(timer);
+    }, []);
+
+    useEffect(() => {
+        if (!hasCheckedSession) return;
+        
         if (!session) {
             router.push('/pass');
-        } else {
-            setName(session.name || '');
-            setPhone(session.phone || '');
+            return;
         }
+        
+        setName(session.name || '');
+        setPhone(session.phone || '');
+    }, [session, hasCheckedSession, router]);
 
-        // Handle Cashfree redirect return
+    // Handle Cashfree redirect return
+    useEffect(() => {
+        if (!hasCheckedSession) return;
+        
         const urlParams = new URLSearchParams(window.location.search);
         const cfOrderId = urlParams.get('order_id');
         if (cfOrderId && cfOrderId.startsWith('TICPIN_')) {
@@ -62,8 +77,7 @@ export default function PassCheckoutPage() {
                 }
             }
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [session]);
+    }, [session, hasCheckedSession]);
 
     const confirmPassPurchase = async (paymentId: string, data: any) => {
         try {

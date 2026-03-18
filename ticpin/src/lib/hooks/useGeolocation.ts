@@ -2,25 +2,58 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
-export function useGeolocation() {
-    const [currentLocation, setCurrentLocation] = useState('');
+export interface LocationData {
+    name: string;
+    display_name: string;
+    district: string;
+    state: string;
+}
 
-    const saveLocation = useCallback((loc: string) => {
-        setCurrentLocation(loc);
-        localStorage.setItem('ticpin_location', loc);
-        window.dispatchEvent(new CustomEvent('location-change', { detail: loc }));
+export function useGeolocation() {
+    const [currentLocation, setCurrentLocation] = useState<LocationData | null>(null);
+
+    const saveLocation = useCallback((loc: LocationData | string) => {
+        let locationData: LocationData;
+        
+        if (typeof loc === 'string') {
+            const parts = loc.split(',').map(s => s.trim());
+            locationData = {
+                name: parts[0] || '',
+                display_name: loc,
+                district: parts[0] || '',
+                state: parts[1] || ''
+            };
+        } else {
+            locationData = loc;
+        }
+
+        setCurrentLocation(locationData);
+        localStorage.setItem('ticpin_location_v2', JSON.stringify(locationData));
+        window.dispatchEvent(new CustomEvent('location-change', { detail: locationData }));
     }, []);
 
     const clearLocation = useCallback(() => {
-        setCurrentLocation('');
-        localStorage.removeItem('ticpin_location');
-        window.dispatchEvent(new CustomEvent('location-change', { detail: '' }));
+        setCurrentLocation(null);
+        localStorage.removeItem('ticpin_location_v2');
+        window.dispatchEvent(new CustomEvent('location-change', { detail: null }));
     }, []);
 
     useEffect(() => {
-        const saved = localStorage.getItem('ticpin_location');
+        const saved = localStorage.getItem('ticpin_location_v2');
         if (saved) {
-            setCurrentLocation(saved);
+            try {
+                setCurrentLocation(JSON.parse(saved));
+            } catch {
+                localStorage.removeItem('ticpin_location_v2');
+            }
+            return;
+        }
+
+        // Fallback for old version
+        const oldSaved = localStorage.getItem('ticpin_location');
+        if (oldSaved) {
+            saveLocation(oldSaved);
+            localStorage.removeItem('ticpin_location');
             return;
         }
 
@@ -34,15 +67,16 @@ export function useGeolocation() {
                         { headers: { 'Accept-Language': 'en' } }
                     );
                     const data = await res.json();
-                    const city =
-                        data.address?.city ||
-                        data.address?.town ||
-                        data.address?.village ||
-                        data.address?.county ||
-                        '';
+                    const name = data.name || data.address?.suburb || data.address?.neighbourhood || data.address?.city || '';
+                    const district = data.address?.state_district || data.address?.county || '';
                     const state = data.address?.state || '';
-                    const label = city && state ? `${city}, ${state}` : (city || state || '');
-                    if (label) saveLocation(label);
+                    
+                    saveLocation({
+                        name: name,
+                        display_name: data.display_name,
+                        district: district,
+                        state: state
+                    });
                 } catch {
                     // silently fail
                 }

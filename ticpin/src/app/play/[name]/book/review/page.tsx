@@ -244,6 +244,7 @@ export default function PlayReviewPage() {
         try {
             const result = await bookingApi.createPlayBooking({
                 user_email: emailData,
+                user_name: billing.name,
                 play_id: cartData.eventId,
                 venue_name: cartData.eventName,
                 date: cartData.date,

@@ -2,26 +2,34 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Plus, Utensils, Ticket, Gamepad2, Clock, ChevronRight, XCircle, RefreshCw } from 'lucide-react';
+import { Plus, Utensils, Ticket, Gamepad2, Clock, ChevronRight, XCircle, RefreshCw, User } from 'lucide-react';
 import { getOrganizerSession, saveOrganizerSession } from '@/lib/auth/organizer';
 import { organizerApi } from '@/lib/api/organizer';
 import ListingsGrid from '@/components/organizer/ListingsGrid';
 
 function DashboardContent() {
-    const searchParams = useSearchParams();
-    const initialCategory = searchParams.get('category') || 'events';
-    const [activeTab, setActiveTab] = useState(initialCategory as 'events' | 'play' | 'dining');
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const [activeTab, setActiveTab] = useState<'events' | 'play' | 'dining'>('events');
     // hasMounted prevents SSR/client HTML mismatch — session is only readable client-side
     const [hasMounted, setHasMounted] = useState(false);
     const [session, setSession] = useState<ReturnType<typeof getOrganizerSession>>(null);
     const [loading, setLoading] = useState(true);
 
+    // Set activeTab from URL parameter
+    useEffect(() => {
+        const category = searchParams.get('category');
+        if (category === 'play' || category === 'dining' || category === 'events') {
+            setActiveTab(category);
+        }
+    }, [searchParams]);
+
     useEffect(() => {
         setHasMounted(true);
         const s = getOrganizerSession();
         if (!s) {
-            router.replace('/');
+            // No session - set loading to false to trigger redirect
+            setLoading(false);
             return;
         }
         setSession(s);
@@ -48,8 +56,24 @@ function DashboardContent() {
     }, [router]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Before mount: server and client render the same pulse (fixes hydration mismatch)
-    if (!hasMounted || (loading && !session?.categoryStatus)) {
+    if (!hasMounted || loading) {
         return <div className="h-[calc(100vh-80px)] w-full bg-zinc-50 animate-pulse" />;
+    }
+
+    // If no session after loading complete, show error instead of redirecting
+    if (!session) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                <p className="text-xl text-red-600">No organizer session found</p>
+                <p className="text-gray-500">Please log in as an organizer first</p>
+                <button 
+                    onClick={() => router.push('/list-your-dining/Login')}
+                    className="px-6 py-3 bg-[#5331EA] text-white rounded-xl"
+                >
+                    Go to Organizer Login
+                </button>
+            </div>
+        );
     }
 
     const themes = {
@@ -113,6 +137,14 @@ function DashboardContent() {
                             <item.icon size={22} className={activeTab === item.id ? 'text-white' : 'text-[#686868] group-hover:text-black'} />
                         </button>
                     ))}
+                    <div className="w-[1px] h-8 bg-black/10 mx-2" />
+                    <button
+                        title="Profile"
+                        onClick={() => router.push('/organizer/profile')}
+                        className="w-12 h-12 flex items-center justify-center rounded-[12px] text-[#686868] hover:bg-black/5 transition-all group"
+                    >
+                        <User size={22} className="group-hover:text-black" />
+                    </button>
                 </div>
             </div>
 

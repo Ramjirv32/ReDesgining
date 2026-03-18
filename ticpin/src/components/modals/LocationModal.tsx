@@ -117,9 +117,15 @@ export default function LocationModal({ isOpen, onClose, onSelect }: LocationMod
             const finalLocality = locality || (cityName || "Not found");
             const finalDistrict = district || "Not found";
 
-            const cityLabel = finalLocality !== "Not found" ? finalLocality : (district || "");
+            const cityLabel = locality || (district || (cityName || "Not found"));
             const label = cityLabel && state ? `${cityLabel}, ${state}` : (cityLabel || state || "Not found");
-            onSelect?.(label);
+            const locationData = {
+                name: area || cityLabel,
+                display_name: data.results[0]?.formatted_address || label,
+                district: district || "",
+                state: state || ""
+            };
+            onSelect?.(locationData);
             onClose();
         } catch (error) {
             console.error(error);

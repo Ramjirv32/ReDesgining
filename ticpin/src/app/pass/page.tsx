@@ -61,7 +61,7 @@ export default function PassPage() {
             const res = await fetch(`/backend/api/pass/user/${session.id}`, { credentials: 'include' });
             if (res.ok) {
                 const data = await res.json();
-                if (data.status === 'active') {
+                if (data?.status === 'active') {
                     setHasActivePass(true);
                 }
             }

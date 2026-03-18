@@ -1,13 +1,10 @@
 export const CATEGORY_DATA: Record<string, string[]> = {
-    "Fine Dining": ["Indian", "Chinese", "Continental", "Italian", "Japanese", "French"],
-    "Casual Dining": ["Multi-cuisine", "North Indian", "South Indian", "Coastal", "Oriental"],
-    "Cafe": ["Coffee Shop", "Bakery", "Bistro", "Tea House"],
-    "Bar & Pub": ["Gastropub", "Sports Bar", "Brewery", "Resto-bar"],
-    "Fast Food": ["Burgers & Sandwiches", "Pizza", "Tacos & Burritos", "Fried Chicken"],
-    "Buffet": ["Luxury Buffet", "Family Buffet", "Global Buffet"],
-    "Lounge": ["Chill-out Lounge", "Hookah Lounge", "Sky Lounge"],
-    "Rooftop": ["Rooftop Bar", "Rooftop Restaurant"],
-    "Desserts": ["Ice-cream Parlour", "Patisserie", "Chocolatier"]
+    "Club & Chill": ["Nightclub", "Discotheque", "Lounge Bar", "Hookah Lounge"],
+    "Pure Veg": ["Vegetarian Restaurant", "South Indian Veg", "North Indian Veg", "Fast Food Veg"],
+    "Cafe Vibes": ["Coffee Shop", "Bakery", "Bistro", "Tea House", "Dessert Cafe"],
+    "Family Favourites": ["Family Restaurant", "Multi-cuisine", "Buffet", "Casual Dining"],
+    "Bar & Bites": ["Sports Bar", "Gastropub", "Resto-bar", "Pub Food"],
+    "Premium Dining": ["Fine Dining", "Rooftop Restaurant", "Michelin Star", "Celebration Dining"]
 };
 
 export const CATEGORIES = Object.keys(CATEGORY_DATA);

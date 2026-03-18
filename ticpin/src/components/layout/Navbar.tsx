@@ -7,15 +7,16 @@ import { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 
 // Sub-components
+// Sub-components
 import SearchInput from './Navbar/SearchInput';
 import LocationSelector from './Navbar/LocationSelector';
 import UserMenu from './Navbar/UserMenu';
 
 // Hooks & Utils
-import { useGeolocation } from '@/lib/hooks/useGeolocation';
-import { useSessionSync } from '@/lib/hooks/useSessionSync';
+import { useLocationStore } from '@/store/useLocationStore';
+import { useIdentityStore } from '@/store/useIdentityStore';
 import { clearOrganizerSession } from '@/lib/auth/organizer';
-import { useUserSession, clearUserSession } from '@/lib/auth/user';
+import { clearUserSession } from '@/lib/auth/user';
 import { navItems } from '@/data/constants';
 
 const AuthModal = dynamic(() => import('@/components/modals/AuthModal'), { ssr: false });
@@ -33,8 +34,14 @@ export default function Navbar() {
     const [authView, setAuthView] = useState<'number' | 'otp' | 'profile' | 'location'>('number');
 
     // Custom Hooks
-    const { currentLocation, saveLocation, clearLocation } = useGeolocation();
-    const userSession = useUserSession();
+    // Centralized State from Stores
+    const { currentLocation, setLocation, clearLocation, syncFromBrowser } = useLocationStore();
+    const { userSession, organizerSession, sync: syncAuth, logoutUser, logoutOrganizer } = useIdentityStore();
+
+    useEffect(() => {
+        syncFromBrowser();
+        syncAuth();
+    }, [syncFromBrowser, syncAuth]);
 
     const hideNavbar =
         pathname === '/contact' ||
@@ -46,7 +53,7 @@ export default function Navbar() {
         pathname.endsWith('/book/tickets') ||
         pathname.endsWith('/book/review');
 
-    const { session, setSession } = useSessionSync(hideNavbar);
+    const session = organizerSession;
     const profileRef = useRef<HTMLDivElement>(null);
 
     // Closing profile menu on click outside
@@ -65,14 +72,13 @@ export default function Navbar() {
 
     // Logout Handlers
     const handleOrganizerLogout = () => {
-        clearOrganizerSession();
-        setSession(null);
+        logoutOrganizer();
         setIsProfileMenuOpen(false);
         router.push('/');
     };
 
     const handleUserLogout = () => {
-        clearUserSession();
+        logoutUser();
         setIsProfileMenuOpen(false);
         router.push('/');
     };
@@ -193,7 +199,7 @@ export default function Navbar() {
             <LocationModal
                 isOpen={isLocationOpen}
                 onClose={() => setIsLocationOpen(false)}
-                onSelect={saveLocation}
+                onSelect={setLocation}
             />
         </header>
     );

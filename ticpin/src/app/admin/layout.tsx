@@ -6,18 +6,28 @@ import { getOrganizerSession } from '@/lib/auth/organizer';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const [authorized, setAuthorized] = useState(false);
+    const [hasCheckedSession, setHasCheckedSession] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
+        const timer = setTimeout(() => {
+            setHasCheckedSession(true);
+        }, 100);
+        return () => clearTimeout(timer);
+    }, []);
+
+    useEffect(() => {
+        if (!hasCheckedSession) return;
+        
         const session = getOrganizerSession();
         if (!session || !session.isAdmin) {
             router.replace('/admin/login');
         } else {
             setAuthorized(true);
         }
-    }, [router]);
+    }, [hasCheckedSession, router]);
 
-    if (!authorized) {
+    if (!authorized || !hasCheckedSession) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-white">
                 <div className="animate-pulse flex flex-col items-center gap-4">

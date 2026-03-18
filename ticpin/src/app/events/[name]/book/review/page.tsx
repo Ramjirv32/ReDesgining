@@ -22,6 +22,8 @@ interface CartData {
     guests?: number;
     slot?: string;
     duration?: number;
+    offerId?: string | null;
+    offerType?: string | null;
 }
 
 /** Dynamically load a third-party payment SDK script (idempotent). */
@@ -217,7 +219,13 @@ export default function ReviewBookingPage() {
                     : bookingApi.getEventOffers(eventId);
 
             fetchOffers.then(res => {
-                setOffers(res || []);
+                const arr = res || [];
+                setOffers(arr);
+                // Auto-apply if cart has selected offer
+                if (cart?.offerId) {
+                    const match = arr.find((o: any) => o.id === cart.offerId);
+                    if (match) applyOffer(match);
+                }
             }).catch(() => {
                 setOffers([]);
             });
@@ -341,6 +349,7 @@ export default function ReviewBookingPage() {
             if (cartData.type === 'dining') {
                 result = await bookingApi.createDiningBooking({
                     user_email: emailData,
+                    user_name: billing.name,
                     dining_id: cartData.eventId,
                     venue_name: cartData.eventName,
                     date: cartData.date || '',
@@ -357,6 +366,7 @@ export default function ReviewBookingPage() {
             } else if (cartData.type === 'play') {
                 result = await bookingApi.createPlayBooking({
                     user_email: emailData,
+                    user_name: billing.name,
                     play_id: cartData.eventId,
                     venue_name: cartData.eventName,
                     date: cartData.date || '',
@@ -378,6 +388,7 @@ export default function ReviewBookingPage() {
             } else {
                 result = await bookingApi.createEventBooking({
                     user_email: emailData,
+                    user_name: billing.name,
                     event_id: cartData.eventId,
                     event_name: cartData.eventName,
                     tickets: cartData.tickets.map(t => ({

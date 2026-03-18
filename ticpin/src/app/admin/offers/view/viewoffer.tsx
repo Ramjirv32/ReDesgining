@@ -70,7 +70,7 @@ export default function ViewOfferForm({ onBack }: { onBack: () => void }) {
                     <div className="text-center py-20 text-gray-400 text-[16px]">No offers created yet.</div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-6 gap-x-2">
-                        {offers.map((offer) => (
+                        {(offers || []).map((offer) => (
                             <div
                                 key={offer.id}
                                 onClick={() => setSelectedOffer(offer)}

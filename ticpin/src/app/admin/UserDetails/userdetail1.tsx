@@ -3,12 +3,14 @@
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { ChevronRight, Pencil, Trash2 } from 'lucide-react';
+import { ChevronRight, Pencil, Trash2, Search } from 'lucide-react';
+import Link from 'next/link';
 import { adminApi, UserRecord } from '@/lib/api/admin';
 
 export default function UserDetails() {
     const router = useRouter();
     const [users, setUsers] = useState<UserRecord[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
     const [editUser, setEditUser] = useState<UserRecord | null>(null);
     const [editName, setEditName] = useState('');
     const [editPhone, setEditPhone] = useState('');
@@ -46,90 +48,111 @@ export default function UserDetails() {
         }
     }
 
+    const filteredUsers = users.filter(u => 
+        (u.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (u.phone || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
     return (
-        <div className="min-h-screen relative overflow-x-hidden flex flex-col" style={{ background: 'rgba(255, 241, 168, 0.1)', zoom: 0.85 }}>
-            <header className="w-full h-[114px] bg-white border-b border-zinc-100 flex items-center justify-between px-[37px] sticky top-0 z-50">
-                <div className="flex items-center gap-4">
-                    <div className="w-[159px] h-[40px] flex items-center font-bold text-2xl tracking-tighter cursor-pointer" onClick={() => router.push('/admin')}>TICPIN</div>
+        <div
+            className="w-full min-h-screen font-sans"
+            style={{
+                background: 'linear-gradient(180deg, #ECE8FD 0%, #FFFFFF 100%)'
+            }}
+        >
+            <div className="px-[37px] pt-[60px] pb-[80px] ml-[70px]">
+                {/* Page Title */}
+                <div className="mb-[32px]">
+                    <h1 className="text-[40px] font-semibold leading-[44px] text-black">Admin Panel</h1>
+                    <div className="w-[101px] h-[1.5px] bg-[#686868] mt-2"></div>
                 </div>
-                <div className="flex items-center gap-8">
-                    <div className="w-[51px] h-[51px] bg-[#E1E1E1] rounded-full flex items-center justify-center cursor-pointer">
-                        <div className="w-full h-full rounded-full overflow-hidden relative">
-                            <Image src="/admin panel/Ellipse 2.svg" alt="Profile" fill className="object-cover" />
+
+                {/* User Details Subtitle */}
+                <div className="mb-[40px]">
+                    <h2 className="text-[25px] font-medium leading-[28px] text-black">User Details</h2>
+                </div>
+
+                {/* Search Bar */}
+                <div className="mb-[40px] relative w-[400px]">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                        <Search className="w-5 h-5 text-[#686868]" />
+                    </div>
+                    <input
+                        type="text"
+                        placeholder="Search users..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full h-[50px] pl-12 pr-4 bg-white rounded-[15px] border border-[#E5E5E5] text-[16px] outline-none focus:border-[#5331EA]"
+                    />
+                </div>
+
+                {/* Users List Container */}
+                <div className="pl-[31px]">
+                    {filteredUsers.map((user) => (
+                        <div key={user.id} className="group relative">
+                            <Link href={`/admin/user-details-view?id=${user.id}`}>
+                                <div className="w-[750px] h-[110px] bg-white rounded-[31px] relative flex items-center px-[34px] shadow-sm mb-[30px] cursor-pointer hover:shadow-md transition-shadow">
+                                    {/* Profile Circle */}
+                                    <div className="w-[73px] h-[73px] bg-[rgba(189,177,243,0.3)] rounded-full shrink-0 flex items-center justify-center text-[#5331EA] text-[24px] font-semibold">
+                                        {user.name?.[0] || user.phone?.[0] || '?'}
+                                    </div>
+
+                                    {/* Details Container */}
+                                    <div className="ml-[52px] flex flex-col gap-1">
+                                        <h3 className="text-[17px] leading-[22px] font-medium text-black ml-[+25px]">{user.name || 'Anonymous'}</h3>
+
+                                        <div className="flex items-center gap-[7px]">
+                                            <Image src="/admin panel/userdetials icons/email-icon.svg" alt="Email" width={18} height={18} />
+                                            <span className="text-[17px] leading-[22px] font-medium text-[#6B7280]">{user.phone || 'No phone'}</span>
+                                        </div>
+
+                                        <div className="flex items-center gap-[7px]">
+                                            <Image src="/admin panel/userdetials icons/phone-icon.svg" alt="Phone" width={15} height={15} />
+                                            <span className="text-[17px] leading-[22px] font-medium text-[#6B7280]">{user.id.slice(-8)}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Arrow Icon */}
+                                    <div className="absolute right-[44px]">
+                                        <ChevronRight className="w-6 h-6 text-[#686868]" />
+                                    </div>
+                                </div>
+                            </Link>
+
+                            {/* Action Buttons */}
+                            <div className="absolute right-[100px] top-1/2 -translate-y-1/2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                    onClick={(e) => { e.preventDefault(); openEdit(user); }}
+                                    className="p-2 bg-white rounded-full shadow-sm hover:bg-blue-50 text-[#5331EA]"
+                                >
+                                    <Pencil size={16} />
+                                </button>
+                                <button
+                                    onClick={(e) => { e.preventDefault(); deleteUser(user.id); }}
+                                    className="p-2 bg-white rounded-full shadow-sm hover:bg-red-50 text-red-500"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                </div>
-            </header>
+                    ))}
 
-            <main className="flex-1 p-12 max-w-[1440px] mx-auto w-full">
-                <div className="flex items-center justify-between mb-12">
-                    <div>
-                        <h1 className="text-[40px] font-semibold text-black mb-2">User Details</h1>
-                        <div className="w-[101px] h-[1.5px] bg-[#686868]"></div>
-                    </div>
+                    {filteredUsers.length === 0 && (
+                        <div className="w-[750px] h-[110px] bg-white rounded-[31px] flex items-center justify-center shadow-sm mb-[30px]">
+                            <p className="text-[17px] text-[#6B7280]">No users found</p>
+                        </div>
+                    )}
                 </div>
-
-                <div className="bg-white rounded-[30px] border border-white shadow-xl overflow-hidden">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-zinc-50 border-b border-zinc-100">
-                                <th className="px-8 py-6 text-[14px] font-bold text-zinc-400 uppercase tracking-wider">User ID</th>
-                                <th className="px-8 py-6 text-[14px] font-bold text-zinc-400 uppercase tracking-wider">Name</th>
-                                <th className="px-8 py-6 text-[14px] font-bold text-zinc-400 uppercase tracking-wider">Phone</th>
-                                <th className="px-8 py-6 text-[14px] font-bold text-zinc-400 uppercase tracking-wider text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-zinc-50">
-                            {users.map((user) => (
-                                <tr key={user.id} className="hover:bg-zinc-50/50 transition-colors group">
-                                    <td className="px-8 py-6 font-medium text-zinc-500 text-[16px]">#{user.id.slice(-6)}</td>
-                                    <td className="px-8 py-6">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-xs uppercase">
-                                                {user.name?.[0] || '?'}
-                                            </div>
-                                            <span className="text-[18px] font-semibold text-black">{user.name || 'Anonymous'}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-8 py-6 text-[16px] text-zinc-500 font-medium">{user.phone}</td>
-                                    <td className="px-8 py-6 text-right">
-                                        <div className="flex items-center justify-end gap-2">
-                                            <button
-                                                onClick={() => openEdit(user)}
-                                                className="p-2 hover:bg-white rounded-lg transition-all text-zinc-400 hover:text-blue-500 hover:shadow-sm"
-                                            >
-                                                <Pencil size={18} />
-                                            </button>
-                                            <button
-                                                onClick={() => deleteUser(user.id)}
-                                                className="p-2 hover:bg-white rounded-lg transition-all text-zinc-400 hover:text-red-500 hover:shadow-sm"
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                            {users.length === 0 && (
-                                <tr>
-                                    <td colSpan={4} className="px-8 py-20 text-center text-zinc-400 font-medium">
-                                        No users found in the database.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </main>
+            </div>
 
             {/* Edit Modal */}
             {editUser && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
-                    <div className="bg-white w-full max-w-[400px] rounded-[30px] p-8 animate-in fade-in zoom-in duration-200">
+                    <div className="bg-white w-full max-w-[400px] rounded-[30px] p-8">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-bold">Edit User</h2>
-                            <button onClick={() => setEditUser(null)} className="p-1 hover:bg-zinc-100 rounded-full transition-all">
-                                <Trash2 size={20} className="text-zinc-400" />
+                            <button onClick={() => setEditUser(null)} className="p-1 hover:bg-zinc-100 rounded-full">
+                                <span className="text-zinc-400 text-xl">&times;</span>
                             </button>
                         </div>
                         <div className="space-y-4">
@@ -138,7 +161,7 @@ export default function UserDetails() {
                                 <input
                                     value={editName}
                                     onChange={e => setEditName(e.target.value)}
-                                    className="w-full h-12 px-4 border border-zinc-200 rounded-xl outline-none focus:border-blue-500 transition-all font-medium"
+                                    className="w-full h-12 px-4 border border-zinc-200 rounded-xl outline-none focus:border-[#5331EA]"
                                 />
                             </div>
                             <div>
@@ -146,19 +169,19 @@ export default function UserDetails() {
                                 <input
                                     value={editPhone}
                                     onChange={e => setEditPhone(e.target.value)}
-                                    className="w-full h-12 px-4 border border-zinc-200 rounded-xl outline-none focus:border-blue-500 transition-all font-medium"
+                                    className="w-full h-12 px-4 border border-zinc-200 rounded-xl outline-none focus:border-[#5331EA]"
                                 />
                             </div>
                             <div className="flex gap-3 pt-4">
                                 <button
                                     onClick={() => setEditUser(null)}
-                                    className="flex-1 h-12 border border-zinc-200 rounded-xl font-bold hover:bg-zinc-50 transition-all"
+                                    className="flex-1 h-12 border border-zinc-200 rounded-xl font-bold hover:bg-zinc-50"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={saveEdit}
-                                    className="flex-1 h-12 bg-black text-white rounded-xl font-bold hover:shadow-lg active:scale-95 transition-all"
+                                    className="flex-1 h-12 bg-[#5331EA] text-white rounded-xl font-bold hover:shadow-lg"
                                 >
                                     Save
                                 </button>

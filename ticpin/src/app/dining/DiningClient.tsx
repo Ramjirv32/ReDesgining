@@ -145,39 +145,40 @@ export default function DiningClient({
 
                         {/* Club & Chill, Pure Veg, etc. */}
                         {[
-                            { title: "Club &\nChill", img: "/dining/diningimg2.png" },
-                            { title: "Pure\nveg", img: "/dining/diningimg3.png" },
-                            { title: "Cafe\nvibes", img: "/dining/diningimg4.png" },
-                            { title: "Family\nfavourites", img: "/dining/diningimg5.png" },
-                            { title: "Bar &\nbites", img: "/dining/diningimg6.png" }
+                            { title: "Club &\nChill", img: "/dining/diningimg2.png", href: "/dining/club-chill" },
+                            { title: "Pure\nveg", img: "/dining/diningimg3.png", href: "/dining/pure-veg" },
+                            { title: "Cafe\nvibes", img: "/dining/diningimg4.png", href: "/dining/cafe-vibes" },
+                            { title: "Family\nfavourites", img: "/dining/diningimg5.png", href: "/dining/family-favourites" },
+                            { title: "Bar &\nbites", img: "/dining/diningimg6.png", href: "/dining/bar-bites" }
                         ].map((cat, i) => (
-                            <div
-                                key={i}
-                                className="flex-shrink-0 rounded-[30px] border border-transparent flex flex-col group cursor-pointer overflow-hidden relative"
-                                style={{
-                                    background: 'linear-gradient(105.73deg, #866BFF -160.73%, #BDB1F3 93.19%) padding-box, linear-gradient(135deg, #686868 0%, #D0D0D0 100%) border-box',
-                                    width: '170px',
-                                    height: '252px'
-                                }}
-                            >
-                                <div className="px-[20px] pt-[20px] pb-1 font-[family-name:var(--font-anek-latin)]">
-                                    <h3 className="text-xl md:text-2xl font-medium text-black whitespace-pre-line leading-tight">
-                                        {cat.title}
-                                    </h3>
-                                </div>
-                                <div className="flex-1 relative w-full flex items-end justify-end">
-                                    <div className="relative w-[150px] h-[180px] -mr-4">
-                                        <Image
-                                            src={cat.img}
-                                            alt={cat.title}
-                                            fill
-                                            className="object-contain object-right-bottom"
-                                            priority={i === 0}
-                                            sizes="(max-width: 768px) 170px, 170px"
-                                        />
+                            <Link key={i} href={cat.href} className="block flex-shrink-0 cursor-pointer">
+                                <div
+                                    className="rounded-[30px] border border-transparent flex flex-col group overflow-hidden relative"
+                                    style={{
+                                        background: 'linear-gradient(105.73deg, #866BFF -160.73%, #BDB1F3 93.19%) padding-box, linear-gradient(135deg, #686868 0%, #D0D0D0 100%) border-box',
+                                        width: '170px',
+                                        height: '252px'
+                                    }}
+                                >
+                                    <div className="px-[20px] pt-[20px] pb-1 font-[family-name:var(--font-anek-latin)]">
+                                        <h3 className="text-xl md:text-2xl font-medium text-black whitespace-pre-line leading-tight">
+                                            {cat.title}
+                                        </h3>
+                                    </div>
+                                    <div className="flex-1 relative w-full flex items-end justify-end">
+                                        <div className="relative w-[150px] h-[180px] -mr-4">
+                                            <Image
+                                                src={cat.img}
+                                                alt={cat.title}
+                                                fill
+                                                className="object-contain object-right-bottom"
+                                                priority={i === 0}
+                                                sizes="(max-width: 768px) 170px, 170px"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            </Link>
                         ))}
                     </div>
                 </section>

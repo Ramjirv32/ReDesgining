@@ -101,30 +101,33 @@ const CreateEventPage = () => {
     });
 
     useEffect(() => {
-        const session = getOrganizerSession();
-        if (!session || session.categoryStatus?.events !== 'approved') {
-            setAuthChecked(false);
-        } else {
-            setAuthChecked(true);
-            // Default organizer name in payment
-            setPayment(p => ({ ...p, organizerName: session.email.split('@')[0] }));
-            // Pre-fill bank details from saved organizer setup
-            fetch(`/backend/api/organizer/${session.id}/existing-setup?category=events`, { credentials: 'include' })
-                .then(r => r.ok ? r.json() : null)
-                .then(setup => {
-                    if (setup) {
-                        setPayment(p => ({
-                            ...p,
-                            organizerName: setup.accountHolder || p.organizerName,
-                            gstin: setup.gstNumber || p.gstin,
-                            accountNumber: setup.bankAccountNo || p.accountNumber,
-                            ifsc: setup.bankIfsc || p.ifsc,
-                            accountType: setup.bankName || p.accountType,
-                        }));
-                    }
-                })
-                .catch(() => { });
-        }
+        const timer = setTimeout(() => {
+            const session = getOrganizerSession();
+            if (!session || session.categoryStatus?.events !== 'approved') {
+                setAuthChecked(false);
+            } else {
+                setAuthChecked(true);
+                // Default organizer name in payment
+                setPayment(p => ({ ...p, organizerName: session.email.split('@')[0] }));
+                // Pre-fill bank details from saved organizer setup
+                fetch(`/backend/api/organizer/${session.id}/existing-setup?category=events`, { credentials: 'include' })
+                    .then(r => r.ok ? r.json() : null)
+                    .then(setup => {
+                        if (setup) {
+                            setPayment(p => ({
+                                ...p,
+                                organizerName: setup.accountHolder || p.organizerName,
+                                gstin: setup.gstNumber || p.gstin,
+                                accountNumber: setup.bankAccountNo || p.accountNumber,
+                                ifsc: setup.bankIfsc || p.ifsc,
+                                accountType: setup.bankName || p.accountType,
+                            }));
+                        }
+                    })
+                    .catch(() => { });
+            }
+        }, 100);
+        return () => clearTimeout(timer);
     }, []);
 
     if (!authChecked) {

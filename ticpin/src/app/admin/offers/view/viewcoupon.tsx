@@ -99,7 +99,7 @@ export default function ViewCouponForm({ onBack }: { onBack: () => void }) {
                     <div className="text-center py-20 text-gray-400 text-[16px]">No coupons created yet.</div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-6 gap-x-2">
-                        {coupons.map((coupon) => (
+                        {(coupons || []).map((coupon) => (
                             <div
                                 key={coupon.id}
                                 onClick={() => setSelectedCoupon(coupon)}

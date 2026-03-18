@@ -61,8 +61,18 @@ export default function EditDiningPage() {
         city: ''
     });
     const [selections, setSelections] = useState({ category: 'Select Category', subCategory: 'Select Sub-Category', city: 'Select City' });
+    const [hasCheckedSession, setHasCheckedSession] = useState(false);
 
     useEffect(() => {
+        const timer = setTimeout(() => {
+            setHasCheckedSession(true);
+        }, 100);
+        return () => clearTimeout(timer);
+    }, []);
+
+    useEffect(() => {
+        if (!hasCheckedSession) return;
+        
         const load = async () => {
             const session = getOrganizerSession();
             if (!session) { router.replace('/'); return; }

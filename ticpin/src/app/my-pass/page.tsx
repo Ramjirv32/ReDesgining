@@ -55,19 +55,40 @@ export default function MyPassPage() {
     const [error, setError] = useState('');
     const [renewLoading, setRenewLoading] = useState(false);
     const [renewSuccess, setRenewSuccess] = useState(false);
+    const [hasCheckedSession, setHasCheckedSession] = useState(false);
 
     useEffect(() => {
-        window.scrollTo(0, 0);
-        if (!session) { router.push('/pass'); return; }
-        fetch(`/backend/api/pass/user/${session.id}`, { credentials: 'include' })
-            .then(r => {
-                if (!r.ok) { setError('no_pass'); setLoading(false); return null; }
-                return r.json();
-            })
-            .then(d => { if (d) { setPass(d); setLoading(false); } })
-            .catch(() => { setError('no_pass'); setLoading(false); });
+        const timer = setTimeout(() => {
+            setHasCheckedSession(true);
+        }, 100);
+        return () => clearTimeout(timer);
+    }, []);
 
-        // Handle Cashfree redirect return for renewal
+    useEffect(() => {
+        if (!hasCheckedSession) return;
+        
+        if (!session) { 
+            router.push('/pass'); 
+            return; 
+        }
+        
+        fetch(`/backend/api/pass/user/${session.id}`, { credentials: 'include' })
+            .then(r => r.json())
+            .then(d => {
+                if (d) {
+                    setPass(d);
+                } else {
+                    setError('no_pass');
+                }
+                setLoading(false);
+            })
+            .catch(() => { setError('no_pass'); setLoading(false); });
+    }, [session, hasCheckedSession, router]);
+
+    // Handle Cashfree redirect return for renewal
+    useEffect(() => {
+        if (!hasCheckedSession) return;
+        
         const urlParams = new URLSearchParams(window.location.search);
         const cfOrderId = urlParams.get('order_id');
         if (cfOrderId && cfOrderId.startsWith('TICPIN_')) {
@@ -84,8 +105,7 @@ export default function MyPassPage() {
                 }
             }
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [session]);
+    }, [session, hasCheckedSession]);
 
     const confirmRenew = async (passId: string, paymentId: string) => {
         try {

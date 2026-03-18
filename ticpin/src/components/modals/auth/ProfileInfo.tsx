@@ -105,23 +105,27 @@ const ProfileInfo: React.FC<ProfileInfoProps> = ({
                                 style={{ fontSize: '36px', fontWeight: 500, lineHeight: '100%', fontFamily: 'var(--font-anek-latin)' }}
                                 className="text-zinc-900"
                             >
-                                {profile?.name || (isAdmin ? 'Admin' : 'Member')}
+                                {isAdmin ? 'Admin Panel' : (profile?.name || profile?.phone || 'Guest')}
                             </h4>
-                            <button
-                                onClick={() => {
-                                    setIsEditing(true);
-                                    setEditedName(profile?.name || '');
-                                    setEditedEmail(profile?.email || '');
-                                }}
-                                className="p-2 text-zinc-400 hover:text-black transition-colors"
-                            >
-                                <Edit2 size={18} />
-                            </button>
+                            {!isAdmin && (
+                                <button
+                                    onClick={() => {
+                                        setIsEditing(true);
+                                        setEditedName(profile?.name || '');
+                                        setEditedEmail(profile?.email || '');
+                                    }}
+                                    className="p-2 text-zinc-400 hover:text-black transition-colors"
+                                >
+                                    <Edit2 size={18} />
+                                </button>
+                            )}
                         </div>
-                        <p className="text-lg text-zinc-500 font-medium tracking-tight uppercase">
-                            {userPhone ? `+91 ${userPhone}` : '{ NUMBER }'}
-                        </p>
-                        {profile?.email && (
+                        {!isAdmin && (
+                            <p className="text-lg text-zinc-500 font-medium tracking-tight uppercase">
+                                {userPhone ? `+91 ${userPhone}` : '{ NUMBER }'}
+                            </p>
+                        )}
+                        {profile?.email && !isAdmin && (
                             <p className="text-sm text-zinc-400 font-medium">{profile.email}</p>
                         )}
                     </>

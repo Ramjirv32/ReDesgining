@@ -264,7 +264,7 @@ function AdminPlayContent() {
   useEffect(() => { load(); }, [load]);
 
   const getId = (item: AdminListing) => item.id || item._id || '';
-  const filtered = listings.filter(l => l.status === activeTab);
+  const filtered = (listings || []).filter(l => l.status === activeTab);
   const preview = detailId ? listings.find(l => getId(l) === detailId) : null;
 
   const handleStatus = async (id: string, status: ListingStatus) => {
@@ -377,7 +377,7 @@ function AdminPlayContent() {
                 return (
                   <div key={id} className="relative group">
                     <div
-                      onClick={() => router.push(`?id=${id}`)}
+                      onClick={() => router.push(`/admin/play?list=true`)}
                       className="bg-[#FFFCE4] rounded-[19px] p-12 flex items-center gap-16 border border-white hover:shadow-md transition-shadow cursor-pointer"
                     >
                       <div className="w-[320px] h-[180px] bg-white rounded-[15px] flex-shrink-0 flex items-center justify-center overflow-hidden p-2 relative">
@@ -398,7 +398,10 @@ function AdminPlayContent() {
                     </div>
 
                     <button
-                      onClick={() => router.push(`?id=${id}`)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`?id=${id}`);
+                      }}
                       className="absolute -right-7 top-1/2 -translate-y-1/2 w-[57px] h-[57px] bg-black rounded-full flex items-center justify-center text-white shadow-xl hover:scale-110 active:scale-95 transition-transform z-10"
                     >
                       <ChevronRight size={30} />

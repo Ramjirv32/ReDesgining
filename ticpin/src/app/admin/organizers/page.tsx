@@ -267,15 +267,25 @@ function OrganizerModerationContent() {
     const [activeTab, setActiveTab] = useState<Tab>('pending');
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [authChecked, setAuthChecked] = useState(false);
+    const [hasCheckedSession, setHasCheckedSession] = useState(false);
 
     useEffect(() => {
+        const timer = setTimeout(() => {
+            setHasCheckedSession(true);
+        }, 100);
+        return () => clearTimeout(timer);
+    }, []);
+
+    useEffect(() => {
+        if (!hasCheckedSession) return;
+        
         const session = getOrganizerSession();
         if (!session?.isAdmin) {
             router.replace('/list-your-events/Login');
         } else {
             setAuthChecked(true);
         }
-    }, [router]);
+    }, [hasCheckedSession, router]);
 
     const fetchOrganizers = useCallback(async () => {
         setLoading(true);
@@ -365,7 +375,7 @@ function OrganizerModerationContent() {
                                 return (
                                     <div key={id} className="relative group">
                                         <div
-                                            onClick={() => setSelectedId(id)}
+                                            onClick={() => router.push('/admin/organizers?list=true')}
                                             className="bg-[#EEEDFC] rounded-[24px] p-6 flex items-center gap-10 cursor-pointer transition-all hover:bg-[#E7E5FB] hover:shadow-lg border border-transparent hover:border-[#AC9BF7]/50"
                                         >
                                             {/* Mini Icon */}
@@ -406,9 +416,15 @@ function OrganizerModerationContent() {
                                                 </button>
 
                                                 {/* Chevron */}
-                                                <div className="w-14 h-14 bg-black rounded-full flex items-center justify-center text-white shadow-xl transition-transform active:scale-90">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedId(id);
+                                                    }}
+                                                    className="w-14 h-14 bg-black rounded-full flex items-center justify-center text-white shadow-xl transition-transform active:scale-90"
+                                                >
                                                     <ChevronRight size={32} />
-                                                </div>
+                                                </button>
                                             </div>
                                         </div>
                                     </div>

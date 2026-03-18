@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import BottomBanner from '@/components/layout/BottomBanner';
 import Footer from '@/components/layout/Footer';
 import { ArrowLeft, MapPin, Star, ChevronDown, ChevronRight, PhoneCall } from 'lucide-react';
@@ -48,6 +48,11 @@ interface RealDining {
 export default function DiningVenueDetailClient({ venue, id, offers }: { venue: RealDining, id: string, offers: OfferRecord[] }) {
     const router = useRouter();
     const [activeFaq, setActiveFaq] = useState<number | null>(null);
+
+    // Scroll to top on page load
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, []);
 
     const smallImages = (venue.gallery_urls && venue.gallery_urls.length > 0)
         ? venue.gallery_urls.slice(0, 4)

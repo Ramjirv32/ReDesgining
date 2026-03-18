@@ -43,7 +43,7 @@ export default function EventCard({
           <div className="text-xs font-semibold text-purple-600 mb-2">
             {date} / {time}
           </div>
-          <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 uppercase">
+          <h3 className={`${name.length > 22 ? 'text-base' : 'text-lg'} font-bold text-gray-900 mb-2 line-clamp-2 uppercase leading-tight`}>
             {name}
           </h3>
           <p className="text-sm text-gray-600 mb-3">{location}</p>

@@ -40,34 +40,34 @@ func CreateDiningBooking(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "name must be at least 3 characters"})
 	}
 
-	// Check email uniqueness - must NOT exist in users or organizers collection
+	if req.DiningID == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "dining_id is required"})
+	}
+	diningObjID, err := primitive.ObjectIDFromHex(req.DiningID)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid dining_id"})
+	}
+
+	// Duplicate booking check: prevent same user booking same venue/date/slot
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	var existingUser bson.M
-	err := config.UsersCol.FindOne(ctx, bson.M{"email": req.UserEmail}).Decode(&existingUser)
+	var existingBooking bson.M
+	err = config.DiningBookingsCol.FindOne(ctx, bson.M{
+		"user_email": req.UserEmail,
+		"dining_id":  diningObjID,
+		"date":       req.Date,
+		"time_slot":  req.TimeSlot,
+		"status":     bson.M{"$ne": "cancelled"},
+	}).Decode(&existingBooking)
 	if err == nil {
-		return c.Status(400).JSON(fiber.Map{"error": "email already registered as a user. please login or use a different email"})
-	}
-
-	var existingOrg bson.M
-	err = config.OrgsCol.FindOne(ctx, bson.M{"email": req.UserEmail}).Decode(&existingOrg)
-	if err == nil {
-		return c.Status(400).JSON(fiber.Map{"error": "email already registered as an organizer. please use a different email"})
-	}
-	if req.DiningID == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "dining_id is required"})
+		return c.Status(400).JSON(fiber.Map{"error": "you already have a booking for this time slot"})
 	}
 	if req.Date == "" || req.TimeSlot == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "date and time_slot are required"})
 	}
 	if req.Guests <= 0 {
 		return c.Status(400).JSON(fiber.Map{"error": "guests must be at least 1"})
-	}
-
-	diningObjID, err := primitive.ObjectIDFromHex(req.DiningID)
-	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid dining_id"})
 	}
 
 	var discountAmount float64

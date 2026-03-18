@@ -246,11 +246,11 @@ export default function PushNotification() {
                     </div>
 
                     <div className="grid grid-cols-1 gap-6">
-                        {history.length === 0 ? (
+                        {(history || []).length === 0 ? (
                             <div className="bg-white/50 border border-zinc-200 rounded-[20px] p-12 text-center text-zinc-500 font-medium">
                                 No notification history found.
                             </div>
-                        ) : history.map(item => (
+                        ) : (history || []).map(item => (
                             <div key={item.id} className="bg-white rounded-[25px] p-8 border border-white shadow-sm hover:shadow-md transition-shadow flex gap-8">
                                 {item.image_url && (
                                     <div className="w-[120px] h-[120px] rounded-[15px] overflow-hidden flex-shrink-0 border border-zinc-100 relative">
@@ -314,7 +314,7 @@ export default function PushNotification() {
 
                         <div className="flex-1 overflow-y-auto p-6 space-y-2">
                             {targetType === 'selected_users' ? (
-                                allUsers
+                                (allUsers || [])
                                     .filter(u =>
                                         (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                                         (u.phone || '').includes(searchTerm)
@@ -333,7 +333,7 @@ export default function PushNotification() {
                                         </div>
                                     ))
                             ) : (
-                                allOrganizers
+                                (allOrganizers || [])
                                     .filter(o =>
                                         (o.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                                         (o.email || '').toLowerCase().includes(searchTerm.toLowerCase())

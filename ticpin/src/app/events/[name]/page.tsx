@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import EventDetailClient from './EventDetailClient';
 import { notFound } from 'next/navigation';
+import { headers } from 'next/headers';
+import MobileEventDetails from '@/components/mobile/MobileEventDetails';
 
 interface Artist {
     name: string;
@@ -76,13 +78,37 @@ export async function generateMetadata({ params }: { params: Promise<{ name: str
     };
 }
 
+async function getMobileEventData(id: string) {
+    try {
+        const base = process.env.NEXT_PUBLIC_BACKEND_URL;
+        const res = await fetch(`${base}/api/mobile/event/${id}`, { cache: 'no-store' });
+        if (!res.ok) return null;
+        return await res.json();
+    } catch (error) {
+        console.error("Failed to fetch mobile event data:", error);
+        return null;
+    }
+}
+
 export default async function EventDetailPage({ params }: { params: Promise<{ name: string }> }) {
     const { name } = await params;
     const decodedName = decodeURIComponent(name);
+    
+    const headersList = await headers();
+    const userAgent = headersList.get('user-agent') || '';
+    const isMobile = /mobile/i.test(userAgent);
+
     const event = await getEventData(decodedName);
 
     if (!event) {
         notFound();
+    }
+
+    if (isMobile) {
+        const mobileData = await getMobileEventData(event.id);
+        if (mobileData) {
+            return <MobileEventDetails event={mobileData.event} offers={mobileData.offers || []} />;
+        }
     }
 
     return <EventDetailClient event={event} id={event.id} />;

@@ -30,9 +30,19 @@ function AccountSetupContent() {
     const [uploadError, setUploadError] = useState('');
     const [prefilled, setPrefilled] = useState(false);
     const [pageLoading, setPageLoading] = useState(true);
+    const [hasCheckedSession, setHasCheckedSession] = useState(false);
     const fileRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
+        const timer = setTimeout(() => {
+            setHasCheckedSession(true);
+        }, 100);
+        return () => clearTimeout(timer);
+    }, []);
+
+    useEffect(() => {
+        if (!hasCheckedSession) return;
+        
         // Only restore orgType selection (non-sensitive, no security concern)
         const saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? '{}');
         if (saved.orgType) setSelectedCategory(saved.orgType);
@@ -68,7 +78,7 @@ function AccountSetupContent() {
                 .catch(() => { })
                 .finally(() => setPageLoading(false));
         } else { setPageLoading(false); }
-    }, [router]);
+    }, [hasCheckedSession, router]);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];

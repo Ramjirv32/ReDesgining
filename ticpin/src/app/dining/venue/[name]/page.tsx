@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import DiningVenueDetailClient from './DiningVenueDetailClient';
 import { notFound } from 'next/navigation';
+import { headers } from 'next/headers';
+import MobileDiningDetails from '@/components/mobile/MobileDiningDetails';
 
 interface OfferRecord {
     id: string;
@@ -82,14 +84,40 @@ export async function generateMetadata({ params }: { params: Promise<{ name: str
     };
 }
 
+
+async function getMobileVenueData(id: string) {
+    try {
+        const base = process.env.NEXT_PUBLIC_BACKEND_URL;
+        const res = await fetch(`${base}/api/mobile/dining/${id}`, { cache: 'no-store' });
+        if (!res.ok) return null;
+        return await res.json();
+    } catch (error) {
+        console.error("Failed to fetch mobile dining data:", error);
+        return null;
+    }
+}
+
 export default async function DiningVenueDetailPage({ params }: { params: Promise<{ name: string }> }) {
     const { name } = await params;
     const decodedName = decodeURIComponent(name);
-    const [venue, offers] = await Promise.all([getVenueData(decodedName), getVenueOffers(decodedName)]);
+
+    const headersList = await headers();
+    const userAgent = headersList.get('user-agent') || '';
+    const isMobile = /mobile/i.test(userAgent);
+
+    const venue = await getVenueData(decodedName);
 
     if (!venue) {
         notFound();
     }
 
+    if (isMobile) {
+        const mobileData = await getMobileVenueData(venue.id);
+        if (mobileData) {
+            return <MobileDiningDetails venue={mobileData.venue} offers={mobileData.offers || []} />;
+        }
+    }
+
+    const offers = await getVenueOffers(decodedName);
     return <DiningVenueDetailClient venue={venue} id={venue.id} offers={offers} />;
 }
