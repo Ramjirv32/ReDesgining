@@ -78,12 +78,61 @@ func main() {
 
 		return err
 	})
+
+	// Domain restriction middleware
+	app.Use(func(c *fiber.Ctx) error {
+		origin := c.Get("Origin")
+		referer := c.Get("Referer")
+
+		// Allow localhost for development
+		if c.IP() == "127.0.0.1" || c.IP() == "::1" {
+			return c.Next()
+		}
+
+		// Check allowed domains
+		allowedOrigins := []string{
+			"https://re-desgining.vercel.app",
+			"https://ticpin.in",
+			"http://localhost:3000",
+		}
+
+		// Check Origin header
+		if origin != "" {
+			allowed := false
+			for _, allowedOrigin := range allowedOrigins {
+				if origin == allowedOrigin {
+					allowed = true
+					break
+				}
+			}
+			if !allowed {
+				return c.Status(403).JSON(fiber.Map{"error": "origin not allowed"})
+			}
+		}
+
+		// Check Referer header as fallback
+		if referer != "" {
+			allowed := false
+			for _, allowedOrigin := range allowedOrigins {
+				if len(referer) >= len(allowedOrigin) && referer[:len(allowedOrigin)] == allowedOrigin {
+					allowed = true
+					break
+				}
+			}
+			if !allowed {
+				return c.Status(403).JSON(fiber.Map{"error": "referer not allowed"})
+			}
+		}
+
+		return c.Next()
+	})
+
 	app.Use(fiberRecover.New())
 	app.Use(compress.New(compress.Config{Level: compress.LevelDefault}))
 
 	corsOrigins := os.Getenv("CORS_ORIGINS")
 	if corsOrigins == "" {
-		corsOrigins = "http://localhost:3000,http://localhost:9000"
+		corsOrigins = "https://re-desgining.vercel.app,https://ticpin.in,http://localhost:3000"
 	}
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     corsOrigins,
