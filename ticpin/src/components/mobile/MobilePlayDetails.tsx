@@ -42,7 +42,7 @@ interface MobilePlayDetailsProps {
         time?: string;
         courts?: Court[];
         guide?: {
-            facilities?: string[];
+            facilities?: string[] | string;
             is_pet_friendly?: boolean;
         };
         faqs?: { question: string; answer: string }[];
@@ -72,7 +72,12 @@ export default function MobilePlayDetails({ venue, offers = [] }: MobilePlayDeta
     };
 
     const galleryImages = venue.gallery_urls?.slice(0, 3) || [];
-    const facilities = venue.guide?.facilities || [];
+    const rawFacs = venue.guide?.facilities;
+    const facilities = Array.isArray(rawFacs)
+        ? rawFacs
+        : (typeof rawFacs === 'string'
+            ? rawFacs.split(',').map(f => f.trim()).filter(Boolean)
+            : []);
 
     // Format time display
     const displayTime = venue.opening_time && venue.closing_time
