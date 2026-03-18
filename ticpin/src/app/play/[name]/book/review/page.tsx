@@ -79,6 +79,7 @@ export default function PlayReviewPage() {
         nationality: 'Indian',
         address: '',
         city: '',
+        state: '',
         pincode: '',
     });
 
@@ -224,6 +225,7 @@ export default function PlayReviewPage() {
         billing.phone.trim().length >= 10 &&
         billing.address.trim() !== '' &&
         billing.city.trim() !== '' &&
+        billing.state.trim() !== '' &&
         billing.pincode.trim().length >= 6 &&
         acceptedTerms;
 
@@ -664,11 +666,17 @@ export default function PlayReviewPage() {
                                     className="w-full border border-zinc-300 rounded-[10px] h-[48px] px-4 text-[15px] outline-none focus:border-black" />
                             </div>
                             <div>
-                                <label className="text-[13px] font-medium text-[#686868] uppercase tracking-wide block mb-1">PIN Code *</label>
-                                <input type="text" value={billing.pincode} onChange={e => setBilling({ ...billing, pincode: e.target.value })}
-                                    placeholder="6-digit PIN" maxLength={6}
+                                <label className="text-[13px] font-medium text-[#686868] uppercase tracking-wide block mb-1">State *</label>
+                                <input type="text" value={billing.state} onChange={e => setBilling({ ...billing, state: e.target.value })}
+                                    placeholder="State"
                                     className="w-full border border-zinc-300 rounded-[10px] h-[48px] px-4 text-[15px] outline-none focus:border-black" />
                             </div>
+                        </div>
+                        <div>
+                            <label className="text-[13px] font-medium text-[#686868] uppercase tracking-wide block mb-1">PIN Code *</label>
+                            <input type="text" value={billing.pincode} onChange={e => setBilling({ ...billing, pincode: e.target.value })}
+                                placeholder="6-digit PIN" maxLength={6}
+                                className="w-full border border-zinc-300 rounded-[10px] h-[48px] px-4 text-[15px] outline-none focus:border-black" />
                         </div>
                     </div>
                 </div>

@@ -13,8 +13,8 @@ export default function EventBookingsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (session?.email) {
-      bookingApi.getUserBookings(session.email)
+    if (session) {
+      bookingApi.getUserBookings({ email: session.email, phone: session.phone, userId: session.id })
         .then(all => {
           // Filter only event bookings
           setBookings(all.filter(b => b.type === 'event' || b.category === 'event'));

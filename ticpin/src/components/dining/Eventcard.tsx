@@ -12,6 +12,7 @@ interface EventCardProps {
     tag?: string;
     subText?: string;
     rating?: number;
+    price?: string | number;
 }
 
 export default function EventCard({
@@ -23,6 +24,7 @@ export default function EventCard({
     tag,
     subText,
     rating,
+    price,
 }: EventCardProps) {
     const [imgLoaded, setImgLoaded] = useState(false);
 
@@ -86,14 +88,20 @@ export default function EventCard({
                         </div>
                     </div>
                 </div>
-
                 {/* Location and Arrow */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 overflow-hidden">
                         <MapPin size={16} className="text-black flex-shrink-0" />
-                        <p className="text-[15px] font-medium text-black truncate font-[family-name:var(--font-anek-latin)]">
-                            {location || 'Location'}
-                        </p>
+                        <div className="flex flex-col">
+                            <p className="text-[15px] font-medium text-black truncate font-[family-name:var(--font-anek-latin)]">
+                                {location || 'Location'}
+                            </p>
+                            {price && (
+                                <p className="text-[12px] font-bold text-[#866BFF] font-[family-name:var(--font-anek-latin)]">
+                                    From ₹{price}
+                                </p>
+                            )}
+                        </div>
                     </div>
 
                     <div className="relative flex-shrink-0 self-center mt-[-40px]">

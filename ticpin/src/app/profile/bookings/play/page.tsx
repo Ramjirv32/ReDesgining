@@ -13,8 +13,8 @@ export default function PlayBookingsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (session?.email) {
-      bookingApi.getUserBookings(session.email)
+    if (session) {
+      bookingApi.getUserBookings({ email: session.email, phone: session.phone, userId: session.id })
         .then(all => {
           // Filter only play bookings
           setBookings(all.filter(b => b.type === 'play' || b.category === 'play'));
