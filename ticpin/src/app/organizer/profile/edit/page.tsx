@@ -70,10 +70,12 @@ function EditProfileContent() {
     useEffect(() => {
         if (!session || !hasCheckedSession) return;
 
+        let isMounted = true;
+        
         const fetchProfile = async () => {
             try {
                 const profile = await organizerApi.getProfile(session.id);
-                if (profile) {
+                if (profile && isMounted) {
                     setFormData(prev => ({
                         ...prev,
                         ...profile,
@@ -87,18 +89,24 @@ function EditProfileContent() {
                 // profile not found — try to get PAN name from setup
                 try {
                     const setup = await organizerApi.getExistingSetup('dining');
-                    if (setup.panName) {
+                    if (setup.panName && isMounted) {
                         setFormData(prev => ({ ...prev, name: setup.panName || '' }));
                     }
                 } catch (setupErr) {
                     // ignore setup fetch error
                 }
             } finally {
-                setLoading(false);
+                if (isMounted) {
+                    setLoading(false);
+                }
             }
         };
 
         fetchProfile();
+        
+        return () => {
+            isMounted = false;
+        };
     }, [session?.id, hasCheckedSession]);
 
     const handleEmailChange = (newEmail: string) => {

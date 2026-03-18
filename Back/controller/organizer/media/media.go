@@ -4,6 +4,7 @@ import (
 	"context"
 	"ticpin-backend/config"
 	"ticpin-backend/models"
+	organizersvc "ticpin-backend/services/organizer"
 	"time"
 
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
@@ -149,10 +150,14 @@ func GetOrganizerMe(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "organizer not found"})
 	}
 
-	isAdmin := org.Email == config.GetAdminEmail()
+	isAdmin := organizersvc.IsAdmin(org)
+	role := "organizer"
+	if isAdmin {
+		role = "admin"
+	}
 
 	// Always refresh session cookies with latest categoryStatus from database
-	err = config.SetAuthCookies(c, org.ID.Hex(), org.Email, "", isAdmin, org.CategoryStatus)
+	err = config.SetAuthCookies(c, org.ID.Hex(), org.Email, role, "", isAdmin, org.CategoryStatus)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "failed to refresh session"})
 	}

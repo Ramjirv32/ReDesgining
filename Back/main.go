@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"ticpin-backend/config"
+	"ticpin-backend/middleware"
 	adminroutes "ticpin-backend/routes/admin"
 	bookingroutes "ticpin-backend/routes/booking"
 	diningroutes "ticpin-backend/routes/dining"
@@ -129,6 +130,12 @@ func main() {
 
 	app.Use(fiberRecover.New())
 	app.Use(compress.New(compress.Config{Level: compress.LevelDefault}))
+
+	// Start rate limiting cleanup
+	middleware.StartRateLimitCleanup()
+
+	// Apply rate limiting to all routes
+	app.Use(middleware.RateLimitByPath)
 
 	corsOrigins := os.Getenv("CORS_ORIGINS")
 	if corsOrigins == "" {

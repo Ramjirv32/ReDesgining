@@ -63,10 +63,12 @@ function EditUserProfileContent() {
         }
         
         // Fetch profile in background but don't block UI
+        let isMounted = true;
+        
         const fetchProfile = async () => {
             try {
                 const profile = await profileApi.getProfile(userSession.id);
-                if (profile) {
+                if (profile && isMounted) {
                     setFormData(prev => ({
                         ...prev,
                         ...profile,
@@ -79,11 +81,17 @@ function EditUserProfileContent() {
             } catch (err) {
                 console.error('Failed to fetch user profile:', err);
             } finally {
-                setLoading(false);
+                if (isMounted) {
+                    setLoading(false);
+                }
             }
         };
 
         fetchProfile();
+        
+        return () => {
+            isMounted = false;
+        };
     }, [userSession, hasCheckedSession, router]);
 
     const handleEmailChange = (newEmail: string) => {

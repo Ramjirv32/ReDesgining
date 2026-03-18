@@ -8,6 +8,7 @@ import (
 
 	"ticpin-backend/config"
 	"ticpin-backend/models"
+	organizersvc "ticpin-backend/services/organizer"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -37,12 +38,13 @@ func Create(b *models.Booking) error {
 		var existing models.Booking
 		err := col.FindOne(sessCtx, bson.M{"event_id": b.EventID, "user_email": b.UserEmail, "status": "booked"}).Decode(&existing)
 		if err == nil {
-			adminEmail := config.GetAdminEmail()
-			isAdmin := b.UserEmail == adminEmail
+			// Check if user is admin by looking up organizer
+			orgCol := config.OrgsCol
+			var org models.Organizer
+			errOrg := orgCol.FindOne(sessCtx, bson.M{"email": b.UserEmail}).Decode(&org)
+			isAdmin := errOrg == nil && organizersvc.IsAdmin(org)
+
 			if !isAdmin {
-				orgCol := config.OrgsCol
-				var org models.Organizer
-				errOrg := orgCol.FindOne(sessCtx, bson.M{"email": b.UserEmail}).Decode(&org)
 				if errOrg != nil {
 					return nil, errors.New("this email has already booked for this event")
 				}

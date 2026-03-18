@@ -7,6 +7,7 @@ import { adminApi, AdminListing, ListingStatus } from '@/lib/api/admin';
 import {
   X, RefreshCw, Trash2, ChevronRight, Search, User
 } from 'lucide-react';
+import { toast } from '@/components/ui/Toast';
 
 type Tab = 'pending' | 'approved';
 
@@ -51,9 +52,9 @@ function DetailViewPanel({ ev, onStatus, updating, onUpdate, onNext, currentInde
     setIsSaving(true);
     try {
       await onUpdate(id, editedEv);
-      alert('Changes saved successfully');
+      toast.success('Changes saved successfully');
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Failed to save changes');
+      toast.error(e instanceof Error ? e.message : 'Failed to save changes');
     } finally {
       setIsSaving(false);
     }
@@ -346,7 +347,7 @@ function AdminEventsContent() {
 
   const handleStatus = async (id: string, status: ListingStatus) => {
     if (!id) {
-      alert("Error: Listing ID is missing.");
+      toast.error("Error: Listing ID is missing.");
       return;
     }
     setUpdating(id);
@@ -355,7 +356,7 @@ function AdminEventsContent() {
       setEvents(prev => prev.map(item => (getId(item) === id ? { ...item, status } : item)));
 
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Update failed');
+      toast.error(e instanceof Error ? e.message : 'Update failed');
     } finally {
       setUpdating(null);
     }
@@ -376,7 +377,7 @@ function AdminEventsContent() {
       setEvents(prev => prev.filter(l => getId(l) !== id));
       router.push('/admin/events');
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Delete failed');
+      toast.error(e instanceof Error ? e.message : 'Delete failed');
     }
   };
 

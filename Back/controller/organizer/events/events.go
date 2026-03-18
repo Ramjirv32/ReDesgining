@@ -74,8 +74,12 @@ func VerifyOTP(c *fiber.Ctx) error {
 	// Removed auto-approval logic. Status should only be 'approved' after admin review.
 	// Status starts as empty/none, becomes 'pending' after setup, then 'approved' after admin approval.
 
-	isAdmin := req.Email == config.GetAdminEmail()
-	if err := config.SetAuthCookies(c, org.ID.Hex(), org.Email, "events", isAdmin, org.CategoryStatus); err != nil {
+	isAdmin := organizersvc.IsAdmin(*org)
+	role := "organizer"
+	if isAdmin {
+		role = "admin"
+	}
+	if err := config.SetAuthCookies(c, org.ID.Hex(), org.Email, role, "events", isAdmin, org.CategoryStatus); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "session error"})
 	}
 	return c.JSON(fiber.Map{
@@ -196,8 +200,12 @@ func GoogleAuth(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	isAdmin := req.Email == config.GetAdminEmail()
-	if err := config.SetAuthCookies(c, org.ID.Hex(), org.Email, "events", isAdmin, org.CategoryStatus); err != nil {
+	isAdmin := organizersvc.IsAdmin(*org)
+	role := "organizer"
+	if isAdmin {
+		role = "admin"
+	}
+	if err := config.SetAuthCookies(c, org.ID.Hex(), org.Email, role, "events", isAdmin, org.CategoryStatus); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "session error"})
 	}
 

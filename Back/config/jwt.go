@@ -40,6 +40,7 @@ func IsProduction() bool {
 type OrganizerClaims struct {
 	OrganizerID    string            `json:"organizerId"`
 	Email          string            `json:"email"`
+	Role           string            `json:"role"` // "admin", "organizer"
 	IsAdmin        bool              `json:"isAdmin"`
 	CategoryStatus map[string]string `json:"categoryStatus"`
 	jwt.RegisteredClaims
@@ -53,10 +54,20 @@ type SessionInfo struct {
 	CategoryStatus map[string]string `json:"categoryStatus"`
 }
 
-func GenerateOrganizerToken(organizerID, email string, isAdmin bool, categoryStatus map[string]string) (string, error) {
+func GenerateOrganizerToken(organizerID, email, role string, isAdmin bool, categoryStatus map[string]string) (string, error) {
+	// Set default role if empty
+	if role == "" {
+		if isAdmin {
+			role = "admin"
+		} else {
+			role = "organizer"
+		}
+	}
+
 	claims := OrganizerClaims{
 		OrganizerID:    organizerID,
 		Email:          email,
+		Role:           role,
 		IsAdmin:        isAdmin,
 		CategoryStatus: categoryStatus,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -68,8 +79,8 @@ func GenerateOrganizerToken(organizerID, email string, isAdmin bool, categorySta
 	return token.SignedString(JWTSecret())
 }
 
-func SetAuthCookies(c *fiber.Ctx, organizerID, email, vertical string, isAdmin bool, categoryStatus map[string]string) error {
-	token, err := GenerateOrganizerToken(organizerID, email, isAdmin, categoryStatus)
+func SetAuthCookies(c *fiber.Ctx, organizerID, email, role, vertical string, isAdmin bool, categoryStatus map[string]string) error {
+	token, err := GenerateOrganizerToken(organizerID, email, role, isAdmin, categoryStatus)
 	if err != nil {
 		return err
 	}

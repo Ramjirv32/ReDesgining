@@ -4,6 +4,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import NavbarWrapper from "@/components/layout/NavbarWrapper";
 import Providers from "@/components/providers/Providers";
+import { ToastProvider } from "@/components/ui/Toast";
 
 const anekLatin = Anek_Latin({
   subsets: ["latin"],
@@ -61,10 +62,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${anekLatin.variable} ${inter.variable} ${anekTamil.variable} ${anekTamilCondensed.variable} font-sans antialiased text-black`}>
-        <Providers>
-          <NavbarWrapper />
-          {children}
-        </Providers>
+        <ToastProvider>
+          <Providers>
+            <NavbarWrapper />
+            {children}
+          </Providers>
+        </ToastProvider>
       </body>
     </html>
   );

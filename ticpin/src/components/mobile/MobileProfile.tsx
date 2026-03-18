@@ -26,12 +26,6 @@ export default function MobileProfile() {
         sync();
     }, [sync]);
 
-    useEffect(() => {
-        if (organizerSession?.id) {
-            fetchPass();
-        }
-    }, [organizerSession?.id]);
-
     const fetchPass = async () => {
         if (!organizerSession?.id) return;
         setPassLoading(true);
@@ -50,23 +44,37 @@ export default function MobileProfile() {
 
     useEffect(() => {
         if (organizerSession?.id) {
+            fetchPass();
+        }
+    }, [organizerSession?.id]);
+
+    useEffect(() => {
+        let isMounted = true;
+        
+        if (organizerSession?.id) {
             const fetchProfile = async () => {
                 try {
                     const res = await fetch(`/backend/api/organizer/profile`, { credentials: 'include' });
-                    if (res.ok) {
+                    if (res.ok && isMounted) {
                         const data = await res.json();
                         setOrganizerProfile(data);
                     }
                 } catch (error) {
                     console.error('Failed to fetch organizer profile:', error);
                 } finally {
-                    setLoading(false);
+                    if (isMounted) {
+                        setLoading(false);
+                    }
                 }
             };
             fetchProfile();
         } else {
             setLoading(false);
         }
+        
+        return () => {
+            isMounted = false;
+        };
     }, [organizerSession?.id]);
 
     const title = organizerSession?.isAdmin ? 'Admin Panel' : 

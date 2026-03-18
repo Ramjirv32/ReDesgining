@@ -1,18 +1,12 @@
 package middleware
 
 import (
-	"ticpin-backend/config"
 	stdlog "log"
+	"ticpin-backend/config"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 )
-
-type OrganizerClaims struct {
-	OrganizerID string `json:"organizerId"`
-	Email       string `json:"email"`
-	jwt.RegisteredClaims
-}
 
 func jwtSecret() []byte {
 	return config.JWTSecret()
@@ -37,6 +31,7 @@ func RequireAuth(c *fiber.Ctx) error {
 
 	c.Locals("organizerId", claims.OrganizerID)
 	c.Locals("email", claims.Email)
+	c.Locals("role", claims.Role)
 	c.Locals("isAdmin", claims.IsAdmin)
 	c.Locals("approvals", claims.CategoryStatus)
 
@@ -44,8 +39,8 @@ func RequireAuth(c *fiber.Ctx) error {
 }
 
 func RequireAdmin(c *fiber.Ctx) error {
-	isAdmin, ok := c.Locals("isAdmin").(bool)
-	if !ok || !isAdmin {
+	role, ok := c.Locals("role").(string)
+	if !ok || role != "admin" {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "forbidden: admin access required"})
 	}
 	return c.Next()

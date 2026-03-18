@@ -154,6 +154,15 @@ func UpdateProfile(organizerID string, p *models.OrganizerProfile) error {
 	return err
 }
 
+func IsAdmin(organizer models.Organizer) bool {
+	return organizer.Role == "admin"
+}
+
+func IsAdminByEmail(email string) bool {
+	adminEmail := config.GetAdminEmail()
+	return email == adminEmail
+}
+
 func Login(email, password string) (*models.Organizer, error) {
 	adminEmail := config.GetAdminEmail()
 	adminPass := os.Getenv("ADMIN_PASSWORD")
@@ -171,6 +180,7 @@ func Login(email, password string) (*models.Organizer, error) {
 			ID:             primitive.NewObjectID(),
 			Email:          email,
 			Password:       string(hashed),
+			Role:           "admin", // Admin users get admin role
 			IsVerified:     true,
 			CategoryStatus: map[string]string{},
 			CreatedAt:      time.Now(),

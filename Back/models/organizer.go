@@ -11,6 +11,7 @@ type Organizer struct {
 	Name              string             `bson:"name" json:"name"`
 	Email             string             `bson:"email" json:"email"`
 	Password          string             `bson:"password" json:"-"`
+	Role              string             `bson:"role" json:"role"` // "admin", "organizer"
 	OrganizerCategory []string           `bson:"organizerCategory" json:"organizerCategory"`
 	CategoryStatus    map[string]string  `bson:"categoryStatus,omitempty" json:"categoryStatus"`
 	OTP               string             `bson:"otp" json:"-"`

@@ -6,6 +6,7 @@ import (
 	"ticpin-backend/models"
 	bookingsvc "ticpin-backend/services/booking"
 	couponsvc "ticpin-backend/services/coupon"
+	"ticpin-backend/utils"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -15,33 +16,24 @@ import (
 
 func CreateDiningBooking(c *fiber.Ctx) error {
 	var req struct {
-		UserEmail      string  `json:"user_email"`
-		UserName       string  `json:"user_name"`
-		DiningID       string  `json:"dining_id"`
-		VenueName      string  `json:"venue_name"`
-		Date           string  `json:"date"`
-		TimeSlot       string  `json:"time_slot"`
-		Guests         int     `json:"guests"`
-		OrderAmount    float64 `json:"order_amount"`
-		BookingFee     float64 `json:"booking_fee"`
-		CouponCode     string  `json:"coupon_code"`
-		OfferID        string  `json:"offer_id"`
-		UserID         string  `json:"user_id"`
-		PaymentID      string  `json:"payment_id"`
-		PaymentGateway string  `json:"payment_gateway"`
-	}
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid request: " + err.Error()})
-	}
-	if req.UserEmail == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "user_email is required"})
-	}
-	if req.UserName == "" || len(req.UserName) < 3 {
-		return c.Status(400).JSON(fiber.Map{"error": "name must be at least 3 characters"})
+		UserEmail      string  `json:"user_email" validate:"required,email"`
+		UserName       string  `json:"user_name" validate:"required,min=3,max=50"`
+		DiningID       string  `json:"dining_id" validate:"required"`
+		VenueName      string  `json:"venue_name" validate:"required,min=2,max=100"`
+		Date           string  `json:"date" validate:"required"`
+		TimeSlot       string  `json:"time_slot" validate:"required"`
+		Guests         int     `json:"guests" validate:"required,min=1,max=20"`
+		OrderAmount    float64 `json:"order_amount" validate:"required,min=0"`
+		BookingFee     float64 `json:"booking_fee" validate:"min=0"`
+		CouponCode     string  `json:"coupon_code" validate:"omitempty,max=20"`
+		OfferID        string  `json:"offer_id" validate:"omitempty"`
+		UserID         string  `json:"user_id" validate:"omitempty"`
+		PaymentID      string  `json:"payment_id" validate:"required"`
+		PaymentGateway string  `json:"payment_gateway" validate:"required,min=2,max=50"`
 	}
 
-	if req.DiningID == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "dining_id is required"})
+	if err := utils.ParseAndValidate(c, &req); err != nil {
+		return err
 	}
 	diningObjID, err := primitive.ObjectIDFromHex(req.DiningID)
 	if err != nil {

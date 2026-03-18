@@ -7,6 +7,7 @@ import (
 	bookingsvc "ticpin-backend/services/booking"
 	couponsvc "ticpin-backend/services/coupon"
 	playservice "ticpin-backend/services/play"
+	"ticpin-backend/utils"
 	"time"
 
 	"net/url"
@@ -18,30 +19,25 @@ import (
 
 func CreatePlayBooking(c *fiber.Ctx) error {
 	var req struct {
-		UserEmail      string                 `json:"user_email"`
-		UserName       string                 `json:"user_name"`
-		PlayID         string                 `json:"play_id"`
-		VenueName      string                 `json:"venue_name"`
-		Date           string                 `json:"date"`
-		Slot           string                 `json:"slot"`
-		Duration       int                    `json:"duration"`
-		Tickets        []models.BookingTicket `json:"tickets"`
-		OrderAmount    float64                `json:"order_amount"`
-		BookingFee     float64                `json:"booking_fee"`
-		CouponCode     string                 `json:"coupon_code"`
-		OfferID        string                 `json:"offer_id"`
-		UserID         string                 `json:"user_id"`
-		PaymentID      string                 `json:"payment_id"`
-		PaymentGateway string                 `json:"payment_gateway"`
+		UserEmail      string                 `json:"user_email" validate:"required,email"`
+		UserName       string                 `json:"user_name" validate:"required,min=3,max=50"`
+		PlayID         string                 `json:"play_id" validate:"required"`
+		VenueName      string                 `json:"venue_name" validate:"required,min=2,max=100"`
+		Date           string                 `json:"date" validate:"required"`
+		Slot           string                 `json:"slot" validate:"required"`
+		Duration       int                    `json:"duration" validate:"min=1,max=16"`
+		Tickets        []models.BookingTicket `json:"tickets" validate:"required,min=1,dive"`
+		OrderAmount    float64                `json:"order_amount" validate:"required,min=0"`
+		BookingFee     float64                `json:"booking_fee" validate:"min=0"`
+		CouponCode     string                 `json:"coupon_code" validate:"omitempty,max=20"`
+		OfferID        string                 `json:"offer_id" validate:"omitempty"`
+		UserID         string                 `json:"user_id" validate:"omitempty"`
+		PaymentID      string                 `json:"payment_id" validate:"required"`
+		PaymentGateway string                 `json:"payment_gateway" validate:"required,min=2,max=50"`
 	}
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid request: " + err.Error()})
-	}
-	if req.UserEmail == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "user_email is required"})
-	}
-	if req.UserName == "" || len(req.UserName) < 3 {
-		return c.Status(400).JSON(fiber.Map{"error": "name must be at least 3 characters"})
+
+	if err := utils.ParseAndValidate(c, &req); err != nil {
+		return err
 	}
 
 	// Check email uniqueness - must NOT exist in users or organizers collection
