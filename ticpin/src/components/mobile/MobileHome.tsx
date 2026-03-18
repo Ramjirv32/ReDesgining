@@ -550,3 +550,4 @@ export default function MobileHome({ events, dinings, plays }: MobileHomeProps) 
         </div>
     );
 }
+// d
