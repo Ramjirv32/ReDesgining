@@ -99,11 +99,11 @@ func SendSaleNotification(toEmail, eventName, customerEmail string, grandTotal f
 }
 
 func SendNotificationEmail(toEmail, subject, content, imageURL string) error {
-	from := os.Getenv("ADMIN_EMAIL")
+	from := os.Getenv("EVENTS_EMAIL")
 	if from == "" {
-		from = "23cs139@kpriet.ac.in"
+		from = "events@ticpin.in"
 	}
-	pass := os.Getenv("ADMIN_APP_PASSWORD")
+	pass := os.Getenv("EVENTS_APP_PASSWORD")
 
 	var body string
 	if imageURL != "" {

@@ -106,7 +106,7 @@ func ListAllDining(c *fiber.Ctx) error {
 	limit := c.QueryInt("limit", 20)
 	after := c.Query("after")
 
-	dinings, nextCursor, err := diningservice.GetAll(limit, after)
+	dinings, nextCursor, err := diningservice.GetAll("", limit, after)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}

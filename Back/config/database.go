@@ -30,6 +30,9 @@ var (
 	NotificationsCol  *mongo.Collection
 	PassesCol         *mongo.Collection
 	VerificationsCol  *mongo.Collection
+	ChatSessionsCol   *mongo.Collection
+	ChatMessagesCol   *mongo.Collection
+	ChatQuestionsCol  *mongo.Collection
 )
 
 func ConnectDB() error {
@@ -74,6 +77,9 @@ func ConnectDB() error {
 	OffersCol = db.Collection("offers")
 	NotificationsCol = db.Collection("notifications")
 	PassesCol = db.Collection("ticpin_passes")
+	ChatSessionsCol = db.Collection("chat_sessions")
+	ChatMessagesCol = db.Collection("chat_messages")
+	ChatQuestionsCol = db.Collection("chat_questions")
 
 	fmt.Println("Database collections initialized")
 	CreateIndexes()

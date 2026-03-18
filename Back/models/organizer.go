@@ -46,17 +46,24 @@ type OrganizerSetup struct {
 }
 
 type OrganizerProfile struct {
-	ID                primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	OrganizerID       primitive.ObjectID `bson:"organizerId" json:"organizerId"`
-	Name              string             `bson:"name" json:"name"`
-	Email             string             `bson:"email" json:"email"`
-	Phone             string             `bson:"phone" json:"phone"`
-	OrganizerCategory []string           `bson:"organizerCategory" json:"organizerCategory"`
-	Address           string             `bson:"address" json:"address"`
-	Country           string             `bson:"country" json:"country"`
-	State             string             `bson:"state" json:"state"`
-	District          string             `bson:"district" json:"district"`
-	ProfilePhoto      string             `bson:"profilePhoto" json:"profilePhoto"`
-	CreatedAt         time.Time          `bson:"createdAt" json:"createdAt"`
-	UpdatedAt         time.Time          `bson:"updatedAt" json:"updatedAt"`
+	ID                      primitive.ObjectID      `bson:"_id,omitempty" json:"id"`
+	OrganizerID             primitive.ObjectID      `bson:"organizerId" json:"organizerId"`
+	Name                    string                  `bson:"name" json:"name"`
+	Email                   string                  `bson:"email" json:"email"`
+	Phone                   string                  `bson:"phone" json:"phone"`
+	OrganizerCategory       []string                `bson:"organizerCategory" json:"organizerCategory"`
+	Address                 string                  `bson:"address" json:"address"`
+	Street                  string                  `bson:"street" json:"street"`
+	City                    string                  `bson:"city" json:"city"`
+	District                string                  `bson:"district" json:"district"`
+	State                   string                  `bson:"state" json:"state"`
+	Country                 string                  `bson:"country" json:"country"`
+	GPS                     GPS                     `bson:"gps" json:"gps"`
+	ProfilePhoto            string                  `bson:"profilePhoto" json:"profilePhoto"`
+	DOB                     string                  `bson:"dob" json:"dob"`
+	Gender                  string                  `bson:"gender" json:"gender"`
+	NotificationPreferences NotificationPreferences `bson:"notificationPreferences" json:"notificationPreferences"`
+	PreferredLanguage       string                  `bson:"preferredLanguage" json:"preferredLanguage"`
+	CreatedAt               time.Time               `bson:"createdAt" json:"createdAt"`
+	UpdatedAt               time.Time               `bson:"updatedAt" json:"updatedAt"`
 }

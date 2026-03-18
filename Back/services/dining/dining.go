@@ -41,12 +41,15 @@ func Create(d *models.Dining) error {
 	return err
 }
 
-func GetAll(limit int, after string) ([]models.Dining, string, error) {
+func GetAll(category string, limit int, after string) ([]models.Dining, string, error) {
 	col := config.DiningsCol
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-
+	
 	filter := bson.M{"status": "approved"}
+	if category != "" {
+		filter["category"] = category
+	}
 	if after != "" {
 		if oid, err := primitive.ObjectIDFromHex(after); err == nil {
 			filter["_id"] = bson.M{"$gt": oid}

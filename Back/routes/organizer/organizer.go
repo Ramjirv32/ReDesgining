@@ -5,12 +5,15 @@ import (
 	orgmedia "ticpin-backend/controller/organizer/media"
 	orgprofile "ticpin-backend/controller/organizer/profile"
 	orgver "ticpin-backend/controller/organizer/verification"
+	orgotp "ticpin-backend/controller/otp"
 	"ticpin-backend/middleware"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 func OrganizerRoutes(app *fiber.App) {
+	app.Post("/api/organizer/send-otp", orgotp.SendOTP)
+	app.Post("/api/organizer/verify-otp", orgotp.VerifyOTP)
 	app.Get("/api/organizer/me", middleware.RequireAuth, orgmedia.GetOrganizerMe)
 
 	profileGrp := app.Group("/api/organizer/profile", middleware.RequireAuth)

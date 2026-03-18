@@ -13,6 +13,7 @@ import (
 	bookingroutes "ticpin-backend/routes/booking"
 	diningroutes "ticpin-backend/routes/dining"
 	eventroutes "ticpin-backend/routes/event"
+	mobileroutes "ticpin-backend/routes/mobile"
 	"ticpin-backend/routes/organizer"
 	organizerdining "ticpin-backend/routes/organizer/dining"
 	organizerEvents "ticpin-backend/routes/organizer/events"
@@ -22,6 +23,7 @@ import (
 	playroutes "ticpin-backend/routes/play"
 	"ticpin-backend/routes/profile"
 	"ticpin-backend/routes/user"
+	"ticpin-backend/services/chat"
 	"ticpin-backend/worker"
 
 	"github.com/go-playground/validator/v10"
@@ -29,7 +31,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/cors"
-	
+
 	fiberRecover "github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
@@ -79,16 +81,6 @@ func main() {
 	app.Use(fiberRecover.New())
 	app.Use(compress.New(compress.Config{Level: compress.LevelDefault}))
 
-	
-	
-	
-	
-	
-	
-	
-	
-	
-
 	corsOrigins := os.Getenv("CORS_ORIGINS")
 	if corsOrigins == "" {
 		corsOrigins = "http://localhost:3000,http://localhost:9000"
@@ -115,10 +107,12 @@ func main() {
 	playroutes.PlayRoutes(app)
 	diningroutes.DiningRoutes(app)
 	passroutes.PassRoutes(app)
+	mobileroutes.RegisterMobileRoutes(app)
 
 	adminroutes.AdminRoutes(app)
 	bookingroutes.BookingRoutes(app)
 	paymentroutes.PaymentRoutes(app)
+	chat.SetupRoutes(app)
 
 	app.Get("/api/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "ok"})

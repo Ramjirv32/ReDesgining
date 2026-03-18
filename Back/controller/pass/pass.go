@@ -44,7 +44,7 @@ func ApplyPass(c *fiber.Ctx) error {
 func GetPassByUser(c *fiber.Ctx) error {
 	p, err := passservice.GetActiveByUserID(c.Params("userId"))
 	if err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": "no active pass found"})
+		return c.Status(200).JSON(nil)
 	}
 	return c.JSON(p)
 }

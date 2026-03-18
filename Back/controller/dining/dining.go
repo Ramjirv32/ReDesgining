@@ -10,8 +10,9 @@ import (
 func GetAllDinings(c *fiber.Ctx) error {
 	limit := c.QueryInt("limit", 20)
 	after := c.Query("after")
+	category := c.Query("category")
 
-	dinings, nextCursor, err := diningservice.GetAll(limit, after)
+	dinings, nextCursor, err := diningservice.GetAll(category, limit, after)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
