@@ -250,7 +250,7 @@ export default function DiningVenueDetailClient({ venue, id, offers }: { venue: 
                         </div>
 
                         <div className="sticky top-24 z-10">
-                            <BookingCard />
+                            <BookingCard venueName={venue.name} />
                         </div>
                     </div>
                 </div>
