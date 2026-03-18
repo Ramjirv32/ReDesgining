@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { getOrganizerSession } from '@/lib/auth/organizer';
 import { uploadMedia } from '@/lib/api/admin';
 import { diningApi } from '@/lib/api/dining';
+import { organizerApi } from '@/lib/api/organizer';
 
 const CreateDiningPage = () => {
     const router = useRouter();
@@ -81,17 +82,47 @@ const CreateDiningPage = () => {
     });
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            const session = getOrganizerSession();
-            if (!session || session.categoryStatus?.dining !== 'approved') {
-                setAuthChecked(false);
-            } else {
-                setAuthChecked(true);
-                setPayment(p => ({ ...p, organizerName: session.email.split('@')[0] }));
+        const checkAuth = async () => {
+            let session = getOrganizerSession();
+            if (!session) { setAuthChecked(false); return; }
+
+            // If not approved and not admin, re-sync from DB once to be sure
+            if (!session.isAdmin && session.categoryStatus?.dining !== 'approved') {
+                try {
+                    const me = await organizerApi.getMe();
+                    // Add small delay to ensure cookies are updated
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    // Re-read session after cookies are updated
+                    session = getOrganizerSession() || session;
+                } catch { /* ignore sync error */ }
             }
-        }, 100);
+
+            if (!session.isAdmin && session.categoryStatus?.dining !== 'approved') {
+                setAuthChecked(false);
+                return;
+            }
+
+            setAuthChecked(true);
+            setPayment(p => ({ ...p, organizerName: session.email.split('@')[0] }));
+            // Pre-fill bank details from saved organizer setup
+            try {
+                const setup = await organizerApi.getExistingSetup('dining');
+                if (setup) {
+                    setPayment(p => ({
+                        ...p,
+                        organizerName: setup.accountHolder || p.organizerName,
+                        gstin: setup.gstNumber || setup.pan || p.gstin,
+                        accountNumber: setup.bankAccountNo || p.accountNumber,
+                        ifsc: setup.bankIfsc || p.ifsc,
+                        accountType: p.accountType,
+                    }));
+                }
+            } catch { /* ignore fetch error */ }
+        };
+
+        const timer = setTimeout(checkAuth, 100);
         return () => clearTimeout(timer);
-    }, []);
+    }, [router]);
 
     if (!authChecked) {
         return (

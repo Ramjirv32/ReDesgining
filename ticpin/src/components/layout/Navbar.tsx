@@ -84,9 +84,7 @@ export default function Navbar() {
     };
 
     const handleProfileClick = () => {
-        if (session) {
-            setIsProfileMenuOpen(prev => !prev);
-        } else if (userSession) {
+        if (session || userSession) {
             setAuthView('profile');
             setIsAuthOpen(true);
         } else {

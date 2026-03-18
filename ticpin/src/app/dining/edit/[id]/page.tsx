@@ -8,6 +8,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { getOrganizerSession } from '@/lib/auth/organizer';
 import { uploadMedia } from '@/lib/api/admin';
 import { diningApi } from '@/lib/api/dining';
+import { organizerApi } from '@/lib/api/organizer';
 
 export default function EditDiningPage() {
     const router = useRouter();
@@ -62,6 +63,7 @@ export default function EditDiningPage() {
     });
     const [selections, setSelections] = useState({ category: 'Select Category', subCategory: 'Select Sub-Category', city: 'Select City' });
     const [hasCheckedSession, setHasCheckedSession] = useState(false);
+    const [authChecked, setAuthChecked] = useState(false);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -74,8 +76,26 @@ export default function EditDiningPage() {
         if (!hasCheckedSession) return;
         
         const load = async () => {
-            const session = getOrganizerSession();
+            let session = getOrganizerSession();
             if (!session) { router.replace('/'); return; }
+
+            // If not approved and not admin, re-sync from DB once to be sure
+            if (!session.isAdmin && session.categoryStatus?.dining !== 'approved') {
+                try {
+                    const me = await organizerApi.getMe();
+                    // Add small delay to ensure cookies are updated
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    // Re-read session after cookies are updated
+                    session = getOrganizerSession() || session;
+                } catch { /* ignore sync error */ }
+            }
+
+            if (!session.isAdmin && session.categoryStatus?.dining !== 'approved') {
+                setAuthChecked(false);
+                return;
+            }
+            setAuthChecked(true);
+
             try {
                 const d = await diningApi.getById(id) as Record<string, unknown>;
                 setDiningName((d.name as string) ?? '');
@@ -129,7 +149,19 @@ export default function EditDiningPage() {
             }
         };
         load();
-    }, [id, router]);
+    }, [id, router, hasCheckedSession]);
+
+    if (!authChecked && hasCheckedSession) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 via-purple-50 to-pink-50">
+                <div className="bg-white rounded-[24px] p-10 shadow-lg max-w-md text-center space-y-4">
+                    <h2 className="text-[24px] font-semibold text-black">Access Restricted</h2>
+                    <p className="text-[16px] text-zinc-500">Your dining registration must be approved by the admin before you can edit listings.</p>
+                    <button onClick={() => router.back()} className="bg-black text-white px-6 h-10 rounded-[12px] text-[14px] font-medium">Go Back</button>
+                </div>
+            </div>
+        );
+    }
 
     const handleUpload = async (key: string, file: File, multi = false) => {
         setUploading(u => ({ ...u, [key]: true }));

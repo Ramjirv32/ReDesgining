@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"ticpin-backend/config"
+	stdlog "log"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
@@ -60,6 +61,7 @@ func RequireSelfOrAdmin(c *fiber.Ctx) error {
 	isAdmin, _ := c.Locals("isAdmin").(bool)
 
 	if !isAdmin && authID != organizerID {
+		stdlog.Printf("RequireSelfOrAdmin Forbidden: authID=%s, paramID=%s", authID, organizerID)
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "forbidden: you can only access your own data"})
 	}
 

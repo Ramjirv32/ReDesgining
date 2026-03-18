@@ -71,12 +71,17 @@ interface ChatSession {
 
 export default function ChatSupportClient() {
     const router = useRouter();
-    const { userSession } = useIdentityStore();
+    const { userSession, sync } = useIdentityStore();
+    
+    // Sync session on mount
+    useEffect(() => {
+        sync();
+    }, [sync]);
     
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [activeSession, setActiveSession] = useState<ChatSession | null>(null);
     const [adminSessions, setAdminSessions] = useState<ChatSession[]>([]);
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [messages, setMessages] = useState<any[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [loading, setLoading] = useState(false);
     const [questions, setQuestions] = useState<any[]>([]);
@@ -107,15 +112,20 @@ export default function ChatSupportClient() {
     };
 
     const startUserChat = async (category: string) => {
+        if (!userSession?.id) {
+            console.error('User session not found');
+            return;
+        }
+        
         setLoading(true);
         try {
             const res = await fetch('/backend/api/chat/sessions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    userId: userSession?.id,
-                    userName: userSession?.name,
-                    userEmail: userSession?.email || userSession?.phone,
+                    userId: userSession.id,
+                    userName: userSession.name,
+                    userEmail: userSession.email || userSession.phone,
                     userType: 'user',
                     category: category
                 }),
@@ -134,8 +144,13 @@ export default function ChatSupportClient() {
     };
 
     const fetchMessages = async (sessionId: string) => {
+        if (!userSession?.id) {
+            console.error('User session not found');
+            return;
+        }
+        
         try {
-            const res = await fetch(`/backend/api/chat/sessions/${sessionId}/messages?admin=${isAdmin}&userId=${userSession?.id}`, { credentials: 'include' });
+            const res = await fetch(`/backend/api/chat/sessions/${sessionId}/messages?admin=${isAdmin}&userId=${userSession.id}`, { credentials: 'include' });
             if (res.ok) {
                 const data = await res.json();
                 setMessages(data);
@@ -146,13 +161,13 @@ export default function ChatSupportClient() {
     };
 
     const handleSendMessageWithContent = async (content: string) => {
-        if (!content.trim() || !activeSession) return;
+        if (!content.trim() || !activeSession || !userSession?.id) return;
         try {
             await fetch(`/backend/api/chat/sessions/${activeSession.sessionId}/messages`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    userId: userSession?.id,
+                    userId: userSession.id,
                     message: content,
                     sender: isAdmin ? 'admin' : 'user'
                 }),

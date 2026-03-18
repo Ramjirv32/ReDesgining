@@ -105,7 +105,7 @@ const ProfileInfo: React.FC<ProfileInfoProps> = ({
                                 style={{ fontSize: '36px', fontWeight: 500, lineHeight: '100%', fontFamily: 'var(--font-anek-latin)' }}
                                 className="text-zinc-900"
                             >
-                                {isAdmin ? 'Admin Panel' : (profile?.name || profile?.phone || 'Guest')}
+                                {isAdmin ? 'Admin Panel' : (profile?.name || (userPhone ? '' : 'Profile'))}
                             </h4>
                             {!isAdmin && (
                                 <button

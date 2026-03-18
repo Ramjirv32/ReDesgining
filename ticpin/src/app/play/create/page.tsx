@@ -152,12 +152,26 @@ const CreatePlayPage = () => {
     }, []);
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            const session = getOrganizerSession();
-            if (!session || session.categoryStatus?.play !== 'approved') {
+        const checkAuth = async () => {
+            let session = getOrganizerSession();
+            if (!session) { setAuthChecked(false); return; }
+
+            // If not approved and not admin, re-sync from DB once to be sure
+            if (!session.isAdmin && session.categoryStatus?.play !== 'approved') {
+                try {
+                    const me = await organizerApi.getMe();
+                    // Add small delay to ensure cookies are updated
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    // Re-read session after cookies are updated
+                    session = getOrganizerSession() || session;
+                } catch { /* ignore sync error */ }
+            }
+
+            if (!session.isAdmin && session.categoryStatus?.play !== 'approved') {
                 setAuthChecked(false);
                 return;
             }
+
             setAuthChecked(true);
             draftKey.current = `play_create_draft_${session.id}`;
 
@@ -225,26 +239,33 @@ const CreatePlayPage = () => {
 
         // ── No draft: fetch verified bank/GST from organizer setup ──
         if (!draftPaymentHasData) {
-            organizerApi.getExistingSetup(session.id, 'play')
+            organizerApi.getExistingSetup('play')
                 .then(setup => {
-                    setPayment(p => ({
-                        ...p,
-                        organizerName: setup.accountHolder || setup.panName || session.email.split('@')[0],
-                        gstin: setup.gstNumber || setup.pan || '',
-                        accountNumber: setup.bankAccountNo || '',
-                        ifsc: setup.bankIfsc || '',
-                        accountType: p.accountType,
-                    }));
-                    const hasVerifiedData = !!(setup.bankAccountNo || setup.bankIfsc || setup.gstNumber || setup.pan);
-                    setPaymentVerified(hasVerifiedData);
+                    if (setup) {
+                        setPayment(p => ({
+                            ...p,
+                            organizerName: setup.accountHolder || setup.panName || session.email.split('@')[0],
+                            gstin: setup.gstNumber || setup.pan || '',
+                            accountNumber: setup.bankAccountNo || '',
+                            ifsc: setup.bankIfsc || '',
+                            accountType: p.accountType,
+                        }));
+                        const hasVerifiedData = !!(setup.bankAccountNo || setup.bankIfsc || setup.gstNumber || setup.pan);
+                        setPaymentVerified(hasVerifiedData);
+                    } else {
+                        setPayment(p => ({ ...p, organizerName: session.email.split('@')[0] }));
+                        setPaymentVerified(false);
+                    }
                 })
                 .catch(() => {
                     setPayment(p => ({ ...p, organizerName: session.email.split('@')[0] }));
                 });
-        }
-        }, 100);
+            }
+        };
+
+        const timer = setTimeout(checkAuth, 100);
         return () => clearTimeout(timer);
-    }, []);
+    }, [router]);
 
     if (!authChecked) {
         return (

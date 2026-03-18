@@ -6,7 +6,6 @@ import BottomBanner from '@/components/layout/BottomBanner';
 import Footer from '@/components/layout/Footer';
 import { ArrowLeft, MapPin, Star, ChevronDown, ChevronRight, PhoneCall } from 'lucide-react';
 import BookingCard from '@/components/dining/venue/BookingCard';
-import CouponCard from '@/components/dining/CouponCard';
 import Image from 'next/image';
 import MobileDiningDetails from '@/components/mobile/MobileDiningDetails';
 
@@ -139,12 +138,34 @@ export default function DiningVenueDetailClient({ venue, id, offers }: { venue: 
                                 </div>
                                 <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
                                     {offers.map((offer) => (
-                                        <CouponCard 
-                                            key={offer.id}
-                                            discount={offer.discount_type === 'flat' ? `₹${offer.discount_value}` : `${offer.discount_value}%`} 
-                                            code={offer.title}
-                                            image={offer.image}
-                                        />
+                                        <div key={offer.id} className="flex-shrink-0 w-[340px] h-[155.4px] rounded-[8px] overflow-hidden">
+                                            {offer.image ? (
+                                                <>
+                                                    <Image
+                                                        src={offer.image}
+                                                        alt={offer.title}
+                                                        fill
+                                                        className="object-cover"
+                                                        sizes="340px"
+                                                    />
+                                                    <div className="absolute top-3 left-3 bg-[#AC9BF7] text-white px-3 py-1 rounded-[4px] text-[12px] font-bold uppercase z-10">
+                                                        {offer.discount_type === 'flat' ? `₹${offer.discount_value} OFF` : `${offer.discount_value}% OFF`}
+                                                    </div>
+                                                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
+                                                        <h3 className="text-white font-bold text-sm truncate">{offer.title}</h3>
+                                                        <p className="text-white/80 text-xs truncate">{offer.description}</p>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div className="w-full h-full bg-[#AC9BF7] flex flex-col items-center justify-center p-4">
+                                                    <div className="bg-white/20 px-3 py-1 rounded-[4px] text-[12px] font-bold uppercase mb-2">
+                                                        {offer.discount_type === 'flat' ? `₹${offer.discount_value} OFF` : `${offer.discount_value}% OFF`}
+                                                    </div>
+                                                    <span className="text-white font-bold text-lg text-center">{offer.title}</span>
+                                                    <p className="text-white/80 text-sm text-center mt-1">{offer.description}</p>
+                                                </div>
+                                            )}
+                                        </div>
                                     ))}
                                 </div>
                             </section>

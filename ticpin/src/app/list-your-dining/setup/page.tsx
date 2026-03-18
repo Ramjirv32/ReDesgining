@@ -55,7 +55,7 @@ function AccountSetupContent() {
 
         // Fetch PAN and bank prefill exclusively from the backend DB
         if (session.id) {
-            organizerApi.getExistingSetup(session.id, 'dining')
+            organizerApi.getExistingSetup('dining')
                 .then(setup => {
                     if (setup?.pan) {
                         setPan(setup.pan); setPanName(setup.panName ?? '');

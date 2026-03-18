@@ -16,6 +16,14 @@ func OrganizerRoutes(app *fiber.App) {
 	app.Post("/api/organizer/verify-otp", orgotp.VerifyOTP)
 	app.Get("/api/organizer/me", middleware.RequireAuth, orgmedia.GetOrganizerMe)
 
+	// "me"-style endpoints — no ID param needed, reads from JWT
+	app.Get("/api/organizer/me/existing-setup", middleware.RequireAuth, orgver.GetMyExistingSetup)
+	app.Get("/api/organizer/me/status", middleware.RequireAuth, orgver.GetMyStatus)
+
+	// Keep legacy ID routes for admin use (reads from URL param)
+	app.Get("/api/organizer/:id/status", middleware.RequireAuth, middleware.RequireSelfOrAdmin, orgver.GetCategoryStatus)
+	app.Get("/api/organizer/:id/existing-setup", middleware.RequireAuth, middleware.RequireSelfOrAdmin, orgver.GetExistingSetupHandler)
+
 	profileGrp := app.Group("/api/organizer/profile", middleware.RequireAuth)
 	profileGrp.Get("", orgprofile.GetProfile)
 	profileGrp.Post("", orgprofile.CreateProfile)
@@ -27,9 +35,6 @@ func OrganizerRoutes(app *fiber.App) {
 	verGrp.Get("/:id", middleware.RequireSelfOrAdmin, orgver.GetVerificationStatus)
 	verGrp.Post("/verify-pan", orgver.VerifyPANHandler)
 	verGrp.Get("/fetch-gst", orgver.FetchGSTHandler)
-
-	app.Get("/api/organizer/:id/status", middleware.RequireAuth, middleware.RequireSelfOrAdmin, orgver.GetCategoryStatus)
-	app.Get("/api/organizer/:id/existing-setup", middleware.RequireAuth, middleware.RequireSelfOrAdmin, orgver.GetExistingSetupHandler)
 
 	app.Post("/api/organizer/upload-pan", middleware.RequireAuth, orgmedia.UploadPANCard)
 	app.Post("/api/organizer/upload-media", middleware.RequireAuth, orgmedia.UploadMedia)

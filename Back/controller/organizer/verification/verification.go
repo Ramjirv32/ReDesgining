@@ -65,6 +65,60 @@ func GetExistingSetupHandler(c *fiber.Ctx) error {
 	return c.JSON(setup)
 }
 
+// GetMyExistingSetup reads organizerID from JWT — no URL param / no RequireSelfOrAdmin needed.
+func GetMyExistingSetup(c *fiber.Ctx) error {
+	organizerID, ok := c.Locals("organizerId").(string)
+	if !ok || organizerID == "" {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	category := c.Query("category")
+
+	objID, err := primitive.ObjectIDFromHex(organizerID)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid organizerId"})
+	}
+
+	var setup models.OrganizerSetup
+	err = config.GetDB().Collection("organizer_setups").FindOne(context.Background(), bson.M{
+		"organizerId": objID,
+		"category":    category,
+	}).Decode(&setup)
+
+	if err != nil && category != "" {
+		// Fall back to any setup for this organizer
+		err = config.GetDB().Collection("organizer_setups").FindOne(context.Background(), bson.M{
+			"organizerId": objID,
+		}).Decode(&setup)
+	}
+
+	if err != nil {
+		return c.JSON(nil)
+	}
+	return c.JSON(setup)
+}
+
+// GetMyStatus reads organizerID from JWT — no URL param / no RequireSelfOrAdmin needed.
+func GetMyStatus(c *fiber.Ctx) error {
+	organizerID, ok := c.Locals("organizerId").(string)
+	if !ok || organizerID == "" {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	id, err := primitive.ObjectIDFromHex(organizerID)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid organizerId"})
+	}
+
+	var org models.Organizer
+	_ = config.GetDB().Collection("organizers").FindOne(context.Background(), bson.M{"_id": id}).Decode(&org)
+	catStatus := org.CategoryStatus
+	if catStatus == nil {
+		catStatus = map[string]string{}
+	}
+	return c.JSON(fiber.Map{"categoryStatus": catStatus})
+}
+
+
 func SendBackupOTPHandler(c *fiber.Ctx) error {
 	organizerID, ok := c.Locals("organizerId").(string)
 	if !ok || organizerID == "" {

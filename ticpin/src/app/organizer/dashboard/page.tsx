@@ -42,7 +42,7 @@ function DashboardContent() {
                 saveOrganizerSession(updatedSession);
             } catch {
                 try {
-                    const { categoryStatus } = await organizerApi.getStatus(s.id);
+                    const { categoryStatus } = await organizerApi.getStatus();
                     const updatedSession = { ...s, categoryStatus };
                     setSession(updatedSession);
                     saveOrganizerSession(updatedSession);

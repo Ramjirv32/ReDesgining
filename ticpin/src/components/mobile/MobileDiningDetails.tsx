@@ -166,20 +166,21 @@ export default function MobileDiningDetails({ venue, offers }: MobileDiningDetai
                     </button>
                 </div>
 
-                {/* Offers Section */}
-                <div className="mb-14">
-                    <h2 className="text-[20px] font-semibold text-black mb-4 tracking-tight mt-[-10px]" style={{ fontFamily: 'Anek Latin' }}>Offers for you</h2>
-                    <div className="w-full h-[120px] bg-[#AC9BF7] rounded-[8px] p-4">
-                        {offers.length > 0 ? (
-                            <div className="flex flex-col h-full justify-center">
-                                <p className="text-white font-bold">{offers[0].title}</p>
-                                <p className="text-white/80 text-sm truncate">{offers[0].description}</p>
+                {/* Offers Section - Only show if offers exist */}
+                {offers.length > 0 && (
+                    <div className="mb-14">
+                        <h2 className="text-[20px] font-semibold text-black mb-4 tracking-tight mt-[-10px]" style={{ fontFamily: 'Anek Latin' }}>Offers for you</h2>
+                        {offers[0].image && (
+                            <div className="w-full h-[120px] rounded-[8px] overflow-hidden">
+                                <img 
+                                    src={offers[0].image} 
+                                    alt={offers[0].title}
+                                    className="w-full h-full object-cover"
+                                />
                             </div>
-                        ) : (
-                            <div className="w-full h-full bg-[#AC9BF7] rounded-[8px]" />
                         )}
                     </div>
-                </div>
+                )}
 
                 {/* Menu Section */}
                 {venue.menu_urls && venue.menu_urls.length > 0 && (

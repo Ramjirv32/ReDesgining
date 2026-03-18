@@ -235,6 +235,8 @@ func UpdateCategoryStatus(organizerID, category, status string) error {
 	if err != nil {
 		return err
 	}
+
+	// Update organizers collection
 	collection := config.GetDB().Collection("organizers")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -242,6 +244,38 @@ func UpdateCategoryStatus(organizerID, category, status string) error {
 	_, err = collection.UpdateOne(ctx, bson.M{"_id": objID}, bson.M{
 		"$set": bson.M{key: status},
 	})
+	if err != nil {
+		return err
+	}
+
+	// Also update organizer_setups collection with roles
+	setupCollection := config.GetDB().Collection("organizer_setups")
+	setupCtx, setupCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer setupCancel()
+
+	// Update the roles field based on status
+	roleStatus := "not_applied"
+	profileCompleted := false
+
+	if status == "pending" {
+		roleStatus = "pending"
+		profileCompleted = true
+	} else if status == "approved" {
+		roleStatus = "approved"
+		profileCompleted = true
+	}
+
+	rolesKey := "roles." + category
+	_, err = setupCollection.UpdateOne(setupCtx, bson.M{"organizer_id": objID}, bson.M{
+		"$set": bson.M{
+			rolesKey: bson.M{
+				"status":            roleStatus,
+				"profile_completed": profileCompleted,
+			},
+			"updatedAt": time.Now(),
+		},
+	})
+
 	return err
 }
 

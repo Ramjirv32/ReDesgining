@@ -10,6 +10,7 @@ interface IdentityState {
     // Actions
     sync: () => void;
     loginUser: (session: UserSession) => void;
+    loginOrganizer: (session: OrganizerSession) => void;
     logoutUser: () => void;
     logoutOrganizer: () => void;
 }
@@ -32,13 +33,17 @@ export const useIdentityStore = create<IdentityState>((set) => ({
         set({ userSession: session, organizerSession: null }); // Typical: login as user clears organizer
     },
 
+    loginOrganizer: (session) => {
+        set({ organizerSession: session, userSession: null }); // Typical: login as org clears user
+    },
+
     logoutUser: () => {
         clearUserSession();
         set({ userSession: null });
     },
 
     logoutOrganizer: () => {
-        clearOrganizerSession();
-        set({ organizerSession: null });
+        clearOrganizerSession(); // this calls backend logout + clears cookies + sessionStorage keys
+        set({ organizerSession: null, userSession: null });
     }
 }));

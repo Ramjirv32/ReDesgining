@@ -149,5 +149,13 @@ func GetOrganizerMe(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "organizer not found"})
 	}
 
+	isAdmin := org.Email == config.GetAdminEmail()
+
+	// Always refresh session cookies with latest categoryStatus from database
+	err = config.SetAuthCookies(c, org.ID.Hex(), org.Email, "", isAdmin, org.CategoryStatus)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "failed to refresh session"})
+	}
+
 	return c.JSON(org)
 }

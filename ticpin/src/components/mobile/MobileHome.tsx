@@ -54,7 +54,7 @@ export default function MobileHome({ events, dinings, plays }: MobileHomeProps) 
     const { userSession, sync } = useIdentityStore();
     const [isAuthOpen, setIsAuthOpen] = useState(false);
     const session = userSession;
-    const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 390);
+    const [windowWidth, setWindowWidth] = useState(390); // Start with a fixed default to avoid SSR/client hydration mismatch
     const [placeholderIndex, setPlaceholderIndex] = useState(0);
     const [searchQuery, setSearchQuery] = useState('');
     const placeholders = ["events", "dining", "play"];
@@ -79,6 +79,8 @@ export default function MobileHome({ events, dinings, plays }: MobileHomeProps) 
     const scrollPlay = playItems.length > 0 ? [...playItems, ...playItems, ...playItems] : [];
 
     useEffect(() => {
+        // Set the real width on mount (client only, after hydration)
+        setWindowWidth(window.innerWidth);
         const handleResize = () => setWindowWidth(window.innerWidth);
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);

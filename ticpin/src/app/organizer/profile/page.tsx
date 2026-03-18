@@ -93,9 +93,9 @@ function ProfileContent() {
                         
                         <div className="flex-1 space-y-4">
                             <div className="space-y-1">
-                                <h1 className="text-3xl md:text-4xl font-black text-zinc-900">{profile.name}</h1>
+                                <h1 className="text-3xl md:text-4xl font-black text-zinc-900">{profile.name || 'Organizer'}</h1>
                                 <p className="text-zinc-500 font-medium flex items-center justify-center md:justify-start gap-2">
-                                    <Mail size={16} /> {profile.email}
+                                    <Mail size={16} /> {profile.email || session?.email}
                                 </p>
                             </div>
                             

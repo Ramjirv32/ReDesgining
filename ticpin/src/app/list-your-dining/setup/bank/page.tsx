@@ -35,7 +35,7 @@ function BankDetailsContent() {
         
         const session = getOrganizerSession();
         if (!session) { router.replace('/list-your-dining/Login'); return; }
-        organizerApi.getExistingSetup(session.id, 'dining')
+        organizerApi.getExistingSetup('dining')
             .then(setup => {
                 if (setup?.bankAccountNo) {
                     setAccountHolder(setup.accountHolder ?? '');
@@ -55,7 +55,7 @@ function BankDetailsContent() {
             })
             .catch(() => { })
             .finally(() => setLoading(false));
-    }, [router]);
+    }, [router, hasCheckedSession]);
 
     const handleContinue = () => {
         setError('');

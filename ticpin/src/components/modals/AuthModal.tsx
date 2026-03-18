@@ -256,7 +256,15 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialView = 'n
                                         onViewDiningBookings={() => { setActiveTab('dining'); setView('bookings'); }}
                                         onViewEventTickets={() => { setActiveTab('events'); setView('bookings'); }}
                                         onViewPlayBookings={() => { setActiveTab('play'); setView('bookings'); }}
-                                        onEditProfile={() => { if (userSession?.id) { router.push('/profile/edit'); onClose(); } }}
+                                        onEditProfile={() => { 
+    if (userSession?.id) { 
+        router.push('/profile/edit'); 
+        onClose(); 
+    } else if (organizerSession?.id) {
+        router.push('/organizer/profile/edit');
+        onClose();
+    }
+} }
                                         onLogout={() => setShowLogoutConfirm(true)}
                                         onClose={onClose}
                                     />

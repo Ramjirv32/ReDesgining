@@ -205,10 +205,18 @@ export default function DiningClient({
                                                     <div className="absolute top-3 left-3 bg-[#AC9BF7] text-white px-3 py-1 rounded-[4px] text-[12px] font-bold uppercase z-10">
                                                         {offer.discount_type === 'flat' ? `₹${offer.discount_value} OFF` : `${offer.discount_value}% OFF`}
                                                     </div>
+                                                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
+                                                        <h3 className="text-white font-bold text-sm truncate">{offer.title}</h3>
+                                                        <p className="text-white/80 text-xs truncate">{offer.description}</p>
+                                                    </div>
                                                 </>
                                             ) : (
-                                                <div className="w-full h-full bg-[#AC9BF7] flex items-center justify-center">
-                                                    <span className="text-white font-bold text-xl">{offer.title}</span>
+                                                <div className="w-full h-full bg-[#AC9BF7] flex flex-col items-center justify-center p-4">
+                                                    <div className="bg-white/20 px-3 py-1 rounded-[4px] text-[12px] font-bold uppercase mb-2">
+                                                        {offer.discount_type === 'flat' ? `₹${offer.discount_value} OFF` : `${offer.discount_value}% OFF`}
+                                                    </div>
+                                                    <span className="text-white font-bold text-lg text-center">{offer.title}</span>
+                                                    <p className="text-white/80 text-sm text-center mt-1">{offer.description}</p>
                                                 </div>
                                             )}
                                         </div>

@@ -44,7 +44,13 @@ const ChatSupport = () => {
     const handleCategoryClick = async (category: string, title: string) => {
         try {
             const userType = organizerSession ? "organizer" : "user";
-            const userId = organizerSession?.id || userSession?.id || "";
+            const userId = organizerSession?.id || userSession?.id;
+            
+            if (!userId) {
+                console.error("No valid session found");
+                return;
+            }
+            
             const userEmail = organizerSession?.email || userSession?.email || "";
             const userName = userSession?.name || (userEmail ? userEmail.split("@")[0] : "User");
 

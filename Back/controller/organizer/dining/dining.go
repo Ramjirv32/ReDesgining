@@ -76,13 +76,8 @@ func VerifyOTP(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	if org.CategoryStatus == nil || org.CategoryStatus["dining"] != "approved" {
-		_ = organizersvc.UpdateCategoryStatus(org.ID.Hex(), "dining", "approved")
-		if org.CategoryStatus == nil {
-			org.CategoryStatus = map[string]string{}
-		}
-		org.CategoryStatus["dining"] = "approved"
-	}
+	// Removed auto-approval logic. Status should only be 'approved' after admin review.
+	// Status starts as empty/none, becomes 'pending' after setup, then 'approved' after admin approval.
 
 	isAdmin := req.Email == config.GetAdminEmail()
 	if err := config.SetAuthCookies(c, org.ID.Hex(), org.Email, "dining", isAdmin, org.CategoryStatus); err != nil {

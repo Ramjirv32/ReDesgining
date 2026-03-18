@@ -231,11 +231,15 @@ export default function ReviewBookingPage() {
             });
 
             // Fetch Coupons — pass user ID so user-specific coupons are included
-            bookingApi.getCouponsByCategory(cart.type, session?.id ?? undefined).then(res => {
-                setAvailableCoupons(res || []);
-            }).catch(() => {
+            if (session?.id) {
+                bookingApi.getCouponsByCategory(cart.type, session.id).then(res => {
+                    setAvailableCoupons(res || []);
+                }).catch(() => {
+                    setAvailableCoupons([]);
+                });
+            } else {
                 setAvailableCoupons([]);
-            });
+            }
         }
     }, [eventData?.id, cart?.type, session?.id]);
 

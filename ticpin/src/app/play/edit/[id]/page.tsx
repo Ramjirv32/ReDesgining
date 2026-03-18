@@ -63,6 +63,7 @@ export default function EditPlayPage() {
     const [selections, setSelections] = useState({ category: 'Select Sport', subCategory: 'Select Court Type', city: 'Select City' });
     const [paymentVerified, setPaymentVerified] = useState(false);
     const [hasCheckedSession, setHasCheckedSession] = useState(false);
+    const [authChecked, setAuthChecked] = useState(false);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -75,8 +76,25 @@ export default function EditPlayPage() {
         if (!hasCheckedSession) return;
         
         const load = async () => {
-            const session = getOrganizerSession();
+            let session = getOrganizerSession();
             if (!session) { router.replace('/'); return; }
+
+            // If not approved and not admin, re-sync from DB once to be sure
+            if (!session.isAdmin && session.categoryStatus?.play !== 'approved') {
+                try {
+                    const me = await organizerApi.getMe();
+                    // Add small delay to ensure cookies are updated
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    // Re-read session after cookies are updated
+                    session = getOrganizerSession() || session;
+                } catch { /* ignore sync error */ }
+            }
+
+            if (!session.isAdmin && session.categoryStatus?.play !== 'approved') {
+                setAuthChecked(false);
+                return;
+            }
+            setAuthChecked(true);
             try {
                 const d = await playApi.getById(id) as Record<string, unknown>;
                 setVenueName((d.name as string) ?? '');
@@ -112,7 +130,7 @@ export default function EditPlayPage() {
                 } else {
                     // Try fetching from verified organizer setup
                     try {
-                        const setup = await organizerApi.getExistingSetup(session.id, 'play');
+                        const setup = await organizerApi.getExistingSetup('play');
                         const hasSetup = !!(setup.bankAccountNo || setup.bankIfsc || setup.gstNumber || setup.pan);
                         setPayment({
                             organizerName: setup.accountHolder || setup.panName || loadedPayment.organizerName || session.email.split('@')[0],
@@ -159,7 +177,19 @@ export default function EditPlayPage() {
             }
         };
         load();
-    }, [id, router]);
+    }, [id, router, hasCheckedSession]);
+
+    if (!authChecked && hasCheckedSession) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#FFFCED] via-white to-white">
+                <div className="bg-white rounded-[24px] p-10 shadow-lg max-w-md text-center space-y-4">
+                    <h2 className="text-[24px] font-semibold text-black">Access Restricted</h2>
+                    <p className="text-[16px] text-zinc-500">Your play registration must be approved by the admin before you can edit listings.</p>
+                    <button onClick={() => router.back()} className="bg-black text-white px-6 h-10 rounded-[12px] text-[14px] font-medium">Go Back</button>
+                </div>
+            </div>
+        );
+    }
 
     const handleUpload = async (key: string, file: File, multi = false) => {
         setUploading(u => ({ ...u, [key]: true }));
@@ -716,7 +746,7 @@ export default function EditPlayPage() {
                                             const session = getOrganizerSession();
                                             if (!session) return;
                                             try {
-                                                const setup = await organizerApi.getExistingSetup(session.id, 'play');
+                                                const setup = await organizerApi.getExistingSetup('play');
                                                 setPayment(p => ({
                                                     ...p,
                                                     organizerName: setup.accountHolder || setup.panName || p.organizerName,
@@ -742,7 +772,7 @@ export default function EditPlayPage() {
                                             const session = getOrganizerSession();
                                             if (!session) return;
                                             try {
-                                                const setup = await organizerApi.getExistingSetup(session.id, 'play');
+                                                const setup = await organizerApi.getExistingSetup('play');
                                                 const hasSetup = !!(setup.bankAccountNo || setup.bankIfsc || setup.gstNumber || setup.pan);
                                                 setPayment(p => ({
                                                     ...p,

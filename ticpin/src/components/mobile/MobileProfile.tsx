@@ -3,51 +3,76 @@
 import { ChevronLeft, ChevronRight, Pencil, CheckCircle, XCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useIdentityStore } from '@/store/useIdentityStore';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 
 const AuthModal = dynamic(() => import('@/components/modals/AuthModal'), { ssr: false });
 
 interface MobileProfileProps {
-    bookings?: any[]; // Simplified for consistency
 }
 
-export default function MobileProfile({ bookings = [] }: MobileProfileProps) {
+export default function MobileProfile() {
     const router = useRouter();
     const { userSession, organizerSession, sync, logoutUser } = useIdentityStore();
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+    const [organizerProfile, setOrganizerProfile] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
     const [pass, setPass] = useState<any>(null);
     const [passLoading, setPassLoading] = useState(false);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         sync();
     }, [sync]);
 
     useEffect(() => {
-        if (userSession?.id) {
+        if (organizerSession?.id) {
             fetchPass();
         }
-    }, [userSession?.id]);
+    }, [organizerSession?.id]);
 
     const fetchPass = async () => {
-        if (!userSession?.id) return;
+        if (!organizerSession?.id) return;
         setPassLoading(true);
         try {
-            const res = await fetch(`/backend/api/pass/user/${userSession.id}`, { credentials: 'include' });
+            const res = await fetch(`/backend/api/pass/user/${organizerSession.id}`, { credentials: 'include' });
             if (res.ok) {
                 const data = await res.json();
                 setPass(data);
             }
-        } catch (e) {
-            console.error('Failed to fetch pass:', e);
+        } catch (error) {
+            console.error('Failed to fetch pass:', error);
         } finally {
             setPassLoading(false);
         }
     };
 
-    const name = organizerSession?.email || userSession?.name || 'Guest';
-    const number = userSession?.phone || (organizerSession?.isAdmin ? 'Administrator' : organizerSession?.vertical + ' Organizer' || 'Not provided');
+    useEffect(() => {
+        if (organizerSession?.id) {
+            const fetchProfile = async () => {
+                try {
+                    const res = await fetch(`/backend/api/organizer/profile`, { credentials: 'include' });
+                    if (res.ok) {
+                        const data = await res.json();
+                        setOrganizerProfile(data);
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch organizer profile:', error);
+                } finally {
+                    setLoading(false);
+                }
+            };
+            fetchProfile();
+        } else {
+            setLoading(false);
+        }
+    }, [organizerSession?.id]);
+
+    const title = organizerSession?.isAdmin ? 'Admin Panel' : 
+               (organizerProfile?.name || userSession?.name || userSession?.phone || 'Guest');
+    const subtitle = organizerSession?.isAdmin ? '' : 
+                     (organizerSession ? (organizerSession.email || organizerSession.vertical + ' Organizer') : (userSession?.phone || 'Not provided'));
 
     if (!userSession && !organizerSession) {
         return (
@@ -84,9 +109,6 @@ export default function MobileProfile({ bookings = [] }: MobileProfileProps) {
         );
     }
 
-    const title = organizerSession?.isAdmin ? 'Admin Panel' : (userSession?.name || userSession?.phone || 'Guest');
-    const subtitle = organizerSession?.isAdmin ? '' : number;
-
     const menuItems = organizerSession?.isAdmin ? [
         // 3) Admin Menu
         { 
@@ -106,7 +128,7 @@ export default function MobileProfile({ bookings = [] }: MobileProfileProps) {
         { icon: <img src="/mobile_icons/profile_page/support.svg" className="w-[20px] h-[20px]" alt="FAQ" />, label: "Frequently asked questions", onClick: () => router.push('/faq') },
         { icon: <img src="/mobile_icons/profile_page/chat.svg" className="w-[20px] h-[20px]" alt="Chat" />, label: "Chat with us", onClick: () => router.push('/chat-support') },
         { icon: <img src="/mobile_icons/profile_page/info.svg" className="w-[20px] h-[20px]" alt="About" />, label: "About us", onClick: () => router.push('/about') },
-        { icon: <img src="/mobile_icons/profile_page/profile.svg" className="w-[20px] h-[20px]" alt="Account" />, label: "Edit profile", onClick: () => router.push('/profile/edit') },
+        { icon: <img src="/mobile_icons/profile_page/profile.svg" className="w-[20px] h-[20px]" alt="Account" />, label: "Edit profile", onClick: () => router.push(organizerSession ? '/organizer/profile/edit' : '/profile/edit') },
         { icon: <img src="/mobile_icons/profile_page/logout.svg" className="w-[20px] h-[20px]" alt="Logout" />, label: "Logout", onClick: () => { logoutUser(); router.push('/'); } },
     ] : [
         // 1) User Menu
@@ -116,7 +138,7 @@ export default function MobileProfile({ bookings = [] }: MobileProfileProps) {
         { icon: <img src="/mobile_icons/profile_page/support.svg" className="w-[20px] h-[20px]" alt="FAQ" />, label: "Frequently asked questions", onClick: () => router.push('/faq') },
         { icon: <img src="/mobile_icons/profile_page/chat.svg" className="w-[20px] h-[20px]" alt="Chat" />, label: "Chat with us", onClick: () => router.push('/chat-support') },
         { icon: <img src="/mobile_icons/profile_page/info.svg" className="w-[20px] h-[20px]" alt="About" />, label: "About us", onClick: () => router.push('/about') },
-        { icon: <img src="/mobile_icons/profile_page/profile.svg" className="w-[20px] h-[20px]" alt="Account" />, label: "Edit profile", onClick: () => router.push('/profile/edit') },
+        { icon: <img src="/mobile_icons/profile_page/profile.svg" className="w-[20px] h-[20px]" alt="Account" />, label: "Edit profile", onClick: () => router.push(organizerSession ? '/organizer/profile/edit' : '/profile/edit') },
         { icon: <img src="/mobile_icons/profile_page/logout.svg" className="w-[20px] h-[20px]" alt="Logout" />, label: "Logout", onClick: () => { logoutUser(); router.push('/'); } },
     ];
 
@@ -136,10 +158,10 @@ export default function MobileProfile({ bookings = [] }: MobileProfileProps) {
                 <div className="flex items-center gap-[14px]">
                     <div className="w-[70px] h-[70px] bg-[#D9D9D9] rounded-full flex-shrink-0 overflow-hidden relative border border-white shadow-sm">
                         {userSession?.profilePhoto ? (
-                            <Image src={userSession.profilePhoto} alt={name} fill className="object-cover" />
+                            <Image src={userSession.profilePhoto} alt={title || 'Profile'} fill className="object-cover" />
                         ) : (
                             <div className="w-full h-full flex items-center justify-center bg-[#866BFF] text-white text-[24px] font-bold">
-                                {title.charAt(0).toUpperCase()}
+                                {(title || 'G').charAt(0).toUpperCase()}
                             </div>
                         )}
                     </div>
@@ -149,7 +171,7 @@ export default function MobileProfile({ bookings = [] }: MobileProfileProps) {
                     </div>
                 </div>
                 {!organizerSession?.isAdmin && (
-                    <button onClick={() => router.push('/profile/edit')} className="p-2 w-10 h-10 bg-white rounded-full border border-[#D0D0D0] flex items-center justify-center">
+                    <button onClick={() => router.push(organizerSession ? '/organizer/profile/edit' : '/profile/edit')} className="p-2 w-10 h-10 bg-white rounded-full border border-[#D0D0D0] flex items-center justify-center">
                         <Pencil size={18} className="text-[#212121]" />
                     </button>
                 )}

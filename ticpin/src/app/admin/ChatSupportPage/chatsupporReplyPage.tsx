@@ -35,8 +35,12 @@ const ChatSupportReplyContent = () => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const userType = organizerSession ? "organizer" : "user";
-    const userId = organizerSession?.id || userSession?.id || "";
+    const userId = organizerSession?.id || userSession?.id;
     const userEmail = organizerSession?.email || userSession?.email || "";
+
+    if (!userId) {
+        return <div className="p-6 text-red-500">No valid session found. Please login again.</div>;
+    }
 
     useEffect(() => {
         const fetchData = async () => {

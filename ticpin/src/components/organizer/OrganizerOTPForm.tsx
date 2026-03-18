@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronRight } from 'lucide-react';
 import { saveOrganizerSession } from '@/lib/auth/organizer';
+import { useIdentityStore } from '@/store/useIdentityStore';
 
 interface OTPApi {
     verifyOTP: (email: string, otp: string) => Promise<{
@@ -78,7 +79,9 @@ function OTPContent({ vertical, api, setupPath, loginPath }: Props) {
             const id = (res._id ?? res.id ?? '').toString();
             const catStatus = res.categoryStatus ?? {};
             const isAdmin = !!res.isAdmin;
-            saveOrganizerSession({ id, email, vertical, isAdmin, categoryStatus: catStatus });
+            const session = { id, email, vertical, isAdmin, categoryStatus: catStatus };
+            saveOrganizerSession(session);
+            useIdentityStore.getState().loginOrganizer(session);
             sessionStorage.removeItem('otp_pending_email');
             if (isAdmin) {
                 router.push('/admin');

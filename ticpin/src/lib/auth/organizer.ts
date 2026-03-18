@@ -6,6 +6,8 @@
 // The frontend reads/writes ticpin_session for UI state.
 // clearOrganizerSession() calls the logout endpoint to clear the HttpOnly cookie too.
 
+import { clearAllData } from './clearAll';
+
 export interface OrganizerSession {
   id: string;
   email: string;
@@ -67,17 +69,12 @@ export function saveOrganizerSession(session: OrganizerSession): void {
 /** Clear both cookies and sessionStorage. Fires backend logout to clear HttpOnly cookie. */
 export function clearOrganizerSession(): void {
   if (typeof window === 'undefined') return;
+  
   // Fire-and-forget — clears the HttpOnly ticpin_token on the server
   fetch('/backend/api/organizer/logout', { method: 'POST', credentials: 'include' }).catch(() => { });
-  deleteCookie('ticpin_session');
-  deleteCookie('ticpin_token');
-  // Wipe all multi-step setup form data
-  const setupKeys = [
-    'setup_dining', 'setup_events', 'setup_play',
-    'setup_dining_KEY', 'setup_events_KEY', 'setup_play_KEY',
-  ];
-  setupKeys.forEach(k => sessionStorage.removeItem(k));
-  window.dispatchEvent(new Event('organizer-auth-change'));
+  
+  // Clear everything
+  clearAllData();
 }
 
 /** Updates a single category status inside the stored session cookie */

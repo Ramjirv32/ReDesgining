@@ -84,7 +84,15 @@ function EditProfileContent() {
                     setIsNewProfile(false);
                 }
             } catch (err) {
-                // profile not found — new user
+                // profile not found — try to get PAN name from setup
+                try {
+                    const setup = await organizerApi.getExistingSetup('dining');
+                    if (setup.panName) {
+                        setFormData(prev => ({ ...prev, name: setup.panName || '' }));
+                    }
+                } catch (setupErr) {
+                    // ignore setup fetch error
+                }
             } finally {
                 setLoading(false);
             }

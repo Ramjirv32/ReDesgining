@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { clearAllData } from './clearAll';
 
 // ─── User Session ──────────────────────────────────────────────────
 
@@ -51,9 +52,7 @@ export function saveUserSession(session: UserSession): void {
 
 /** Clear user session */
 export function clearUserSession(): void {
-    if (typeof window === 'undefined') return;
-    deleteCookie('ticpin_user_session');
-    window.dispatchEvent(new Event('user-auth-change'));
+    clearAllData();
 }
 
 /** React hook to get and track user session */

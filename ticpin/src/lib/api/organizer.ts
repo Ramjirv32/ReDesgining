@@ -65,13 +65,13 @@ export const organizerApi = {
   getMe: () =>
     request<{ id: string; email: string; categoryStatus: Record<string, string> }>('/organizer/me'),
 
-  /** GET /api/organizer/:id/status — returns categoryStatus map */
-  getStatus: (organizerId: string) =>
-    request<CategoryStatusResponse>(`/organizer/${organizerId}/status`),
+  /** GET /api/organizer/me/status — returns categoryStatus map for the current auth'd organizer */
+  getStatus: () =>
+    request<CategoryStatusResponse>('/organizer/me/status'),
 
-  /** GET /api/organizer/:id/existing-setup — returns PAN+bank from any existing vertical setup */
-  getExistingSetup: (organizerId: string, category: 'events' | 'dining' | 'play') =>
-    request<ExistingSetup>(`/organizer/${organizerId}/existing-setup?category=${category}`),
+  /** GET /api/organizer/me/existing-setup — returns PAN+bank from any existing vertical setup */
+  getExistingSetup: (category: 'events' | 'dining' | 'play') =>
+    request<ExistingSetup>(`/organizer/me/existing-setup?category=${category}`),
 
   /** GET /api/organizer/profile/:id — returns organizer profile */
   getProfile: (organizerId: string) =>

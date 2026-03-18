@@ -57,7 +57,7 @@ function AccountSetupContent() {
         }
 
         if (session.id) {
-            organizerApi.getExistingSetup(session.id, 'play')
+            organizerApi.getExistingSetup('play')
                 .then(setup => {
                     if (setup?.pan) {
                         setPan(setup.pan); setPanName(setup.panName ?? '');
