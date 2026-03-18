@@ -57,8 +57,15 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialView = 'n
     const photoInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        if (isOpen) setView(initialView);
-    }, [isOpen, initialView]);
+        if (isOpen) {
+            const organizer = getOrganizerSession();
+            if (!userSession && !organizer && (initialView === 'profile' || initialView === 'bookings')) {
+                setView('number');
+            } else {
+                setView(initialView);
+            }
+        }
+    }, [isOpen, initialView, userSession]);
 
     useEffect(() => {
         if (profile) {

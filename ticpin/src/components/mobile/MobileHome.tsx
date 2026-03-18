@@ -8,6 +8,11 @@ import { useLocation } from '@/lib/useLocation';
 import { useUserSession } from '@/lib/auth/user';
 import Image from 'next/image';
 
+import dynamic from 'next/dynamic';
+import { useIdentityStore } from '@/store/useIdentityStore';
+
+const AuthModal = dynamic(() => import('@/components/modals/AuthModal'), { ssr: false });
+
 interface Event {
     id: string;
     name: string;
@@ -46,11 +51,17 @@ interface MobileHomeProps {
 export default function MobileHome({ events, dinings, plays }: MobileHomeProps) {
     const router = useRouter();
     const city = useLocation();
-    const session = useUserSession();
+    const { userSession, sync } = useIdentityStore();
+    const [isAuthOpen, setIsAuthOpen] = useState(false);
+    const session = userSession;
     const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 390);
     const [placeholderIndex, setPlaceholderIndex] = useState(0);
     const [searchQuery, setSearchQuery] = useState('');
     const placeholders = ["events", "dining", "play"];
+
+    useEffect(() => {
+        sync();
+    }, [sync]);
     
     const carouselRef = useRef<HTMLDivElement>(null);
     const limelightRef = useRef<HTMLDivElement>(null);
@@ -170,7 +181,13 @@ export default function MobileHome({ events, dinings, plays }: MobileHomeProps) 
                     </div>
                     <div
                         className="w-[35px] h-[35px] rounded-full bg-[#D9D9D9] flex items-center justify-center overflow-hidden cursor-pointer"
-                        onClick={() => router.push('/profile')}
+                        onClick={() => {
+                            if (session) {
+                                router.push('/profile');
+                            } else {
+                                setIsAuthOpen(true);
+                            }
+                        }}
                     >
                         {session?.profilePhoto ? (
                             <Image src={session.profilePhoto} alt="Profile" width={35} height={35} className="object-cover" />
@@ -547,7 +564,12 @@ export default function MobileHome({ events, dinings, plays }: MobileHomeProps) 
                     <span className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center text-white">YT</span>
                 </div>
             </footer>
+
+            <AuthModal
+                isOpen={isAuthOpen}
+                onClose={() => setIsAuthOpen(false)}
+                onSuccess={() => sync()}
+            />
         </div>
     );
 }
-// d

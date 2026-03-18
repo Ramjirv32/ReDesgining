@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"ticpin-backend/config"
-	"ticpin-backend/worker"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -38,10 +37,10 @@ func SendOTP(email string) error {
 		return err
 	}
 
-	worker.Submit(func() {
-		// Use a generic sender or default to play
-		config.SendPlayOTP(email, otp)
-	})
+	// Send OTP synchronously to ensure delivery in serverless environments (like Vercel)
+	if err := config.SendPlayOTP(email, otp); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -65,7 +64,6 @@ func VerifyOTP(email, otp string) error {
 		return errors.New("otp expired")
 	}
 
-	// Delete used OTP
 	_, _ = collection.DeleteOne(ctx, bson.M{"email": email})
 
 	return nil

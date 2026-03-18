@@ -9,7 +9,6 @@ import (
 	"ticpin-backend/config"
 	"ticpin-backend/models"
 	verifysvc "ticpin-backend/services/verification"
-	"ticpin-backend/worker"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -67,16 +66,14 @@ func SendOTP(email, category string) error {
 	if err != nil {
 		return err
 	}
-	worker.Submit(func() {
-		switch category {
-		case "events":
-			config.SendEventsOTP(email, otp)
-		case "dining":
-			config.SendDiningOTP(email, otp)
-		default:
-			config.SendPlayOTP(email, otp)
-		}
-	})
+	switch category {
+	case "events":
+		config.SendEventsOTP(email, otp)
+	case "dining":
+		config.SendDiningOTP(email, otp)
+	default:
+		config.SendPlayOTP(email, otp)
+	}
 	return nil
 }
 
@@ -365,16 +362,14 @@ func SendBackupOTP(organizerID, backupEmail, category string) error {
 	if err != nil {
 		return err
 	}
-	worker.Submit(func() {
-		switch category {
-		case "events":
-			config.SendEventsOTP(backupEmail, otp)
-		case "dining":
-			config.SendDiningOTP(backupEmail, otp)
-		default:
-			config.SendPlayOTP(backupEmail, otp)
-		}
-	})
+	switch category {
+	case "events":
+		config.SendEventsOTP(backupEmail, otp)
+	case "dining":
+		config.SendDiningOTP(backupEmail, otp)
+	default:
+		config.SendPlayOTP(backupEmail, otp)
+	}
 	return nil
 }
 
