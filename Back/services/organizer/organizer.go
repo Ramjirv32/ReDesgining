@@ -68,13 +68,12 @@ func SendOTP(email, category string) error {
 	}
 	switch category {
 	case "events":
-		config.SendEventsOTP(email, otp)
+		return config.SendEventsOTP(email, otp)
 	case "dining":
-		config.SendDiningOTP(email, otp)
+		return config.SendDiningOTP(email, otp)
 	default:
-		config.SendPlayOTP(email, otp)
+		return config.SendPlayOTP(email, otp)
 	}
-	return nil
 }
 
 func VerifyOTP(email, otp string) (*models.Organizer, error) {
@@ -364,13 +363,12 @@ func SendBackupOTP(organizerID, backupEmail, category string) error {
 	}
 	switch category {
 	case "events":
-		config.SendEventsOTP(backupEmail, otp)
+		return config.SendEventsOTP(backupEmail, otp)
 	case "dining":
-		config.SendDiningOTP(backupEmail, otp)
+		return config.SendDiningOTP(backupEmail, otp)
 	default:
-		config.SendPlayOTP(backupEmail, otp)
+		return config.SendPlayOTP(backupEmail, otp)
 	}
-	return nil
 }
 
 func VerifyBackupOTP(organizerID, otp string) error {
