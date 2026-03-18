@@ -9,7 +9,7 @@ The Data is provided "as is" without warranty or any representation of accuracy,
 
 The data format is tab-delimited text in utf8 encoding.
 
-
+c
 Files :
 -------
 XX.zip                   : features for country with iso code XX, see 'geoname' table for columns. 'no-country' for features not belonging to a country.
