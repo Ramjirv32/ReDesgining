@@ -1,14 +1,10 @@
 package middleware
 
 import (
-	"fmt"
 	"ticpin-backend/config"
-	"ticpin-backend/models"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type OrganizerClaims struct {
@@ -27,7 +23,7 @@ func RequireAuth(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized: missing token"})
 	}
 
-	claims := &OrganizerClaims{}
+	claims := &config.OrganizerClaims{}
 	token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fiber.ErrUnauthorized
@@ -40,16 +36,15 @@ func RequireAuth(c *fiber.Ctx) error {
 
 	c.Locals("organizerId", claims.OrganizerID)
 	c.Locals("email", claims.Email)
-
-	adminEmail := config.GetAdminEmail()
-	c.Locals("isAdmin", claims.Email == adminEmail)
+	c.Locals("isAdmin", claims.IsAdmin)
+	c.Locals("approvals", claims.CategoryStatus)
 
 	return c.Next()
 }
 
 func RequireAdmin(c *fiber.Ctx) error {
-	isAdmin, _ := c.Locals("isAdmin").(bool)
-	if !isAdmin {
+	isAdmin, ok := c.Locals("isAdmin").(bool)
+	if !ok || !isAdmin {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "forbidden: admin access required"})
 	}
 	return c.Next()
@@ -109,43 +104,23 @@ func RequireSelfUser(c *fiber.Ctx) error {
 	authUserID := c.Locals("userId").(string)
 	authPhone, _ := c.Locals("phone").(string)
 
-	// Debug logging
-	fmt.Printf("DEBUG: RequireSelfUser - targetUserID: %s, authUserID: %s, authPhone: %s\n", targetUserID, authUserID, authPhone)
-
 	// Allow if matches either hex ID or phone number
 	if authUserID == targetUserID || (authPhone != "" && authPhone == targetUserID) {
 		return c.Next()
 	}
 
-	return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-		"error": "forbidden: you can only access your own data",
-		"debug": fiber.Map{
-			"target": targetUserID,
-			"authId": authUserID,
-			"phone":  authPhone,
-		},
-	})
+	return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "forbidden: you can only access your own data"})
 }
 
 func RequireCategoryApproval(category string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		organizerID, ok := c.Locals("organizerId").(string)
-		if !ok || organizerID == "" {
-			return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+		isAdmin, _ := c.Locals("isAdmin").(bool)
+		if isAdmin {
+			return c.Next()
 		}
 
-		objID, err := primitive.ObjectIDFromHex(organizerID)
-		if err != nil {
-			return c.Status(400).JSON(fiber.Map{"error": "invalid organizer id"})
-		}
-
-		var org models.Organizer
-		err = config.GetDB().Collection("organizers").FindOne(c.Context(), bson.M{"_id": objID}).Decode(&org)
-		if err != nil {
-			return c.Status(404).JSON(fiber.Map{"error": "organizer not found"})
-		}
-
-		if org.CategoryStatus == nil || org.CategoryStatus[category] != "approved" {
+		approvals, ok := c.Locals("approvals").(map[string]string)
+		if !ok || approvals == nil || approvals[category] != "approved" {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 				"error": "forbidden: your application for " + category + " is not approved yet",
 			})

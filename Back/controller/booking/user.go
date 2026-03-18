@@ -12,6 +12,99 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+func GetBookingHistory(c *fiber.Ctx) error {
+	email := c.Query("email")
+	phone := c.Query("phone")
+	userId := c.Query("userId")
+
+	if email == "" && phone == "" && userId == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "at least one identifier is required"})
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	var allBookings []fiber.Map
+
+	// Construct dynamic filter
+	var orFilters []bson.M
+	if email != "" {
+		orFilters = append(orFilters, bson.M{"user_email": email})
+	}
+	if phone != "" {
+		orFilters = append(orFilters, bson.M{"user_id": phone}) // If it was saved as phone
+	}
+	if userId != "" {
+		orFilters = append(orFilters, bson.M{"user_id": userId})
+	}
+
+	filter := bson.M{"$or": orFilters}
+
+	// 1. Fetch Event Bookings
+	cursor, err := config.BookingsCol.Find(ctx, filter)
+	if err == nil {
+		var events []models.Booking
+		if cursor.All(ctx, &events) == nil {
+			for _, b := range events {
+				allBookings = append(allBookings, fiber.Map{
+					"id":           b.ID.Hex(),
+					"category":     "events",
+					"event_name":   b.EventName,
+					"order_amount": b.OrderAmount,
+					"grand_total":  b.GrandTotal,
+					"status":       b.Status,
+					"date":         b.BookedAt.Format("2006-01-02"),
+					"booked_at":    b.BookedAt,
+				})
+			}
+		}
+	}
+
+	// 2. Fetch Dining Bookings
+	cursor, err = config.DiningBookingsCol.Find(ctx, filter)
+	if err == nil {
+		var dinings []models.DiningBooking
+		if cursor.All(ctx, &dinings) == nil {
+			for _, b := range dinings {
+				allBookings = append(allBookings, fiber.Map{
+					"id":           b.ID.Hex(),
+					"category":     "dining",
+					"venue_name":   b.VenueName,
+					"date":         b.Date,
+					"time_slot":    b.TimeSlot,
+					"order_amount": b.OrderAmount,
+					"grand_total":  b.GrandTotal,
+					"status":       b.Status,
+					"booked_at":    b.BookedAt,
+				})
+			}
+		}
+	}
+
+	// 3. Fetch Play Bookings
+	cursor, err = config.PlayBookingsCol.Find(ctx, filter)
+	if err == nil {
+		var plays []models.PlayBooking
+		if cursor.All(ctx, &plays) == nil {
+			for _, b := range plays {
+				allBookings = append(allBookings, fiber.Map{
+					"id":           b.ID.Hex(),
+					"category":     "play",
+					"venue_name":   b.VenueName,
+					"date":         b.Date,
+					"slot":         b.Slot,
+					"order_amount": b.OrderAmount,
+					"grand_total":  b.GrandTotal,
+					"status":       b.Status,
+					"booked_at":    b.BookedAt,
+				})
+			}
+		}
+	}
+
+	return c.JSON(allBookings)
+}
+
 func GetBookingsByEmail(c *fiber.Ctx) error {
 	email := c.Params("email")
 	if email == "" {

@@ -18,6 +18,7 @@ import (
 func CreateEventBooking(c *fiber.Ctx) error {
 	var req struct {
 		UserEmail      string                 `json:"user_email"`
+		UserName       string                 `json:"user_name"`
 		EventID        string                 `json:"event_id"`
 		EventName      string                 `json:"event_name"`
 		Tickets        []models.BookingTicket `json:"tickets"`
@@ -34,6 +35,25 @@ func CreateEventBooking(c *fiber.Ctx) error {
 	}
 	if req.UserEmail == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "user_email is required"})
+	}
+	if req.UserName == "" || len(req.UserName) < 3 {
+		return c.Status(400).JSON(fiber.Map{"error": "name must be at least 3 characters"})
+	}
+
+	// Check email uniqueness - must NOT exist in users or organizers collection
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var existingUser bson.M
+	err := config.UsersCol.FindOne(ctx, bson.M{"email": req.UserEmail}).Decode(&existingUser)
+	if err == nil {
+		return c.Status(400).JSON(fiber.Map{"error": "email already registered as a user. please login or use a different email"})
+	}
+
+	var existingOrg bson.M
+	err = config.OrgsCol.FindOne(ctx, bson.M{"email": req.UserEmail}).Decode(&existingOrg)
+	if err == nil {
+		return c.Status(400).JSON(fiber.Map{"error": "email already registered as an organizer. please use a different email"})
 	}
 	if req.EventID == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "event_id is required"})

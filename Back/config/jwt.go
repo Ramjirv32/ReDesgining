@@ -10,9 +10,38 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+var (
+	jwtSecretCached   []byte
+	isProdCached      bool
+	initializedConfig bool
+)
+
+func InitJWT(secret string, isProd bool) {
+	jwtSecretCached = []byte(secret)
+	isProdCached = isProd
+	initializedConfig = true
+}
+
+func JWTSecret() []byte {
+	if !initializedConfig {
+		s := os.Getenv("JWT_SECRET")
+		if s == "" {
+			s = "ticpin-secret-change-in-production"
+		}
+		jwtSecretCached = []byte(s)
+	}
+	return jwtSecretCached
+}
+
+func IsProduction() bool {
+	return isProdCached || os.Getenv("ENV") == "production"
+}
+
 type OrganizerClaims struct {
-	OrganizerID string `json:"organizerId"`
-	Email       string `json:"email"`
+	OrganizerID    string            `json:"organizerId"`
+	Email          string            `json:"email"`
+	IsAdmin        bool              `json:"isAdmin"`
+	CategoryStatus map[string]string `json:"categoryStatus"`
 	jwt.RegisteredClaims
 }
 
@@ -24,22 +53,12 @@ type SessionInfo struct {
 	CategoryStatus map[string]string `json:"categoryStatus"`
 }
 
-func JWTSecret() []byte {
-	s := os.Getenv("JWT_SECRET")
-	if s == "" {
-		s = "ticpin-secret-change-in-production"
-	}
-	return []byte(s)
-}
-
-func IsProduction() bool {
-	return os.Getenv("ENV") == "production"
-}
-
-func GenerateOrganizerToken(organizerID, email string) (string, error) {
+func GenerateOrganizerToken(organizerID, email string, isAdmin bool, categoryStatus map[string]string) (string, error) {
 	claims := OrganizerClaims{
-		OrganizerID: organizerID,
-		Email:       email,
+		OrganizerID:    organizerID,
+		Email:          email,
+		IsAdmin:        isAdmin,
+		CategoryStatus: categoryStatus,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -50,7 +69,7 @@ func GenerateOrganizerToken(organizerID, email string) (string, error) {
 }
 
 func SetAuthCookies(c *fiber.Ctx, organizerID, email, vertical string, isAdmin bool, categoryStatus map[string]string) error {
-	token, err := GenerateOrganizerToken(organizerID, email)
+	token, err := GenerateOrganizerToken(organizerID, email, isAdmin, categoryStatus)
 	if err != nil {
 		return err
 	}

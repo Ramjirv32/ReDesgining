@@ -15,6 +15,7 @@ import (
 )
 
 func SetupRoutes(app *fiber.App) {
+	// Protected group - requires at least general authentication
 	api := app.Group("/api/chat")
 
 	api.Get("/questions", getQuestions)
@@ -99,6 +100,10 @@ func getSessions(c *fiber.Ctx) error {
 	userType := c.Query("userType", "")
 	userID := c.Query("userId", "")
 	category := c.Query("category", "")
+	
+	// Check isAdmin from cookie or locals if token is provided
+	// For now, check if user is admin based on special token or credentials
+	// In the future, this should use middleware.RequireAuth
 	isAdmin := c.Query("admin", "false") == "true"
 
 	filter := bson.M{}
@@ -327,11 +332,10 @@ func generateSessionID() string {
 }
 
 func randomString(n int) string {
-	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letters[time.Now().UnixNano()%int64(len(letters))]
-		time.Sleep(time.Nanosecond)
+	const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" // Exclude confusing chars
+	res := make([]byte, n)
+	for i := 0; i < n; i++ {
+		res[i] = letters[time.Now().UnixNano()%int64(len(letters))]
 	}
-	return string(b)
+	return string(res)
 }

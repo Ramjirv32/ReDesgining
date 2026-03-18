@@ -24,6 +24,13 @@ func LoginOrCreate(email, password string) (*models.Organizer, bool, error) {
 	var org models.Organizer
 	err := collection.FindOne(ctx, bson.M{"email": email}).Decode(&org)
 	if err != nil {
+		// Check if email exists in users collection - prevent user email from being used for organizer
+		var existingUser bson.M
+		err := config.UsersCol.FindOne(ctx, bson.M{"email": email}).Decode(&existingUser)
+		if err == nil {
+			return nil, false, errors.New("email already registered as a user. please login or use a different email")
+		}
+
 		hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		if err != nil {
 			return nil, false, err
@@ -193,10 +200,20 @@ func Create(email, password string) (*models.Organizer, error) {
 	collection := config.GetDB().Collection("organizers")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
+	// Check if email already exists in organizers
 	var existing models.Organizer
 	if err := collection.FindOne(ctx, bson.M{"email": email}).Decode(&existing); err == nil {
 		return nil, errors.New("email_exists")
 	}
+
+	// Check if email exists in users collection - prevent user email from being used for organizer
+	var existingUser bson.M
+	err := config.UsersCol.FindOne(ctx, bson.M{"email": email}).Decode(&existingUser)
+	if err == nil {
+		return nil, errors.New("email already registered as a user. please login or use a different email")
+	}
+
 	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
@@ -389,8 +406,15 @@ func GoogleAuth(email string) (*models.Organizer, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	// Check if email exists in users collection - prevent user email from being used for organizer
+	var existingUser bson.M
+	err := config.UsersCol.FindOne(ctx, bson.M{"email": email}).Decode(&existingUser)
+	if err == nil {
+		return nil, errors.New("email already registered as a user. please login or use a different email")
+	}
+
 	var org models.Organizer
-	err := collection.FindOne(ctx, bson.M{"email": email}).Decode(&org)
+	err = collection.FindOne(ctx, bson.M{"email": email}).Decode(&org)
 	if err != nil {
 
 		org = models.Organizer{

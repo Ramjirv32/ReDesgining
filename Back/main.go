@@ -140,6 +140,7 @@ func main() {
 	<-quit
 
 	log.Info().Msg("Shutting down server...")
+	worker.Shutdown()
 	if err := app.ShutdownWithTimeout(10 * time.Second); err != nil {
 		stdlog.Printf("Shutdown: %v", err)
 	}

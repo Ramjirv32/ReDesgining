@@ -2,6 +2,7 @@ package profile
 
 import (
 	"context"
+	"errors"
 	"io"
 	"ticpin-backend/config"
 	"ticpin-backend/models"
@@ -13,6 +14,24 @@ import (
 )
 
 func Create(p *models.Profile) error {
+	// Check email uniqueness - must NOT exist in users or organizers collection
+	if p.Email != "" {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		var existingUser bson.M
+		err := config.UsersCol.FindOne(ctx, bson.M{"email": p.Email}).Decode(&existingUser)
+		if err == nil {
+			return errors.New("email already registered as a user")
+		}
+
+		var existingOrg bson.M
+		err = config.OrgsCol.FindOne(ctx, bson.M{"email": p.Email}).Decode(&existingOrg)
+		if err == nil {
+			return errors.New("email already registered as an organizer")
+		}
+	}
+
 	p.ID = primitive.NewObjectID()
 	p.CreatedAt = time.Now()
 	p.UpdatedAt = time.Now()
