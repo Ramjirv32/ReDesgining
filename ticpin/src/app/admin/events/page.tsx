@@ -176,8 +176,8 @@ function DetailViewPanel({ ev, onStatus, updating, onUpdate, onNext, currentInde
               <div className="overflow-y-auto max-h-[600px] scrollbar-hide pr-4">
                 <h3 className="text-xl font-semibold mb-2">Additional Details</h3>
                 {/* Guide and instructions */}
-                {editedEv.guide && (
-                  <div className="mb-2"><strong>Guide:</strong> {editedEv.guide.event_instructions}</div>
+                {editedEv.event_instructions && (
+                  <div className="mb-2"><strong>Instructions:</strong> {editedEv.event_instructions}</div>
                 )}
                 {editedEv.youtube_video_url && (
                   <div className="mb-2"><strong>YouTube Video:</strong> <a href={editedEv.youtube_video_url} target="_blank" rel="noopener noreferrer">Watch</a></div>
@@ -239,20 +239,20 @@ function DetailViewPanel({ ev, onStatus, updating, onUpdate, onNext, currentInde
                 )}
                 {/* Points of contact */}
                 {editedEv.points_of_contact && editedEv.points_of_contact.length > 0 && (
-                  <div className="mb-2"><strong>Points of Contact:</strong><ul>{editedEv.points_of_contact.map((contact: { name: string; phone: string; email: string }, idx: number) => (
+                  <div className="mb-2"><strong>Points of Contact:</strong><ul>{editedEv.points_of_contact.map((contact: any, idx: number) => (
                     <li key={idx}>
                       <span><strong>Name:</strong> {contact.name}</span>{' '}
-                      <span><strong>Phone:</strong> {contact.phone}</span>{' '}
+                      <span><strong>Phone:</strong> {contact.phone || contact.mobile || '—'}</span>{' '}
                       <span><strong>Email:</strong> {contact.email}</span>
                     </li>
                   ))}</ul></div>
                 )}
                 {/* Sales notifications */}
                 {editedEv.sales_notifications && editedEv.sales_notifications.length > 0 && (
-                  <div className="mb-2"><strong>Sales Notifications:</strong><ul>{editedEv.sales_notifications.map((note: { type: string; message: string }, idx: number) => (
+                  <div className="mb-2"><strong>Sales Notifications:</strong><ul>{editedEv.sales_notifications.map((note: any, idx: number) => (
                     <li key={idx}>
-                      <span><strong>Type:</strong> {note.type}</span>{' '}
-                      <span><strong>Message:</strong> {note.message}</span>
+                      <span><strong>Email:</strong> {note.email}</span>{' '}
+                      <span><strong>Mobile:</strong> {note.mobile}</span>
                     </li>
                   ))}</ul></div>
                 )}
