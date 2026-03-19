@@ -112,3 +112,39 @@ func DeleteOrganizer(c *fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{"message": "organizer and related data deleted"})
 }
+
+func UpdateOrganizer(c *fiber.Ctx) error {
+	id := c.Params("id")
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid id"})
+	}
+
+	var payload struct {
+		Organizer    models.Organizer        `json:"organizer"`
+		Profile      models.Profile          `json:"profile"`
+		Setups       []models.OrganizerSetup `json:"setups"`
+	}
+
+	if err := c.BodyParser(&payload); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid body"})
+	}
+
+	// 1. Update Organizer basic info
+	config.GetDB().Collection("organizers").UpdateOne(c.Context(), bson.M{"_id": objID}, bson.M{"$set": bson.M{
+		"email": payload.Organizer.Email,
+		// and maybe other top-level fields
+	}})
+
+	// 2. Update Profile
+	config.GetDB().Collection("profiles").UpdateOne(c.Context(), bson.M{"organizerId": objID}, bson.M{"$set": payload.Profile}, options.Update().SetUpsert(true))
+
+	// 3. Update Setups
+	for _, s := range payload.Setups {
+		if s.ID != primitive.NilObjectID {
+			config.GetDB().Collection("organizer_setups").UpdateOne(c.Context(), bson.M{"_id": s.ID}, bson.M{"$set": s})
+		}
+	}
+
+	return c.JSON(fiber.Map{"message": "organizer updated successfully"})
+}

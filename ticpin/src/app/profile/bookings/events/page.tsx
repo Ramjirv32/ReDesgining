@@ -16,15 +16,16 @@ export default function EventBookingsPage() {
     if (session) {
       bookingApi.getUserBookings({ email: session.email, phone: session.phone, userId: session.id })
         .then(all => {
-          // Filter only event bookings
-          setBookings(all.filter(b => b.type === 'event' || b.category === 'event'));
+          // Filter only event bookings — backend returns category: 'events' (plural)
+          setBookings(all.filter(b => b.type === 'events' || b.category === 'events'));
           setLoading(false);
         })
         .catch(() => setLoading(false));
-    } else if (session) {
+    } else {
        setLoading(false);
     }
   }, [session]);
+
 
   return (
     <div className="min-h-screen bg-[#F1F1F1] font-sans pb-20" style={{ fontFamily: 'var(--font-anek-latin), sans-serif' }}>

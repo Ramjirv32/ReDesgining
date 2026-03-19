@@ -129,8 +129,8 @@ const DiningBooking: React.FC = () => {
             totalPrice: (venue.price_starts_from || 0) * guests
         };
 
-        sessionStorage.setItem('ticpin_cart', JSON.stringify(cartItem));
-        router.push(`/events/${encodeURIComponent(venue.name)}/book/review`);
+        sessionStorage.setItem('dining_cart', JSON.stringify(cartItem));
+        router.push(`/dining/venue/${encodeURIComponent(String(name))}/book/review`);
     };
 
     const lunchSlots = ['12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM', '2:00 PM', '2:30 PM', '3:00 PM'];

@@ -29,18 +29,50 @@ func GetAllEvents(c *fiber.Ctx) error {
 
 func GetEventByID(c *fiber.Ctx) error {
 	id := c.Params("id")
-	// Robustly decode the ID to handle single or double encoding (e.g. %20 or %2520)
-	for {
-		decoded, err := url.PathUnescape(id)
-		if err != nil || decoded == id {
-			break
-		}
-		id = decoded
-	}
-	bypass := c.Query("bypassCache") == "true"
-	e, err := eventservice.GetByID(id, bypass)
+
+	// Decode URL-encoded event name
+	decodedId, err := url.QueryUnescape(id)
 	if err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": "event not found"})
+		decodedId = id
 	}
-	return c.JSON(e)
+
+	event, err := eventservice.GetByID(decodedId, false)
+	if err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Event not found"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(event)
+}
+
+func GetEventAvailability(c *fiber.Ctx) error {
+	eventId := c.Params("id")
+
+	// Decode URL-encoded event name
+	decodedId, err := url.QueryUnescape(eventId)
+	if err != nil {
+		decodedId = eventId
+	}
+
+	// For now, return empty availability - this can be enhanced later
+	availability := map[string]interface{}{
+		"booked":  map[string]int{},
+		"total":   map[string]int{},
+		"eventId": decodedId, // Use the decodedId to avoid unused variable error
+	}
+
+	return c.Status(fiber.StatusOK).JSON(availability)
+}
+
+func GetEventOffers(c *fiber.Ctx) error {
+	eventId := c.Params("id")
+
+	// Decode URL-encoded event name
+	decodedId, err := url.QueryUnescape(eventId)
+	if err != nil {
+		decodedId = eventId
+	}
+
+	offers, _ := eventservice.GetEventOffers(decodedId)
+
+	return c.Status(fiber.StatusOK).JSON(offers)
 }

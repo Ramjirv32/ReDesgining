@@ -210,38 +210,33 @@ export default function ReviewBookingPage() {
     }, [step]);
 
     useEffect(() => {
-        const eventId = eventData?.id;
-        if (eventId && cart?.type) {
-            const fetchOffers = cart.type === 'dining'
-                ? bookingApi.getDiningOffers(eventId)
-                : cart.type === 'play'
-                    ? bookingApi.getPlayOffers(eventId)
-                    : bookingApi.getEventOffers(eventId);
+        const entityId = cart?.eventId;
+        const entityType = cart?.type || 'event';
+        if (!entityId) return;
 
-            fetchOffers.then(res => {
-                const arr = res || [];
-                setOffers(arr);
-                // Auto-apply if cart has selected offer
-                if (cart?.offerId) {
-                    const match = arr.find((o: any) => o.id === cart.offerId);
-                    if (match) applyOffer(match);
-                }
-            }).catch(() => {
-                setOffers([]);
-            });
+        // Fetch offers by entity ID and type (same pattern as play review page)
+        const fetchOffers = entityType === 'dining'
+            ? bookingApi.getDiningOffers(entityId)
+            : entityType === 'play'
+                ? bookingApi.getPlayOffers(entityId)
+                : bookingApi.getEventOffers(entityId);
 
-            // Fetch Coupons — pass user ID so user-specific coupons are included
-            if (session?.id) {
-                bookingApi.getCouponsByCategory(cart.type, session.id).then(res => {
-                    setAvailableCoupons(res || []);
-                }).catch(() => {
-                    setAvailableCoupons([]);
-                });
-            } else {
-                setAvailableCoupons([]);
+        fetchOffers.then(res => {
+            const arr = Array.isArray(res) ? res : [];
+            setOffers(arr);
+            // Auto-apply if cart has a pre-selected offer ID
+            if (cart?.offerId) {
+                const match = arr.find((o: OfferItem) => o.id === cart.offerId);
+                if (match) applyOffer(match);
             }
-        }
-    }, [eventData?.id, cart?.type, session?.id]);
+        }).catch(() => setOffers([]));
+
+        // Fetch coupons for the entity category — include userId for personalised coupons
+        bookingApi.getCouponsByCategory(entityType, session?.id).then(res => {
+            setAvailableCoupons(Array.isArray(res) ? res : []);
+        }).catch(() => setAvailableCoupons([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [cart?.eventId, cart?.type, session?.id]);
 
     const orderAmount = cart?.totalPrice ?? 0;
     const bookingFee = Math.round(orderAmount * 0.1);
@@ -276,6 +271,10 @@ export default function ReviewBookingPage() {
     };
 
     const applyOffer = (offer: OfferItem, base?: number) => {
+        if (grandTotal === 0 && offer.id !== appliedOffer?.id) {
+            alert("The total is already ₹0. No more offers can be applied.");
+            return;
+        }
         const amount = base ?? orderAmount;
         let disc = offer.discount_type === 'percent'
             ? Math.round(amount * offer.discount_value / 100)
@@ -291,6 +290,10 @@ export default function ReviewBookingPage() {
     };
 
     const validateCoupon = async (code?: string, base?: number) => {
+        if (grandTotal === 0 && !appliedCoupon) {
+            alert("The total is already ₹0. No coupon needed.");
+            return;
+        }
         const c = code ?? couponInput;
         if (!c.trim()) return;
         const amount = base ?? orderAmount;
@@ -437,6 +440,23 @@ export default function ReviewBookingPage() {
         if (!cart) return;
         setBookingLoading(true);
         setBookingError('');
+
+        // Skip payment flow if grand total is 0
+        if (grandTotal === 0) {
+            await completeBookingWithData(
+                'FREE_BOOKING_' + Date.now(),
+                'FREE',
+                cart,
+                email,
+                session?.id,
+                orderAmount,
+                0, // booking fee
+                0, // grand total
+                appliedCoupon || '',
+                appliedOffer?.id
+            );
+            return;
+        }
 
         try {
             // Step 1: Create a payment order (picks Cashfree or Razorpay via traffic weight)
@@ -874,7 +894,9 @@ export default function ReviewBookingPage() {
                                     <div className="h-[0.5px] bg-[#AEAEAE] mt-2" />
                                     <div className="pt-2 flex justify-between items-center" style={{ color: 'black', fontFamily: 'var(--font-anek-latin)', fontWeight: 600 }}>
                                         <span style={{ fontSize: '20px' }}>Grand total</span>
-                                        <span style={{ fontSize: '25px' }}>₹{grandTotal.toLocaleString('en-IN')}</span>
+                                        <span style={{ fontSize: '25px', color: grandTotal === 0 ? '#5331EA' : 'black', fontWeight: 900 }}>
+                                            {grandTotal === 0 ? 'FREE' : `₹${grandTotal.toLocaleString('en-IN')}`}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -1097,7 +1119,7 @@ export default function ReviewBookingPage() {
                                         className="flex-1 h-[55px] bg-black text-white rounded-[10px] font-bold text-[22px] uppercase hover:bg-zinc-800 transition-colors disabled:opacity-50 tracking-wider shadow-lg shadow-black/10"
                                         style={{ fontFamily: 'Anek Tamil Condensed' }}
                                     >
-                                        {bookingLoading ? 'Processing...' : 'PAY NOW'}
+                                        {bookingLoading ? 'Processing...' : (grandTotal === 0 ? 'CONTINUE' : 'PAY NOW')}
                                     </button>
                                 </div>
 

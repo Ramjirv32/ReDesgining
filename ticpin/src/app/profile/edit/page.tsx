@@ -3,7 +3,9 @@
 import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUserSession } from '@/lib/auth/user';
+import { useIdentityStore } from '@/store/useIdentityStore';
 import { profileApi, UserProfile, GPS, NotificationPreferences } from '@/lib/api/profile';
+import { useUpdateProfile } from '@/lib/hooks/useProfile';
 import { 
     ChevronLeft, Save, User, Mail, Phone, MapPin, Globe, 
     Calendar, UserCircle, Bell, Languages, Camera, Map,
@@ -147,6 +149,9 @@ function EditUserProfileContent() {
         }
     };
 
+    const { loginUser } = useIdentityStore();
+    const updateProfile = useUpdateProfile();
+
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!userSession) return;
@@ -160,7 +165,18 @@ function EditUserProfileContent() {
         setSuccess('');
 
         try {
-            await profileApi.updateProfile(userSession.id, formData);
+            await updateProfile.mutateAsync({
+                userId: userSession.id,
+                data: formData
+            });
+
+            // Update global session as well
+            loginUser({
+                ...userSession,
+                name: formData.name,
+                profilePhoto: formData.profilePhoto
+            });
+
             setSuccess('Profile updated successfully!');
             setTimeout(() => {
                 setSuccess('');
@@ -181,6 +197,13 @@ function EditUserProfileContent() {
         try {
             const { url } = await profileApi.uploadPhoto(userSession.id, file);
             setFormData(prev => ({ ...prev, profilePhoto: url }));
+            
+            // Sync navbar immediately
+            loginUser({
+                ...userSession,
+                profilePhoto: url
+            });
+
             setSuccess('Photo uploaded successfully');
         } catch (err) {
             setError('Photo upload failed');
@@ -221,7 +244,7 @@ function EditUserProfileContent() {
                         <ChevronLeft size={20} />
                         Back to Profile
                     </button>
-                    <h1 className="text-2xl font-bold text-zinc-900">Edit Member Profile</h1>
+                    <h1 className="text-2xl font-bold text-zinc-900">Edit {formData.name || 'Your'} Profile</h1>
                 </div>
 
                 <form onSubmit={handleSave} className="space-y-8">
@@ -386,6 +409,16 @@ function EditUserProfileContent() {
                                     />
                                 </div>
                                 <div className="space-y-2">
+                                    <label className="text-sm font-bold text-zinc-700 ml-1">District / Area</label>
+                                    <input
+                                        type="text"
+                                        value={formData.district}
+                                        onChange={e => setFormData(prev => ({ ...prev, district: e.target.value }))}
+                                        placeholder="District"
+                                        className="w-full h-14 px-5 rounded-[18px] border border-zinc-200 focus:border-zinc-900 outline-none font-medium"
+                                    />
+                                </div>
+                                <div className="space-y-2">
                                     <label className="text-sm font-bold text-zinc-700 ml-1">City</label>
                                     <input
                                         type="text"
@@ -394,6 +427,26 @@ function EditUserProfileContent() {
                                         placeholder="City"
                                         className="w-full h-14 px-5 rounded-[18px] border border-zinc-200 focus:border-zinc-900 outline-none font-medium"
                                     />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-zinc-700 ml-1">State</label>
+                                    <input
+                                        type="text"
+                                        value={formData.state}
+                                        onChange={e => setFormData(prev => ({ ...prev, state: e.target.value }))}
+                                        placeholder="State"
+                                        className="w-full h-14 px-5 rounded-[18px] border border-zinc-200 focus:border-zinc-900 outline-none font-medium"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-zinc-700 ml-1">Country</label>
+                                    <select
+                                        value={formData.country}
+                                        onChange={e => setFormData(prev => ({ ...prev, country: e.target.value }))}
+                                        className="w-full h-14 px-5 rounded-[18px] border border-zinc-200 focus:border-zinc-900 outline-none font-medium appearance-none bg-white"
+                                    >
+                                        {countries.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
                                 </div>
                             </div>
                             

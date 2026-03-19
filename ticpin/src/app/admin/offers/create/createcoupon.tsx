@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, X, Check } from 'lucide-react';
 import { adminApi, UserRecord, CouponRecord } from '@/lib/api/admin';
 
-// ── Reusable multi-select checkbox dropdown ───────────────────────────────────
+
 function MultiSelect<T extends { id: string; label: string }>({
     items, selected, onToggle, onSelectAll, onClear,
     placeholder, loading, emptyText,

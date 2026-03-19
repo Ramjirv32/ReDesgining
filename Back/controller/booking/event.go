@@ -6,6 +6,7 @@ import (
 	"ticpin-backend/models"
 	bookingsvc "ticpin-backend/services/booking"
 	couponsvc "ticpin-backend/services/coupon"
+	offersvc "ticpin-backend/services/offer"
 	"time"
 
 	"ticpin-backend/worker"
@@ -40,21 +41,6 @@ func CreateEventBooking(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "name must be at least 3 characters"})
 	}
 
-	// Check email uniqueness - must NOT exist in users or organizers collection
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	var existingUser bson.M
-	err := config.UsersCol.FindOne(ctx, bson.M{"email": req.UserEmail}).Decode(&existingUser)
-	if err == nil {
-		return c.Status(400).JSON(fiber.Map{"error": "email already registered as a user. please login or use a different email"})
-	}
-
-	var existingOrg bson.M
-	err = config.OrgsCol.FindOne(ctx, bson.M{"email": req.UserEmail}).Decode(&existingOrg)
-	if err == nil {
-		return c.Status(400).JSON(fiber.Map{"error": "email already registered as an organizer. please use a different email"})
-	}
 	if req.EventID == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "event_id is required"})
 	}
@@ -83,7 +69,11 @@ func CreateEventBooking(c *fiber.Ctx) error {
 
 	var offerObjID primitive.ObjectID
 	if req.OfferID != "" {
-		offerObjID, _ = primitive.ObjectIDFromHex(req.OfferID)
+		offerResult, err := offersvc.ValidateOffer(req.OfferID, req.EventID, req.OrderAmount)
+		if err == nil {
+			offerObjID = offerResult.Offer.ID
+			discountAmount += offerResult.DiscountAmount // Add offer discount to existing discount
+		}
 	}
 
 	grandTotal := req.OrderAmount + req.BookingFee - discountAmount

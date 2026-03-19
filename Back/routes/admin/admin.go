@@ -25,6 +25,7 @@ func AdminRoutes(app *fiber.App) {
 	admin.Get("/organizers", adminorgs.ListOrganizers)
 	admin.Get("/organizers/:id", adminorgs.GetOrganizerDetail)
 	admin.Put("/organizers/:id/status", adminorgs.UpdateCategoryStatus)
+	admin.Put("/organizers/:id", adminorgs.UpdateOrganizer)
 	admin.Delete("/organizers/:id", adminorgs.DeleteOrganizer)
 
 	admin.Get("/events", adminlistings.ListAllEvents)

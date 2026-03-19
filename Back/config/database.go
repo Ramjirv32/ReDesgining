@@ -199,4 +199,17 @@ func CreateIndexes() {
 	OffersCol.Indexes().CreateOne(ctx, mongo.IndexModel{
 		Keys: bson.D{{Key: "entity_ids", Value: 1}, {Key: "applies_to", Value: 1}},
 	})
+
+	ChatSessionsCol.Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys:    bson.D{{Key: "session_id", Value: 1}},
+		Options: options.Index().SetUnique(true),
+	})
+
+	ChatSessionsCol.Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys: bson.D{{Key: "user_id", Value: 1}, {Key: "updated_at", Value: -1}},
+	})
+
+	ChatMessagesCol.Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys: bson.D{{Key: "session_id", Value: 1}, {Key: "created_at", Value: 1}},
+	})
 }

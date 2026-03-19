@@ -100,7 +100,7 @@ function UserProfileContent() {
                                     <Star size={12} fill="currentColor" /> Premium Member
                                 </div>
                                 <div className="px-4 py-1.5 bg-zinc-100 text-zinc-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-zinc-200">
-                                    Joined {new Date().getFullYear()}
+                                    Joined {profile.createdAt ? new Date(profile.createdAt).getFullYear() : new Date().getFullYear()}
                                 </div>
                             </div>
 

@@ -11,6 +11,11 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+type ValidationResult struct {
+	Offer          models.EventOffer
+	DiscountAmount float64
+}
+
 func Create(o *models.EventOffer) error {
 	o.ID = primitive.NewObjectID()
 	o.CreatedAt = time.Now()
@@ -19,6 +24,69 @@ func Create(o *models.EventOffer) error {
 	defer cancel()
 	_, err := col.InsertOne(ctx, o)
 	return err
+}
+
+func ValidateOffer(offerID string, entityID string, orderAmount float64) (*ValidationResult, error) {
+	col := config.GetDB().Collection("offers")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	objID, err := primitive.ObjectIDFromHex(offerID)
+	if err != nil {
+		return nil, err
+	}
+
+	var offer models.EventOffer
+	err = col.FindOne(ctx, bson.M{"_id": objID}).Decode(&offer)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if offer is active
+	if !offer.IsActive {
+		return nil, err
+	}
+
+	// Check if offer is still valid
+	if time.Now().After(offer.ValidUntil) {
+		return nil, err
+	}
+
+	// Check if offer applies to this entity
+	entityObjID, err := primitive.ObjectIDFromHex(entityID)
+	if err != nil {
+		return nil, err
+	}
+
+	applies := false
+	for _, id := range offer.EntityIDs {
+		if id == entityObjID {
+			applies = true
+			break
+		}
+	}
+
+	if !applies {
+		return nil, err
+	}
+
+	// Calculate discount
+	var discountAmount float64
+	if offer.DiscountType == "percent" {
+		discountAmount = orderAmount * (offer.DiscountValue / 100)
+	} else {
+		discountAmount = offer.DiscountValue
+	}
+
+	// Ensure discount doesn't exceed order amount
+	if discountAmount > orderAmount {
+		discountAmount = orderAmount
+	}
+
+	return &ValidationResult{
+		Offer:          offer,
+		DiscountAmount: discountAmount,
+	}, nil
 }
 
 func GetAll() ([]models.EventOffer, error) {

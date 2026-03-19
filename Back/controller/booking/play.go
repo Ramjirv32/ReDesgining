@@ -1,21 +1,18 @@
 package bookingctrl
 
 import (
-	"context"
-	"ticpin-backend/config"
 	"ticpin-backend/models"
 	bookingsvc "ticpin-backend/services/booking"
 	couponsvc "ticpin-backend/services/coupon"
 	playservice "ticpin-backend/services/play"
 	"ticpin-backend/utils"
-	"time"
 
 	"net/url"
 
 	"github.com/gofiber/fiber/v2"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
+
 
 func CreatePlayBooking(c *fiber.Ctx) error {
 	var req struct {
@@ -38,22 +35,6 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 
 	if err := utils.ParseAndValidate(c, &req); err != nil {
 		return err
-	}
-
-	// Check email uniqueness - must NOT exist in users or organizers collection
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	var existingUser bson.M
-	err := config.UsersCol.FindOne(ctx, bson.M{"email": req.UserEmail}).Decode(&existingUser)
-	if err == nil {
-		return c.Status(400).JSON(fiber.Map{"error": "email already registered as a user. please login or use a different email"})
-	}
-
-	var existingOrg bson.M
-	err = config.OrgsCol.FindOne(ctx, bson.M{"email": req.UserEmail}).Decode(&existingOrg)
-	if err == nil {
-		return c.Status(400).JSON(fiber.Map{"error": "email already registered as an organizer. please use a different email"})
 	}
 
 	if req.PlayID == "" {

@@ -10,4 +10,6 @@ func EventRoutes(app *fiber.App) {
 	events := app.Group("/api/events")
 	events.Get("", ctrl.GetAllEvents)
 	events.Get("/:id", ctrl.GetEventByID)
+	events.Get("/:id/availability", ctrl.GetEventAvailability)
+	events.Get("/:id/offers", ctrl.GetEventOffers)
 }

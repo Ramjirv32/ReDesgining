@@ -135,6 +135,17 @@ const ChatSessionContent = () => {
     const handleSendMessage = async () => {
         if (!inputMessage.trim() || !sessionId || sending) return;
 
+        // Optimistic update
+        const userMsg: Message = {
+            id: Date.now().toString(),
+            message: inputMessage,
+            sender: isAdmin ? "admin" : "user",
+            createdAt: new Date().toISOString(),
+        };
+        setMessages(prev => [...prev, userMsg]);
+        const currentMsg = inputMessage;
+        setInputMessage("");
+
         setSending(true);
         try {
             const response = await fetch(`/backend/api/chat/sessions/${sessionId}/messages`, {
@@ -145,16 +156,12 @@ const ChatSessionContent = () => {
                     userId,
                     userEmail,
                     userType,
-                    message: inputMessage,
+                    message: currentMsg,
                     sender: isAdmin ? "admin" : "user",
                 }),
             });
 
             if (response.ok) {
-                const newMessage = await response.json();
-                setMessages(prev => [...prev, newMessage]);
-                setInputMessage("");
-                
                 // Mark as read
                 await fetch(`/backend/api/chat/sessions/${sessionId}/read`, {
                     method: "PUT",

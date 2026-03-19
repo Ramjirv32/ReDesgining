@@ -71,7 +71,8 @@ interface ChatSession {
 
 export default function ChatSupportClient() {
     const router = useRouter();
-    const { userSession, sync } = useIdentityStore();
+    const { userSession, organizerSession, sync } = useIdentityStore();
+    const effectiveSession = organizerSession || userSession;
     
     // Sync session on mount
     useEffect(() => {
@@ -84,9 +85,11 @@ export default function ChatSupportClient() {
     const [messages, setMessages] = useState<any[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [loading, setLoading] = useState(false);
+    const [isTyping, setIsTyping] = useState(false);
     const [questions, setQuestions] = useState<any[]>([]);
+    const [sessionEnded, setSessionEnded] = useState(false);
     
-    const isAdmin = userSession?.phone === '6383667872';
+    const isAdmin = userSession?.phone === '6383667872' || (organizerSession?.isAdmin === true);
 
     useEffect(() => {
         if (selectedCategory) {
@@ -112,8 +115,8 @@ export default function ChatSupportClient() {
     };
 
     const startUserChat = async (category: string) => {
-        if (!userSession?.id) {
-            console.error('User session not found');
+        if (!effectiveSession?.id) {
+            console.error('Session not found');
             return;
         }
         
@@ -123,10 +126,10 @@ export default function ChatSupportClient() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    userId: userSession.id,
-                    userName: userSession.name,
-                    userEmail: userSession.email || userSession.phone,
-                    userType: 'user',
+                    userId: effectiveSession?.id,
+                    userName: (effectiveSession as any)?.name || (effectiveSession?.email ? effectiveSession.email.split('@')[0] : 'User'),
+                    userEmail: effectiveSession?.email || (effectiveSession as any)?.phone || '',
+                    userType: organizerSession ? 'organizer' : 'user',
                     category: category
                 }),
                 credentials: 'include'
@@ -134,7 +137,12 @@ export default function ChatSupportClient() {
             if (res.ok) {
                 const data = await res.json();
                 setActiveSession(data);
-                fetchMessages(data.sessionId);
+                // Simulate typing for the welcome message
+                setIsTyping(true);
+                setTimeout(() => {
+                    setIsTyping(false);
+                    fetchMessages(data.sessionId);
+                }, 1500);
             }
         } catch (error) {
             console.error('Failed to start chat:', error);
@@ -144,38 +152,84 @@ export default function ChatSupportClient() {
     };
 
     const fetchMessages = async (sessionId: string) => {
-        if (!userSession?.id) {
-            console.error('User session not found');
+        if (!effectiveSession?.id) {
+            console.error('Session not found');
             return;
         }
         
         try {
-            const res = await fetch(`/backend/api/chat/sessions/${sessionId}/messages?admin=${isAdmin}&userId=${userSession.id}`, { credentials: 'include' });
+            const res = await fetch(`/backend/api/chat/sessions/${sessionId}/messages?admin=${isAdmin}&userId=${effectiveSession.id}`, { credentials: 'include' });
             if (res.ok) {
                 const data = await res.json();
-                setMessages(data);
+                
+                // Check if session has been terminated
+                if (Array.isArray(data) && data.length > 0) {
+                    const lastMessage = data[data.length - 1];
+                    if (lastMessage.sender === 'system' && lastMessage.message.includes('ended by administrator')) {
+                        // Session ended - disable input and show terminated message
+                        setMessages(data);
+                        setSessionEnded(true);
+                        return;
+                    }
+                }
+                
+                if (Array.isArray(data)) {
+                    setMessages(data);
+                }
             }
         } catch (error) {
             console.error('Failed to fetch messages:', error);
         }
     };
 
+    // Auto-poll for new messages every 5 seconds
+    useEffect(() => {
+        if (!activeSession?.sessionId) return;
+        
+        const interval = setInterval(() => {
+            fetchMessages(activeSession.sessionId);
+        }, 5000);
+        
+        return () => clearInterval(interval);
+    }, [activeSession?.sessionId, effectiveSession?.id]);
+
     const handleSendMessageWithContent = async (content: string) => {
-        if (!content.trim() || !activeSession || !userSession?.id) return;
+        if (!content.trim() || !activeSession || !effectiveSession?.id) return;
+        
+        // Optimistic update
+        const userMsg = {
+            message: content,
+            sender: isAdmin ? 'admin' : 'user',
+            createdAt: new Date().toISOString()
+        };
+        setMessages(prev => [...prev, userMsg]);
+        
         try {
             await fetch(`/backend/api/chat/sessions/${activeSession.sessionId}/messages`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    userId: userSession.id,
+                    userId: effectiveSession.id,
+                    userEmail: effectiveSession.email || (effectiveSession as any).phone || '',
+                    userType: organizerSession ? 'organizer' : 'user',
                     message: content,
                     sender: isAdmin ? 'admin' : 'user'
                 }),
                 credentials: 'include'
             });
-            fetchMessages(activeSession.sessionId);
+
+            if (!isAdmin) {
+                setIsTyping(true);
+                setTimeout(() => {
+                    setIsTyping(false);
+                    fetchMessages(activeSession.sessionId);
+                }, 1200);
+            } else {
+                fetchMessages(activeSession.sessionId);
+            }
         } catch (error) {
             console.error('Failed to send message:', error);
+            // Optionally remove the optimistic message on failure
         }
     };
 
@@ -291,7 +345,7 @@ export default function ChatSupportClient() {
 
                 <div className="w-full max-w-[1363px] h-[510px] bg-[#F0F0F0] rounded-[30px] relative overflow-hidden flex flex-col shadow-inner">
                     <div className="flex-1 p-10 overflow-y-auto space-y-6 scrollbar-hide">
-                        {messages.map((msg, idx) => (
+                        {Array.isArray(messages) && messages.map((msg, idx) => (
                             <div key={idx} className={`flex items-start gap-4 ${msg.sender === 'admin' ? 'justify-start' : 'justify-end'}`}>
                                 {msg.sender === 'admin' && (
                                     <div className="w-[38px] h-[38px] bg-[#E5E0FC] rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -310,6 +364,19 @@ export default function ChatSupportClient() {
                                 </div>
                             </div>
                         ))}
+
+                        {isTyping && (
+                            <div className="flex items-start gap-4 justify-start">
+                                <div className="w-[38px] h-[38px] bg-[#E5E0FC] rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+                                    <Image src="/admin panel/chatSupport/Ellipse 29.svg" alt="Support" width={38} height={38} />
+                                </div>
+                                <div className="bg-[#D8D3EF] p-4 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-1.5 min-w-[70px]">
+                                    <div className="w-1.5 h-1.5 bg-zinc-600 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                                    <div className="w-1.5 h-1.5 bg-zinc-600 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                                    <div className="w-1.5 h-1.5 bg-zinc-600 rounded-full animate-bounce" />
+                                </div>
+                            </div>
+                        )}
                         
                         {messages.length < 3 && !isAdmin && questions.length > 0 && (
                             <div className="ml-[54px] w-[220px] bg-white border border-[#5331EA]/40 rounded-[10px] overflow-hidden shadow-sm animate-in fade-in slide-in-from-top-2">

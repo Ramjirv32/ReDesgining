@@ -104,7 +104,7 @@ func GetAll(category string, artist string, limit int, after string) ([]models.E
 }
 
 func GetByID(id string, bypassCache bool) (*models.Event, error) {
-	
+
 	cacheKey := "event:" + id
 	if !bypassCache {
 		if val, ok := cache.GlobalCache.Get(cacheKey); ok {
@@ -114,7 +114,6 @@ func GetByID(id string, bypassCache bool) (*models.Event, error) {
 		}
 	}
 
-	
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		// If input is not a valid ObjectID, try fetching by name.
@@ -133,10 +132,38 @@ func GetByID(id string, bypassCache bool) (*models.Event, error) {
 		return nil, err
 	}
 
-	
 	cache.GlobalCache.Set(cacheKey, &e, 5*time.Minute)
 
 	return &e, nil
+}
+
+func GetEventOffers(eventIdentifier string) ([]models.EventOffer, error) {
+	col := config.GetDB().Collection("offers")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Get all active offers
+	cursor, err := col.Find(ctx, bson.M{"is_active": true})
+	if err != nil {
+		return []models.EventOffer{}, nil // Return empty array instead of error
+	}
+	defer cursor.Close(ctx)
+
+	var offers []models.EventOffer
+	if err := cursor.All(ctx, &offers); err != nil {
+		return []models.EventOffer{}, nil // Return empty array instead of error
+	}
+
+	// Filter out expired offers
+	validOffers := []models.EventOffer{}
+	now := time.Now()
+	for _, offer := range offers {
+		if offer.ValidUntil.After(now) {
+			validOffers = append(validOffers, offer)
+		}
+	}
+
+	return validOffers, nil
 }
 
 func GetByName(name string) (*models.Event, error) {

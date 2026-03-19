@@ -141,7 +141,7 @@ export default function PlayClient({ initialVenues }: { initialVenues: RealPlay[
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 max-w-7xl">
                             {filteredVenues.map((venue) => (
-                                <Link key={venue.id} href={`/play/${encodeURIComponent(venue.name)}`}>
+                                <Link key={venue.id} href={`/play/${venue.name}`}>
                                     <VenueCard
                                         name={venue.name}
                                         location={venue.city ?? ''}

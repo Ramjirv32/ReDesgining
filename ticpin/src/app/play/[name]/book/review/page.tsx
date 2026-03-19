@@ -191,6 +191,10 @@ export default function PlayReviewPage() {
     };
 
     const applyOffer = (offer: OfferItem) => {
+        if (grandTotal === 0 && offer.id !== appliedOffer?.id) {
+            alert("The total is already ₹0. No more offers can be applied.");
+            return;
+        }
         const disc = offer.discount_type === 'percent'
             ? Math.round(orderAmount * offer.discount_value / 100)
             : Math.min(offer.discount_value, orderAmount);
@@ -200,6 +204,10 @@ export default function PlayReviewPage() {
     };
 
     const validateCoupon = async (code?: string) => {
+        if (grandTotal === 0 && !appliedCoupon) {
+            alert("The total is already ₹0. No coupon needed.");
+            return;
+        }
         const c = (code ?? couponInput).trim();
         if (!c) return;
         setCouponLoading(true);
@@ -284,6 +292,22 @@ export default function PlayReviewPage() {
         if (!billing.pincode.trim() || billing.pincode.length < 6) { setBookingError('Please enter a valid PIN code'); return; }
         if (!acceptedTerms) { setBookingError('Please accept the terms and conditions'); return; }
         if (!cart) return;
+
+        // Skip payment flow if grand total is 0
+        if (grandTotal === 0) {
+            await completeBooking(
+                'FREE_BOOKING_' + Date.now(),
+                'FREE',
+                cart,
+                email,
+                session?.id,
+                orderAmount,
+                0, // booking fee
+                appliedCoupon || '',
+                appliedOffer?.id
+            );
+            return;
+        }
 
         // ── Re-check slot availability before charging the user ──────────────
         // Fetch the latest booked slots so we catch any booking made since the
@@ -410,7 +434,9 @@ export default function PlayReviewPage() {
             <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[#FFFCED] via-white to-white font-[family-name:var(--font-anek-latin)]">
                 <div className="w-full max-w-[520px] bg-white rounded-[24px] p-10 mx-6 text-center shadow-sm border border-zinc-100">
                     <CheckCircle2 size={56} className="text-green-500 mx-auto mb-4" />
-                    <h1 className="text-[28px] font-semibold text-black mb-2">Booking Confirmed!</h1>
+                    <h1 className="text-[28px] font-semibold text-black mb-2">
+                        {(lockedGrandTotal ?? grandTotal) === 0 ? 'FREE Booking Successful!' : 'Booking Confirmed!'}
+                    </h1>
                     <p className="text-[15px] text-[#686868] mb-1">Booking ID</p>
                     <p className="text-[18px] font-bold text-black mb-4 bg-zinc-50 rounded-[10px] py-3 px-4 font-mono">
                         #{bookingId.slice(-10).toUpperCase()}
@@ -427,7 +453,9 @@ export default function PlayReviewPage() {
                             ))}
                         </div>
                     )}
-                    <p className="text-[22px] font-bold text-black mb-6">₹{(lockedGrandTotal ?? grandTotal).toLocaleString('en-IN')} paid</p>
+                    <p className="text-[22px] font-bold text-black mb-6">
+                        {(lockedGrandTotal ?? grandTotal) === 0 ? '₹0' : `₹${(lockedGrandTotal ?? grandTotal).toLocaleString('en-IN')}`} paid
+                    </p>
                     <button
                         onClick={() => router.push('/')}
                         className="w-full h-[50px] bg-black text-white rounded-[12px] font-semibold text-[16px] hover:opacity-90 transition-all"
@@ -622,7 +650,9 @@ export default function PlayReviewPage() {
                             )}
                             <div className="border-t border-zinc-200 pt-3 flex justify-between text-[18px] font-bold">
                                 <span>Grand total</span>
-                                <span>₹{grandTotal.toLocaleString('en-IN')}</span>
+                                <span className={grandTotal === 0 ? "text-[#5331EA] font-black" : ""}>
+                                    {grandTotal === 0 ? 'FREE' : `₹${grandTotal.toLocaleString('en-IN')}`}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -717,7 +747,7 @@ export default function PlayReviewPage() {
                         {bookingLoading ? (
                             <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Processing...</>
                         ) : (
-                            `CONTINUE  ₹${grandTotal.toLocaleString('en-IN')}`
+                            grandTotal === 0 ? 'CONTINUE' : `PAY NOW  ₹${grandTotal.toLocaleString('en-IN')}`
                         )}
                     </button>
                     <p className="text-center text-[12px] text-[#686868]">

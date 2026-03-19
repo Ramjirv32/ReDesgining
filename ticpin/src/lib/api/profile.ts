@@ -31,6 +31,7 @@ export interface UserProfile {
     gender?: string;
     notificationPreferences?: NotificationPreferences;
     preferredLanguage?: string;
+    createdAt?: string;
 }
 
 export const profileApi = {

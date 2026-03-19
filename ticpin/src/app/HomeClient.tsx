@@ -70,7 +70,7 @@ export default function HomeClient({ initialVenues }: { initialVenues: RealPlay[
                             <div className="col-span-full text-center py-20 text-zinc-400">No venues found in this category</div>
                         ) : (
                             filteredVenues.map((venue) => (
-                                <Link key={venue.id} href={`/play/${encodeURIComponent(venue.name)}`}>
+                                <Link key={venue.id} href={`/play/${venue.name}`}>
                                     <VenueCard
                                         name={venue.name}
                                         location={venue.city ?? 'Location'}

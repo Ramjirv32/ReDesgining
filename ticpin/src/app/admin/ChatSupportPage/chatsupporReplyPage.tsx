@@ -100,6 +100,17 @@ const ChatSupportReplyContent = () => {
     const handleSendMessage = async () => {
         if (!inputMessage.trim() || !sessionId || sending) return;
 
+        // Optimistic update
+        const userMsg: Message = {
+            id: Date.now().toString(),
+            message: inputMessage,
+            sender: "admin",
+            createdAt: new Date().toISOString(),
+        };
+        setMessages(prev => [...prev, userMsg]);
+        const currentMsg = inputMessage;
+        setInputMessage("");
+
         setSending(true);
         try {
             const response = await fetch(`/backend/api/chat/sessions/${sessionId}/messages?admin=true`, {
@@ -110,15 +121,13 @@ const ChatSupportReplyContent = () => {
                     userId,
                     userEmail,
                     userType: "admin",
-                    message: inputMessage,
+                    message: currentMsg,
                     sender: "admin",
                 }),
             });
 
-            if (response.ok) {
-                const newMessage = await response.json();
-                setMessages(prev => [...prev, newMessage]);
-                setInputMessage("");
+            if (!response.ok) {
+                console.error("Failed to send message: server error");
             }
         } catch (error) {
             console.error("Error sending message:", error);

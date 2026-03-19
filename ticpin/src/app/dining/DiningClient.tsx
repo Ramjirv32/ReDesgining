@@ -250,7 +250,7 @@ export default function DiningClient({
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                             {filteredVenues.map((res) => (
-                                <Link key={res.id} href={`/dining/venue/${encodeURIComponent(res.name)}`}>
+                                <Link key={res.id} href={`/dining/venue/${res.name}`}>
                                     <EventCard
                                         variant="wide"
                                         title={res.name}

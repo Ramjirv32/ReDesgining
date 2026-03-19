@@ -20,7 +20,7 @@ export default function EventCard({
   image,
 }: EventCardProps) {
   return (
-    <Link href={`/events/${encodeURIComponent(name)}`} className="block">
+    <Link href={`/events/${name}`} className="block">
       <div
         className="overflow-hidden cursor-pointer w-full sm:w-auto flex flex-col hover:shadow-lg transition-all"
         style={{

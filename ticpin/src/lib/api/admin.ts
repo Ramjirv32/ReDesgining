@@ -95,6 +95,8 @@ export interface AdminListing {
     images?: string[];
     portrait_image_url?: string;
     landscape_image_url?: string;
+    secondary_banner_url?: string;
+    card_video_url?: string;
     gallery_urls?: string[];
     // event-specific
     date?: string;
@@ -122,17 +124,21 @@ export interface AdminListing {
         audience_type?: string;
         min_age?: number;
         ticket_age_limit?: number;
+        ticket_required_above_age?: number;
         languages?: string[];
         is_kid_friendly?: boolean;
         is_pet_friendly?: boolean;
         facilities?: string[];
-        event_instructions?: string;
+        gates_open_before?: boolean;
+        gates_open_before_value?: number;
+        gates_open_before_unit?: string;
     };
+    event_instructions?: string;
     prohibited_items?: string[];
     tickets_needed_for?: string;
     terms?: string;
-    points_of_contact?: Array<{ name: string; phone: string; email: string }>;
-    sales_notifications?: Array<{ type: string; message: string }>;
+    points_of_contact?: Array<{ name: string; phone?: string; mobile?: string; email: string }>;
+    sales_notifications?: Array<{ email: string; mobile: string }>;
     instagram_link?: string;
     youtube_video_url?: string;
     legal_info?: string;
@@ -150,6 +156,12 @@ export interface AdminListing {
     // play-specific
     sport_type?: string;
     price_per_slot?: number;
+    courts?: Array<{
+        name: string;
+        type: string;
+        price: number;
+        image_url?: string;
+    }>;
 }
 
 export interface NotificationRecord {
@@ -277,6 +289,13 @@ export const adminApi = {
             `/organizers/${id}/status`,
             { method: 'PUT', body: JSON.stringify({ category, status, reason }) },
         ),
+
+    /** PUT /api/admin/organizers/:id */
+    updateOrganizer: (id: string, payload: any) =>
+        adminRequest<{ message: string }>(`/organizers/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+        }),
 
     /** DELETE /api/admin/organizers/:id */
     deleteOrganizer: (id: string) =>
