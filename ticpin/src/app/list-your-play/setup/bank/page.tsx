@@ -105,24 +105,28 @@ function BankDetailsContent() {
                                     <label className="text-[14px] font-medium text-[#686868]">Account holder name <span className="text-red-500">*</span></label>
                                     <input type="text" placeholder="eg. Velrona Technologies Pvt Ltd." value={accountHolder}
                                         onChange={e => setAccountHolder(e.target.value)} disabled={prefilled}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleContinue()}
                                         className={inputCls(prefilled)} />
                                 </div>
                                 <div className="space-y-3 mt-[-15px]">
                                     <label className="text-[14px] font-medium text-[#686868]">Bank account number <span className="text-red-500">*</span></label>
                                     <input type="text" placeholder="eg. 012345678910" value={bankAccountNo}
                                         onChange={e => setBankAccountNo(e.target.value)} disabled={prefilled}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleContinue()}
                                         className={inputCls(prefilled)} />
                                 </div>
                                 <div className="space-y-3">
                                     <label className="text-[14px] font-medium text-[#686868]">Bank IFSC code <span className="text-red-500">*</span></label>
                                     <input type="text" placeholder="eg. IDFB0000001" value={bankIfsc}
                                         onChange={e => setBankIfsc(e.target.value.toUpperCase())} disabled={prefilled}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleContinue()}
                                         className={inputCls(prefilled)} />
                                 </div>
                                 <div className="space-y-3">
                                     <label className="text-[14px] font-medium text-[#686868]">Bank name <span className="text-red-500">*</span></label>
                                     <input type="text" placeholder="eg. IDFC First Bank" value={bankName}
                                         onChange={e => setBankName(e.target.value)} disabled={prefilled}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleContinue()}
                                         className={inputCls(prefilled)} />
                                 </div>
                             </div>

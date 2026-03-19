@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SetupSidebar from '@/app/list-your-play/list-your-Setups/SetupSidebar';
 import { ChevronRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -50,6 +50,14 @@ export default function AgreementPage() {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        const handleEnter = (e: KeyboardEvent) => {
+            if (e.key === 'Enter' && !loading) handleSign();
+        };
+        window.addEventListener('keydown', handleEnter);
+        return () => window.removeEventListener('keydown', handleEnter);
+    }, [loading, handleSign]);
 
     return (
         <div className="overflow-hidden flex flex-col font-[family-name:var(--font-anek-latin)] h-[calc(100vh-80px)] bg-gradient-to-b from-[#FFFCED] via-white to-white">

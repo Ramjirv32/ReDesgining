@@ -26,7 +26,7 @@ func deleteDoc(collection string, id string) error {
 	defer cancel()
 	_, err = col.DeleteOne(ctx, bson.M{"_id": objID})
 	if err == nil {
-		
+
 		keyType := collection
 		if collection == "plays" {
 			keyType = "play"
@@ -106,7 +106,7 @@ func ListAllDining(c *fiber.Ctx) error {
 	limit := c.QueryInt("limit", 20)
 	after := c.Query("after")
 
-	dinings, nextCursor, err := diningservice.GetAll("", limit, after)
+	dinings, nextCursor, err := diningservice.GetAllForAdmin("", limit, after)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { UserSession, getUserSession, saveUserSession, clearUserSession } from '@/lib/auth/user';
-import { OrganizerSession, getOrganizerSession, clearOrganizerSession } from '@/lib/auth/organizer';
+import { OrganizerSession, getOrganizerSession, saveOrganizerSession, clearOrganizerSession } from '@/lib/auth/organizer';
 
 interface IdentityState {
     userSession: UserSession | null;
@@ -34,6 +34,7 @@ export const useIdentityStore = create<IdentityState>((set) => ({
     },
 
     loginOrganizer: (session) => {
+        saveOrganizerSession(session);
         set({ organizerSession: session, userSession: null }); // Typical: login as org clears user
     },
 

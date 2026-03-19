@@ -270,7 +270,7 @@ const CreateEventPage = () => {
                 status: 'pending'
             });
             setSubmitMsg('✅ Event created successfully!');
-            setTimeout(() => router.push('/organizer/dashboard?category=play'), 2000);
+            setTimeout(() => router.push('/organizer/dashboard?category=events'), 2000);
         } catch (err) {
             setSubmitMsg(err instanceof Error ? err.message : 'Submission failed.');
         } finally {

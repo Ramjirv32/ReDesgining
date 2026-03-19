@@ -174,6 +174,14 @@ func VerifyPANHandler(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
+	// Check for duplicate PAN before verification
+	if err := organizersvc.CheckPANDuplicate(req.PAN, organizerID); err != nil {
+		if err.Error() == "pan_already_used" {
+			return c.Status(400).JSON(fiber.Map{"error": "This PAN card is already registered by another account."})
+		}
+		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	}
+
 	result, err := verification.VerifyPAN(req.PAN, req.Name, req.DOB, organizerID)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error(), "details": result})

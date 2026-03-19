@@ -243,7 +243,7 @@ const CreateDiningPage = () => {
                 status: 'pending',
             });
             setSubmitMsg('✅ Dining listed successfully!');
-            setTimeout(() => router.push('/organizer/dining'), 2000);
+            setTimeout(() => router.push('/organizer/dashboard?category=dining'), 2000);
         } catch (err) {
             setSubmitMsg(err instanceof Error ? err.message : 'Submission failed.');
         } finally {

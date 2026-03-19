@@ -23,11 +23,24 @@ function BackupContactContent() {
         if (saved.backupEmail) {
             setEmail(saved.backupEmail);
             if (saved.prefilled) setPrefilled(true);
+            // Check if backup email was already verified
+            if (saved.backupEmailVerified) {
+                setShowOtp(false);
+                setOtp(['', '', '', '', '', '']);
+            }
         }
     }, []);
 
+    // Check if current email is already verified
+    const saved = JSON.parse(sessionStorage.getItem('setup_dining') ?? '{}');
+    const isCurrentEmailVerified = saved.backupEmail === email && saved.backupEmailVerified;
+
     const handleSkipVerification = () => {
         router.push('/list-your-dining/setup/bank');
+    };
+
+    const handleContinueWithVerifiedEmail = () => {
+        router.push('/list-your-dining/setup/agreement');
     };
 
     const handleSendOTP = async () => {
@@ -61,6 +74,7 @@ function BackupContactContent() {
         if (e.key === 'Backspace' && !otp[index] && index > 0) {
             inputRefs.current[index - 1]?.focus();
         }
+        if (e.key === 'Enter') handleVerifyAndContinue();
     };
 
     const handlePaste = (e: React.ClipboardEvent) => {
@@ -88,7 +102,11 @@ function BackupContactContent() {
         try {
             await organizerApi.verifyBackupOTP(session?.id ?? '', otpValue);
             const existing = JSON.parse(sessionStorage.getItem('setup_dining') ?? '{}');
-            sessionStorage.setItem('setup_dining', JSON.stringify({ ...existing, backupEmail: email }));
+            sessionStorage.setItem('setup_dining', JSON.stringify({ 
+                ...existing, 
+                backupEmail: email,
+                backupEmailVerified: true 
+            }));
             router.push('/list-your-dining/setup/agreement');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'OTP verification failed');
@@ -127,6 +145,14 @@ function BackupContactContent() {
                                 <p className="text-red-500 text-[14px] font-medium">{error}</p>
                             )}
 
+                            {isCurrentEmailVerified && (
+                                <div className="bg-green-50 border border-green-200 rounded-lg p-4 max-w-2xl">
+                                    <p className="text-green-800 text-[14px] font-medium">
+                                        ✅ Backup email <span className="font-semibold">{email}</span> is already verified
+                                    </p>
+                                </div>
+                            )}
+
                             <div className="space-y-8 max-w-2xl">
                                 <div className="space-y-3">
                                     <label className="text-[14px] font-medium text-[#686868]" style={{ fontFamily: 'Anek Latin' }}>
@@ -137,6 +163,7 @@ function BackupContactContent() {
                                             type="email"
                                             value={email}
                                             onChange={(e) => setEmail(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && !loading && handleSendOTP()}
                                             placeholder="backup@example.com"
                                             disabled={showOtp}
                                             className={`w-full h-12 px-4 border border-black/30 rounded-[14px] text-[15px] font-medium focus:outline-none placeholder:text-zinc-400 mt-3 ${showOtp ? 'bg-zinc-50 opacity-70' : ''}`}
@@ -154,20 +181,31 @@ function BackupContactContent() {
 
                                 {!showOtp ? (
                                     <div className="flex gap-4">
-                                        <button
-                                            onClick={handleSendOTP}
-                                            disabled={loading}
-                                            className="bg-black text-white h-[48px] px-8 rounded-[15px] text-[15px] font-medium flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-60"
-                                        >
-                                            {loading ? 'Sending...' : 'Send OTP'} <ChevronRight size={18} />
-                                        </button>
+                                        {!isCurrentEmailVerified && (
+                                            <button
+                                                onClick={handleSendOTP}
+                                                disabled={loading}
+                                                className="bg-black text-white h-[48px] px-8 rounded-[15px] text-[15px] font-medium flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-60"
+                                            >
+                                                {loading ? 'Sending...' : 'Send OTP'} <ChevronRight size={18} />
+                                            </button>
+                                        )}
 
-                                        {prefilled && (
+                                        {prefilled && !isCurrentEmailVerified && (
                                             <button
                                                 onClick={handleSkipVerification}
                                                 className="bg-white border border-black/30 text-black h-[48px] px-8 rounded-[15px] text-[15px] font-medium flex items-center justify-center gap-2 transition-all active:scale-95"
                                             >
                                                 Use verified email <ChevronRight size={18} />
+                                            </button>
+                                        )}
+
+                                        {isCurrentEmailVerified && (
+                                            <button
+                                                onClick={handleContinueWithVerifiedEmail}
+                                                className="bg-green-600 text-white h-[48px] px-8 rounded-[15px] text-[15px] font-medium flex items-center justify-center gap-2 transition-all active:scale-95"
+                                            >
+                                                Continue with Verified Email <ChevronRight size={18} />
                                             </button>
                                         )}
                                     </div>

@@ -45,8 +45,49 @@ func GetAll(category string, limit int, after string) ([]models.Dining, string, 
 	col := config.DiningsCol
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	
+
 	filter := bson.M{"status": "approved"}
+	if category != "" {
+		filter["category"] = category
+	}
+	if after != "" {
+		if oid, err := primitive.ObjectIDFromHex(after); err == nil {
+			filter["_id"] = bson.M{"$gt": oid}
+		}
+	}
+
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+
+	opts := options.Find().SetLimit(int64(limit)).SetSort(bson.M{"_id": 1})
+
+	cursor, err := col.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, "", err
+	}
+	defer cursor.Close(ctx)
+
+	var dinings []models.Dining
+	if err := cursor.All(ctx, &dinings); err != nil {
+		return nil, "", err
+	}
+
+	nextCursor := ""
+	if len(dinings) > 0 {
+		nextCursor = dinings[len(dinings)-1].ID.Hex()
+	}
+
+	return dinings, nextCursor, nil
+}
+
+func GetAllForAdmin(category string, limit int, after string) ([]models.Dining, string, error) {
+	col := config.DiningsCol
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Admin should see all dining venues regardless of status
+	filter := bson.M{}
 	if category != "" {
 		filter["category"] = category
 	}

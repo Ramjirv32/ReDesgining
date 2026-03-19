@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ChevronRight } from 'lucide-react';
 import { getOrganizerSession, saveOrganizerSession } from '@/lib/auth/organizer';
 import { auth, googleProvider, signInWithPopup } from '@/lib/firebase';
+import { useIdentityStore } from '@/store/useIdentityStore';
 
 interface LoginApi {
     login: (email: string, password: string) => Promise<unknown>;
@@ -73,13 +74,14 @@ export default function OrganizerLoginForm({ vertical, api, setupPath, otpPath, 
             const userEmail = result.user.email;
             if (!userEmail) throw new Error('No email from google');
             const res = await api.googleAuth(userEmail);
-            saveOrganizerSession({
+            const session = {
                 id: (res.id ?? res._id ?? '') as string,
                 email: res.email,
                 vertical,
                 isAdmin: !!res.isAdmin,
                 categoryStatus: res.categoryStatus as Record<string, string>,
-            });
+            };
+            useIdentityStore.getState().loginOrganizer(session);
             if (res.isAdmin) {
                 router.replace('/admin');
             } else {

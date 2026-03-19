@@ -87,6 +87,7 @@ const CreatePlayPage = () => {
 
     // Dropdown States
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+    const [dropdownSearch, setDropdownSearch] = useState({ city: '' });
     const [selections, setSelections] = useState({
         category: 'Select Sport',
         subCategory: 'Select Court Type',
@@ -406,7 +407,7 @@ const CreatePlayPage = () => {
             // Clear saved draft on successful submit
             if (draftKey.current) localStorage.removeItem(draftKey.current);
             setSubmitMsg('✅ Venue listed successfully!');
-            setTimeout(() => router.push('/organizer/play'), 2000);
+            setTimeout(() => router.push('/organizer/dashboard?category=play'), 2000);
         } catch (err) {
             setSubmitMsg(err instanceof Error ? err.message : 'Submission failed.');
         } finally {
@@ -415,7 +416,15 @@ const CreatePlayPage = () => {
     };
 
 
-    const toggleDropdown = (name: string) => setOpenDropdown(openDropdown === name ? null : name);
+    const toggleDropdown = (name: string) => {
+        if (openDropdown === name) {
+            setOpenDropdown(null);
+        } else {
+            setOpenDropdown(name);
+            // Clear search when opening dropdown
+            setDropdownSearch(prev => ({ ...prev, [name]: '' }));
+        }
+    };
     const handleSelect = (name: string, value: string) => {
         setSelections(prev => {
             const newSelections = { ...prev, [name]: value };
@@ -425,6 +434,8 @@ const CreatePlayPage = () => {
             return newSelections;
         });
         setOpenDropdown(null);
+        // Clear search when selecting an item
+        setDropdownSearch(prev => ({ ...prev, [name]: '' }));
     };
 
     const addPoc = () => {
@@ -605,8 +616,20 @@ const CreatePlayPage = () => {
                                         </div>
                                         {openDropdown === 'city' && (
                                             <div className="dropdown-menu">
+                                                <div className="p-3 border-b border-[#AEAEAE]">
+                                                    <div className="relative">
+                                                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#AEAEAE]" size={16} />
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Search city..."
+                                                            value={dropdownSearch.city}
+                                                            onChange={(e) => setDropdownSearch(prev => ({ ...prev, city: e.target.value }))}
+                                                            className="w-full pl-10 pr-4 py-2 border border-[#AEAEAE] rounded-lg text-[16px] focus:outline-none focus:border-[#5331EA]"
+                                                        />
+                                                    </div>
+                                                </div>
                                                 <div className="max-h-[300px] overflow-y-auto scrollbar-hide">
-                                                    {CITIES.map((opt) => (
+                                                    {CITIES.filter(opt => opt.toLowerCase().includes(dropdownSearch.city.toLowerCase())).map((opt) => (
                                                         <div key={opt} onClick={() => handleSelect('city', opt)} className="dropdown-item">{opt}</div>
                                                     ))}
                                                 </div>

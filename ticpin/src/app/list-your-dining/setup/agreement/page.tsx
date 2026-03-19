@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import SetupSidebar from '@/app/list-your-dining/list-your-Setups/SetupSidebar';
 import { ChevronRight } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -52,6 +52,14 @@ function AgreementContent() {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        const handleEnter = (e: KeyboardEvent) => {
+            if (e.key === 'Enter' && !loading) handleSign();
+        };
+        window.addEventListener('keydown', handleEnter);
+        return () => window.removeEventListener('keydown', handleEnter);
+    }, [loading, handleSign]);
 
     return (
         <div className="overflow-hidden flex flex-col font-[family-name:var(--font-anek-latin)] h-[calc(100vh-80px)]" style={{ background: 'rgba(211, 203, 245, 0.1)' }}>

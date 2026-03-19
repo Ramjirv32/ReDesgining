@@ -41,6 +41,18 @@ export default function Navbar() {
     useEffect(() => {
         syncFromBrowser();
         syncAuth();
+
+        const handleAuthChange = () => {
+            syncAuth();
+        };
+
+        window.addEventListener('user-auth-change', handleAuthChange);
+        window.addEventListener('organizer-auth-change', handleAuthChange);
+
+        return () => {
+            window.removeEventListener('user-auth-change', handleAuthChange);
+            window.removeEventListener('organizer-auth-change', handleAuthChange);
+        };
     }, [syncFromBrowser, syncAuth]);
 
     const hideNavbar =

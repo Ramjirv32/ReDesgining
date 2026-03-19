@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getOrganizerSession } from '@/lib/auth/organizer';
 import type { OrganizerSession } from '@/lib/auth/organizer';
 import type { UserSession } from '@/lib/auth/user';
 
@@ -19,7 +18,7 @@ interface UserMenuProps {
 }
 
 const UserMenu: React.FC<UserMenuProps> = ({
-    session: propSession,
+    session,
     userSession,
     isMenuOpen,
     onToggleMenu,
@@ -28,15 +27,7 @@ const UserMenu: React.FC<UserMenuProps> = ({
     onOpenProfile,
 }) => {
     const router = useRouter();
-    // Always check current session state to avoid stale props
-    const [currentSession, setCurrentSession] = useState<OrganizerSession | null>(propSession);
 
-    useEffect(() => {
-        // Refresh session state when menu opens or prop changes
-        setCurrentSession(getOrganizerSession());
-    }, [isMenuOpen, propSession]);
-
-    const session = currentSession;
     const dashboardHref = session
         ? `/organizer/dashboard?category=${session.vertical}`
         : '/organizer/dashboard';
@@ -76,4 +67,4 @@ const UserMenu: React.FC<UserMenuProps> = ({
     );
 };
 
-export default React.memo(UserMenu);
+export default UserMenu;

@@ -4,11 +4,13 @@ import React from 'react';
 import Link from 'next/link';
 import SetupSidebar from '@/app/list-your-events/list-your-Setups/SetupSidebar';
 import { ChevronRight } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { organizerApi } from '@/lib/api/organizer';
 
 const STORAGE_KEY = 'setup_events';
 
 export default function GstSelectionPage() {
+    const router = useRouter();
     const [gstNumber, setGstNumber] = React.useState('');
     const [prefilled, setPrefilled] = React.useState(false);
     const [gstList, setGstList] = React.useState<any[]>([]);
@@ -35,6 +37,7 @@ export default function GstSelectionPage() {
     const handleContinue = () => {
         const existing = JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? '{}');
         sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...existing, gstNumber }));
+        router.push('/list-your-events/setup/bank');
     };
 
     return (
@@ -99,6 +102,7 @@ export default function GstSelectionPage() {
                                             placeholder="eg. 22AAAAA0000A1Z5"
                                             value={gstNumber}
                                             onChange={(e) => setGstNumber(e.target.value.toUpperCase())}
+                                            onKeyDown={(e) => e.key === 'Enter' && handleContinue()}
                                             className="w-full h-12 px-4 border border-[#AEAEAE] rounded-[14px] text-[15px] font-medium focus:outline-none focus:border-zinc-500 transition-colors placeholder:text-zinc-400 text-zinc-800"
                                         />
                                     </div>
@@ -109,11 +113,12 @@ export default function GstSelectionPage() {
                             </div>
 
                             <div className="pt-2 flex justify-center md:justify-start">
-                                <Link href="/list-your-events/setup/bank" onClick={handleContinue} className="block w-full max-w-[110px]">
-                                    <button className="bg-black text-white w-full h-[48px] rounded-[15px] flex items-center justify-center gap-2 text-[15px] font-medium transition-all group active:scale-95">
-                                        Continue<ChevronRight size={18} className="transition-transform" />
-                                    </button>
-                                </Link>
+                                <button
+                                    onClick={handleContinue}
+                                    className="bg-black text-white w-full max-w-[110px] h-[48px] rounded-[15px] flex items-center justify-center gap-2 text-[15px] font-medium transition-all group active:scale-95"
+                                >
+                                    Continue<ChevronRight size={18} className="transition-transform" />
+                                </button>
                             </div>
                         </div>
                     </div>

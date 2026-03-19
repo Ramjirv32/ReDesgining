@@ -60,6 +60,7 @@ export default function EditPlayPage() {
     const [submitLoading, setSubmitLoading] = useState(false);
     const [submitMsg, setSubmitMsg] = useState('');
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+    const [dropdownSearch, setDropdownSearch] = useState({ city: '' });
     const [selections, setSelections] = useState({ category: 'Select Sport', subCategory: 'Select Court Type', city: 'Select City' });
     const [paymentVerified, setPaymentVerified] = useState(false);
     const [hasCheckedSession, setHasCheckedSession] = useState(false);
@@ -271,7 +272,15 @@ export default function EditPlayPage() {
         }
     };
 
-    const toggleDropdown = (name: string) => setOpenDropdown(openDropdown === name ? null : name);
+    const toggleDropdown = (name: string) => {
+        if (openDropdown === name) {
+            setOpenDropdown(null);
+        } else {
+            setOpenDropdown(name);
+            // Clear search when opening dropdown
+            setDropdownSearch(prev => ({ ...prev, [name]: '' }));
+        }
+    };
     const handleSelect = (name: string, value: string) => {
         setSelections(prev => {
             const n = { ...prev, [name]: value };
@@ -279,6 +288,8 @@ export default function EditPlayPage() {
             return n;
         });
         setOpenDropdown(null);
+        // Clear search when selecting an item
+        setDropdownSearch(prev => ({ ...prev, [name]: '' }));
     };
     const addPoc = () => { if (!newPoc.name || !newPoc.email || !newPoc.mobile) return; setPocs([...pocs, newPoc]); setNewPoc({ name: '', email: '', mobile: '' }); };
     const removePoc = (i: number) => setPocs(pocs.filter((_, idx) => idx !== i));
@@ -392,8 +403,22 @@ export default function EditPlayPage() {
                                             {openDropdown === 'city' ? <ChevronUp className="absolute right-6" size={24} /> : <ChevronDown className="absolute right-6" size={24} />}
                                         </div>
                                         {openDropdown === 'city' && (
-                                            <div className="absolute top-full left-0 right-0 z-50 bg-white border border-[#686868] rounded-[10px] mt-1 max-h-[300px] overflow-y-auto">
-                                                {CITIES.map(opt => <div key={opt} onClick={() => handleSelect('city', opt)} className="px-6 py-3 hover:bg-zinc-50 cursor-pointer text-[18px]">{opt}</div>)}
+                                            <div className="absolute top-full left-0 right-0 z-50 bg-white border border-[#686868] rounded-[10px] mt-1 max-h-[350px] overflow-y-auto">
+                                                <div className="p-3 border-b border-[#AEAEAE]">
+                                                    <div className="relative">
+                                                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#AEAEAE]" size={16} />
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Search city..."
+                                                            value={dropdownSearch.city}
+                                                            onChange={(e) => setDropdownSearch(prev => ({ ...prev, city: e.target.value }))}
+                                                            className="w-full pl-10 pr-4 py-2 border border-[#AEAEAE] rounded-lg text-[16px] focus:outline-none focus:border-[#5331EA]"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="max-h-[300px] overflow-y-auto">
+                                                    {CITIES.filter(opt => opt.toLowerCase().includes(dropdownSearch.city.toLowerCase())).map(opt => <div key={opt} onClick={() => handleSelect('city', opt)} className="px-6 py-3 hover:bg-zinc-50 cursor-pointer text-[18px]">{opt}</div>)}
+                                                </div>
                                             </div>
                                         )}
                                     </div>

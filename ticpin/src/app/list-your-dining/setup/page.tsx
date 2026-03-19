@@ -171,17 +171,20 @@ function AccountSetupContent() {
                                         <label className="text-[16px] font-medium text-[#686868]">PAN card number</label>
                                         <input type="text" placeholder="ABCDE1234F" value={pan}
                                             onChange={e => setPan(e.target.value.toUpperCase())} disabled={prefilled}
+                                            onKeyDown={e => e.key === 'Enter' && canContinue && !verifying && handleContinue()}
                                             className={`w-full h-12 px-4 border border-[#AEAEAE] rounded-[14px] text-[15px] font-medium focus:outline-none focus:border-zinc-500 transition-colors placeholder:text-zinc-400 ${prefilled ? 'bg-zinc-100 text-zinc-500 cursor-not-allowed' : 'text-zinc-800'}`} />
                                     </div>
                                     <div className="flex flex-col gap-3">
                                         <label className="text-[16px] font-medium text-[#686868]">Name on PAN card</label>
                                         <input type="text" placeholder="Name as on PAN card" value={panName}
                                             onChange={e => setPanName(e.target.value)} disabled={prefilled}
+                                            onKeyDown={e => e.key === 'Enter' && canContinue && !verifying && handleContinue()}
                                             className={`w-full h-12 px-4 border border-[#AEAEAE] rounded-[14px] text-[15px] font-medium focus:outline-none focus:border-zinc-500 transition-colors placeholder:text-zinc-400 ${prefilled ? 'bg-zinc-100 text-zinc-500 cursor-not-allowed' : 'text-zinc-800'}`} />
                                     </div>
                                     <div className="flex flex-col gap-3">
                                         <label className="text-[16px] font-medium text-[#686868]">Date of birth (as on PAN card)</label>
                                         <input type="date" value={panDOB} onChange={e => setPanDOB(e.target.value)} disabled={prefilled}
+                                            onKeyDown={e => e.key === 'Enter' && canContinue && !verifying && handleContinue()}
                                             className={`w-full h-12 px-4 border border-[#AEAEAE] rounded-[14px] text-[15px] font-medium focus:outline-none focus:border-zinc-500 transition-colors ${prefilled ? 'bg-zinc-100 text-zinc-500 cursor-not-allowed' : 'text-zinc-800'}`} />
                                     </div>
                                 </div>
