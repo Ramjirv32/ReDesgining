@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"ticpin-backend/config"
@@ -105,8 +106,12 @@ func getSessions(c *fiber.Ctx) error {
 	pageStr := c.Query("page", "1")
 	limit, _ := strconv.Atoi(limitStr)
 	page, _ := strconv.Atoi(pageStr)
-	if limit <= 0 { limit = 10 }
-	if page <= 0 { page = 1 }
+	if limit <= 0 {
+		limit = 10
+	}
+	if page <= 0 {
+		page = 1
+	}
 	skip := (page - 1) * limit
 
 	isAdmin := c.Query("admin", "false") == "true"
@@ -228,14 +233,58 @@ func createSession(c *fiber.Ctx) error {
 		UserID    string `json:"userId"`
 		UserEmail string `json:"userEmail"`
 		UserName  string `json:"userName"`
-		UserType  string `json:"userType"` // "user" or "organizer"
-		Category  string `json:"category"` // "dining", "event", "play"
+		UserType  string `json:"userType"`
+		Category  string `json:"category"`
 	}
 
 	if err := c.BodyParser(&input); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
 	}
 
+	// Enhanced security validation
+	if strings.TrimSpace(input.UserID) == "" {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "User ID is required"})
+	}
+	if strings.TrimSpace(input.UserEmail) == "" {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "User email is required"})
+	}
+	if strings.TrimSpace(input.UserName) == "" {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "User name is required"})
+	}
+	if strings.TrimSpace(input.UserType) == "" {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "User type is required"})
+	}
+	if strings.TrimSpace(input.Category) == "" {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Category is required"})
+	}
+
+	// Validate user type
+	validUserTypes := map[string]bool{
+		"user":      true,
+		"organizer": true,
+	}
+	if !validUserTypes[input.UserType] {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Invalid user type. Must be 'user' or 'organizer'"})
+	}
+
+	// Validate category
+	validCategories := map[string]bool{
+		"dining": true,
+		"event":  true,
+		"play":   true,
+	}
+	if !validCategories[input.Category] {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Invalid category. Must be 'dining', 'event', or 'play'"})
+	}
+
+	// Sanitize inputs
+	input.UserID = strings.TrimSpace(input.UserID)
+	input.UserEmail = strings.TrimSpace(input.UserEmail)
+	input.UserName = strings.TrimSpace(input.UserName)
+	input.UserType = strings.TrimSpace(input.UserType)
+	input.Category = strings.TrimSpace(input.Category)
+
+	// Generate secure session ID
 	sessionID := generateSessionID()
 	now := time.Now()
 
@@ -253,7 +302,7 @@ func createSession(c *fiber.Ctx) error {
 
 	_, err := config.ChatSessionsCol.InsertOne(context.Background(), session)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to create session")
+		log.Error().Err(err).Str("user_id", input.UserID).Str("user_type", input.UserType).Str("category", input.Category).Msg("Failed to create session")
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create session"})
 	}
 
@@ -271,6 +320,8 @@ func createSession(c *fiber.Ctx) error {
 	}
 	config.ChatMessagesCol.InsertOne(context.Background(), welcomeMsg)
 
+	log.Info().Str("session_id", sessionID).Str("user_id", input.UserID).Str("user_type", input.UserType).Str("category", input.Category).Msg("Chat session created")
+
 	return c.Status(http.StatusCreated).JSON(session)
 }
 
@@ -286,8 +337,9 @@ func sendMessage(c *fiber.Ctx) error {
 		UserType  string `json:"userType"`
 		Message   string `json:"message"`
 		Sender    string `json:"sender"` // "user" or "admin"
+		FileUrl   string `json:"fileUrl,omitempty"`
+		FileType  string `json:"fileType,omitempty"`
 	}
-
 	if err := c.BodyParser(&input); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
 	}
@@ -344,6 +396,52 @@ func markAsRead(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"success": true})
+}
+
+func endSession(c *fiber.Ctx) error {
+	sessionID := c.Params("sessionId")
+	if sessionID == "" {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Session ID required"})
+	}
+
+	// Enhanced validation
+	if strings.TrimSpace(sessionID) == "" {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Session ID is required"})
+	}
+
+	// Get session to verify it exists and is active
+	var session models.ChatSession
+	err := config.ChatSessionsCol.FindOne(context.Background(), bson.M{"session_id": sessionID}).Decode(&session)
+	if err != nil {
+		return c.Status(http.StatusNotFound).JSON(fiber.Map{"error": "Session not found"})
+	}
+
+	// Check if session is already ended
+	if session.Status == "ended" {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Session is already ended"})
+	}
+
+	// Update session status to "ended" with proper metadata
+	updateData := bson.M{
+		"$set": bson.M{
+			"status":   "ended",
+			"ended_at": time.Now(),
+			"ended_by": "admin",
+		},
+	}
+
+	_, err = config.ChatSessionsCol.UpdateOne(context.Background(), bson.M{"session_id": sessionID}, updateData)
+	if err != nil {
+		log.Error().Err(err).Str("session_id", sessionID).Msg("Failed to end session")
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to end session"})
+	}
+
+	log.Info().Str("session_id", sessionID).Msg("Session ended by admin")
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": "Session ended successfully",
+	})
 }
 
 func generateSessionID() string {
