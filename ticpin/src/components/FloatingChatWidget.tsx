@@ -86,6 +86,7 @@ export default function FloatingChatWidget({ onOpenFullChat }: FloatingChatWidge
                     conversationHistory: messages.slice(-10) // More context
                 })
             });
+            // ,
 
             if (!response.ok) throw new Error('Failed to get response');
 
