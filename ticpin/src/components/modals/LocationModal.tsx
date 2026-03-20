@@ -3,7 +3,7 @@
 import { X, Search, Loader2, MapPin } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 
-const API_KEY = "AIzaSyA0OeH_8hQ9aHlPMuiD45wtYNLGmwhLJFg";
+const API_KEY = "AIzaSyC2gFDSPGY7wtSFHzYwzbPkP6tcq61Lmt8";
 
 interface LocationModalProps {
     isOpen: boolean;

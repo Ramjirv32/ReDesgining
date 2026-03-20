@@ -45,6 +45,14 @@ export default function Navbar() {
             syncAuth();
         };
 
+        // Auto-open location modal if not set
+        if (!currentLocation) {
+            const timer = setTimeout(() => {
+                setIsLocationOpen(true);
+            }, 1000); // Small delay for better UX
+            return () => clearTimeout(timer);
+        }
+
         window.addEventListener('user-auth-change', handleAuthChange);
         window.addEventListener('organizer-auth-change', handleAuthChange);
 
@@ -52,7 +60,7 @@ export default function Navbar() {
             window.removeEventListener('user-auth-change', handleAuthChange);
             window.removeEventListener('organizer-auth-change', handleAuthChange);
         };
-    }, [syncAuth]);
+    }, [syncAuth, currentLocation]);
 
     const hideNavbar =
         pathname === '/contact' ||

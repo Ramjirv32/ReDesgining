@@ -233,10 +233,31 @@ export default function ChatSupportClient() {
 
             if (!isAdmin) {
                 setIsTyping(true);
-                setTimeout(() => {
+                // Call Groq AI for response
+                try {
+                    await fetch('/api/chat/groq', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            message: content,
+                            conversationHistory: messages.map(m => ({ sender: m.sender, message: m.message })),
+                            sessionId: activeSession.sessionId,
+                            userData: {
+                                id: effectiveSession.id,
+                                email: effectiveSession.email || (effectiveSession as any).phone || '',
+                                type: organizerSession ? 'organizer' : 'user'
+                            }
+                        })
+                    });
+                    // Refresh messages to show AI response saved in DB
+                    setTimeout(() => {
+                        fetchMessages(activeSession.sessionId);
+                        setIsTyping(false);
+                    }, 2000);
+                } catch (e) {
+                    console.error('Error getting AI response:', e);
                     setIsTyping(false);
-                    fetchMessages(activeSession.sessionId);
-                }, 1200);
+                }
             } else {
                 fetchMessages(activeSession.sessionId);
             }

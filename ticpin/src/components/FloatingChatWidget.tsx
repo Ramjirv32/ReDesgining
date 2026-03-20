@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageCircle, X, Send, Square, Maximize2 } from 'lucide-react';
 
+import { useIdentityStore } from '@/store/useIdentityStore';
+
 interface Message {
     id: number;
     text: string;
@@ -19,20 +21,54 @@ export default function FloatingChatWidget({ onOpenFullChat }: FloatingChatWidge
     const [message, setMessage] = useState('');
     const [messages, setMessages] = useState<Message[]>([]);
     const [isTyping, setIsTyping] = useState(false);
+    const [sessionId, setSessionId] = useState<string | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const { userSession, organizerSession } = useIdentityStore();
+    const effectiveSession = organizerSession || userSession;
 
-    // Load history from session storage
+    // Load history or initialize session
     useEffect(() => {
-        const saved = sessionStorage.getItem('ticpin_chat_history');
-        if (saved) {
-            setMessages(JSON.parse(saved));
-        } else {
-            setMessages([
-                { id: 1, text: "Hi! I'm your Ticpin Assistant. How can I help you today? Ask me about booking events, dining, or play venues!", sender: 'support', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
-            ]);
-        }
-    }, []);
+        const initializeSession = async () => {
+            const savedSessionId = sessionStorage.getItem('ticpin_chat_session_id');
+            const savedHistory = sessionStorage.getItem('ticpin_chat_history');
+
+            if (savedHistory) {
+                setMessages(JSON.parse(savedHistory));
+            } else {
+                setMessages([
+                    { id: 1, text: "Hi! I'm your Ticpin Assistant. How can I help you today?", sender: 'support', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+                ]);
+            }
+
+            if (savedSessionId) {
+                setSessionId(savedSessionId);
+            } else {
+                try {
+                    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/chat/sessions`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId: effectiveSession?.id || 'guest',
+                            userEmail: effectiveSession?.email || 'guest@ticpin.in',
+                            userName: (effectiveSession as any)?.name || 'Guest',
+                            userType: organizerSession ? 'organizer' : 'user',
+                            category: 'general'
+                        })
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        setSessionId(data.sessionId);
+                        sessionStorage.setItem('ticpin_chat_session_id', data.sessionId);
+                    }
+                } catch (e) {
+                    console.error('Failed to create chat session:', e);
+                }
+            }
+        };
+
+        if (isOpen) initializeSession();
+    }, [isOpen, effectiveSession]);
 
     // Save history to session storage
     useEffect(() => {
@@ -83,7 +119,13 @@ export default function FloatingChatWidget({ onOpenFullChat }: FloatingChatWidge
                 signal: abortController.signal,
                 body: JSON.stringify({
                     message: msgToSend,
-                    conversationHistory: messages.slice(-10) // More context
+                    conversationHistory: messages.slice(-10),
+                    sessionId: sessionId,
+                    userData: {
+                        id: effectiveSession?.id,
+                        email: effectiveSession?.email,
+                        type: organizerSession ? 'organizer' : 'user'
+                    }
                 })
             });
             // ,

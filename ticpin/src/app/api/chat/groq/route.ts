@@ -28,226 +28,164 @@ Context data from our current database:`;
 
 export async function POST(request: NextRequest) {
     try {
-        const { message, conversationHistory } = await request.json();
+        const body = await request.json();
+        const { message, conversationHistory, sessionId, userData } = body;
 
         // Fetch current data from all collections - use the correct backend URL
         const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:9000';
         
+        // 1. Save user message to Go backend if sessionId is present
+        if (sessionId && userData) {
+            try {
+                const formData = new FormData();
+                formData.append('userId', userData.id || 'guest');
+                formData.append('userEmail', userData.email || 'guest@ticpin.in');
+                formData.append('userType', userData.type || 'user');
+                formData.append('message', message);
+                formData.append('sender', 'user');
+
+                await fetch(`${baseUrl}/api/chat/sessions/${sessionId}/messages`, {
+                    method: 'POST',
+                    body: formData
+                });
+            } catch (e) {
+                console.error('Error saving user message to DB:', e);
+            }
+        }
+
         // Try to fetch data, but handle gracefully if APIs are not available
         let eventsData = [];
         let diningData = [];
         let playData = [];
 
         try {
-            const eventsResponse = await fetch(`${baseUrl}/api/events`, {
-                headers: { 'Accept': 'application/json' }
-            });
-            if (eventsResponse && eventsResponse.ok) {
-                const text = await eventsResponse.text();
-                if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
-                    eventsData = JSON.parse(text);
-                    if (!Array.isArray(eventsData)) {
-                        eventsData = eventsData.events || [];
-                    }
-                }
+            const [evRes, dinRes, playRes] = await Promise.all([
+                fetch(`${baseUrl}/api/events`, { cache: 'no-store' }),
+                fetch(`${baseUrl}/api/dining`, { cache: 'no-store' }),
+                fetch(`${baseUrl}/api/play`, { cache: 'no-store' })
+            ]);
+            
+            if (evRes.ok) {
+                const d = await evRes.json();
+                eventsData = Array.isArray(d) ? d : (d.data || []);
+            }
+            if (dinRes.ok) {
+                const d = await dinRes.json();
+                diningData = Array.isArray(d) ? d : (d.data || []);
+            }
+            if (playRes.ok) {
+                const d = await playRes.json();
+                playData = Array.isArray(d) ? d : (d.data || []);
             }
         } catch (e) {
-            console.log('Events API not available, using empty data');
+            console.log('Error fetching context data, continuing with empty context');
         }
 
-        try {
-            const diningResponse = await fetch(`${baseUrl}/api/dining`, {
-                headers: { 'Accept': 'application/json' }
-            });
-            if (diningResponse && diningResponse.ok) {
-                const text = await diningResponse.text();
-                if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
-                    diningData = JSON.parse(text);
-                    if (!Array.isArray(diningData)) {
-                        diningData = diningData.dining || [];
-                    }
-                }
-            }
-        } catch (e) {
-            console.log('Dining API not available, using empty data');
-        }
-
-        try {
-            const playResponse = await fetch(`${baseUrl}/api/play`, {
-                headers: { 'Accept': 'application/json' }
-            });
-            if (playResponse && playResponse.ok) {
-                const text = await playResponse.text();
-                if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
-                    playData = JSON.parse(text);
-                    if (!Array.isArray(playData)) {
-                        playData = playData.play || [];
-                    }
-                }
-            }
-        } catch (e) {
-            console.log('Play API not available, using empty data');
-        }
-
-        // Create context from the data
-        const contextData = {
-            events: Array.isArray(eventsData) ? eventsData.slice(0, 15) : [],
-            dining: Array.isArray(diningData) ? diningData.slice(0, 15) : [],
-            play: Array.isArray(playData) ? playData.slice(0, 15) : []
-        };
-
-        // Format context for Groq with detailed information
+        // Create context string
         const contextString = `
-Current Ticpin Data:
-
-EVENTS (${contextData.events.length} available):
-${contextData.events.map((event: any) => {
-    const date = event.date ? new Date(event.date).toLocaleDateString() : 'TBD';
-    const artists = event.artists && Array.isArray(event.artists) 
-        ? event.artists.map((a: any) => a.name).join(', ') 
-        : event.artistName || 'Various Artists';
-    const price = event.priceStartsFrom ? `₹${event.priceStartsFrom}` : 'Price TBD';
-    return `- ${event.name || 'Untitled Event'}: ${event.description || 'No description'}, Date: ${date}, Time: ${event.time || 'TBD'}, Venue: ${event.venueName || 'TBD'}, City: ${event.city || 'TBD'}, Artists: ${artists}, Price: ${price}, Category: ${event.category || 'General'}`;
-}).join('\n')}
-
-DINING VENUES (${contextData.dining.length} available):
-${contextData.dining.map((venue: any) => {
-    const date = venue.date ? new Date(venue.date).toLocaleDateString() : 'Available daily';
-    const price = venue.priceStartsFrom ? `₹${venue.priceStartsFrom}` : 'Price varies';
-    return `- ${venue.name || 'Unnamed Venue'}: ${venue.description || 'No description'}, Location: ${venue.venueAddress || venue.city || 'TBD'}, Date: ${date}, Time: ${venue.time || 'Multiple slots'}, Price: ${price}, Category: ${venue.category || 'Restaurant'}`;
-}).join('\n')}
-
-PLAY VENUES (${contextData.play.length} available):
-${contextData.play.map((venue: any) => {
-    const date = venue.date ? new Date(venue.date).toLocaleDateString() : 'Available daily';
-    const time = venue.time || venue.openingTime || 'Multiple slots';
-    const price = venue.priceStartsFrom ? `₹${venue.priceStartsFrom}` : 'Price varies';
-    const courts = venue.courts && Array.isArray(venue.courts) ? venue.courts.length : 0;
-    return `- ${venue.name || 'Unnamed Venue'}: ${venue.description || 'No description'}, Location: ${venue.venueAddress || venue.city || 'TBD'}, Date: ${date}, Time: ${time}, Price: ${price}, Category: ${venue.category || 'Sports'}, Courts: ${courts}, Venue: ${venue.venueName || 'TBD'}`;
-}).join('\n')}
+Current Events: ${JSON.stringify(eventsData.slice(0, 10).map((e: any) => ({ name: e.name, city: e.city, price: e.price_starts_from, date: e.date })))}
+Current Dining: ${JSON.stringify(diningData.slice(0, 10).map((d: any) => ({ name: d.name, city: d.city, category: d.category })))}
+Current Play Venues: ${JSON.stringify(playData.slice(0, 10).map((p: any) => ({ name: p.name, city: p.city, price: p.price_starts_from })))}
 `;
 
-        // Format conversation history
+        // Prepare messages for Groq
         const messages = [
-            { role: 'system', content: SYSTEM_PROMPT + '\n\n' + contextString },
+            { role: "system", content: SYSTEM_PROMPT + contextString },
             ...conversationHistory.map((msg: any) => ({
                 role: msg.sender === 'user' ? 'user' : 'assistant',
-                content: msg.text
+                content: msg.text || msg.message || ""
             })),
-            { role: 'user', content: message }
+            { role: "user", content: message }
         ];
 
-        // Call Groq API with streaming
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        // Call Groq API
+        const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${GROQ_API_KEY}`,
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'llama-3.3-70b-versatile',
+                model: "llama-3.1-8b-instant",
                 messages: messages,
-                temperature: 0.8,
-                max_completion_tokens: 1024,
-                top_p: 0.9,
-                stream: true,
-                stop: null
+                temperature: 0.7,
+                max_tokens: 1024,
+                top_p: 1,
+                stream: true
             })
         });
 
-        if (!response.ok) {
-            throw new Error('Groq API request failed');
+        if (!groqResponse.ok) {
+            const error = await groqResponse.json();
+            throw new Error(`Groq API Error: ${JSON.stringify(error)}`);
         }
 
-        // Return streaming response
-        return new Response(
-            new ReadableStream({
-                async start(controller) {
-                    const reader = response.body?.getReader();
-                    const decoder = new TextDecoder();
-                    let isClosed = false;
+        // Handle streaming response
+        const encoder = new TextEncoder();
+        const decoder = new TextDecoder();
+        let fullAiResponse = '';
 
-                    if (!reader) {
-                        if (!isClosed) {
-                            controller.close();
-                            isClosed = true;
-                        }
-                        return;
-                    }
+        return new Response(new ReadableStream({
+            async start(controller) {
+                const reader = groqResponse.body?.getReader();
+                if (!reader) return;
 
-                    try {
-                        while (true) {
-                            const { done, value } = await reader.read();
-                            if (done) break;
+                try {
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
 
-                            const chunk = decoder.decode(value);
-                            const lines = chunk.split('\n');
+                        const chunk = decoder.decode(value);
+                        controller.enqueue(encoder.encode(chunk));
 
-                            for (const line of lines) {
-                                if (line.startsWith('data: ')) {
-                                    const data = line.slice(6);
-                                    if (data === '[DONE]') {
-                                        if (!isClosed) {
-                                            controller.close();
-                                            isClosed = true;
-                                        }
-                                        return;
-                                    }
-
-                                    try {
-                                        const parsed = JSON.parse(data);
-                                        const content = parsed.choices?.[0]?.delta?.content || '';
-                                        if (content) {
-                                            // Stream character by character with delay for natural typing effect
-                                            for (let i = 0; i < content.length; i++) {
-                                                if (isClosed) break;
-                                                
-                                                const char = content[i];
-                                                const charChunk = {
-                                                    ...parsed,
-                                                    choices: [{
-                                                        ...parsed.choices[0],
-                                                        delta: { content: char }
-                                                    }]
-                                                };
-                                                
-                                                controller.enqueue(`data: ${JSON.stringify(charChunk)}\n\n`);
-                                                
-                                                // Add delay for natural typing (30-80ms per character)
-                                                const delay = Math.random() * 50 + 30;
-                                                await new Promise(resolve => setTimeout(resolve, delay));
-                                            }
-                                        }
-                                    } catch (e) {
-                                        // Skip invalid JSON
-                                    }
-                                }
+                        // Accumulate for saving to DB
+                        const lines = chunk.split('\n');
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6);
+                                if (data === '[DONE]') continue;
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    const content = parsed.choices?.[0]?.delta?.content || '';
+                                    fullAiResponse += content;
+                                } catch (e) {}
                             }
                         }
-                    } catch (error) {
-                        console.error('Streaming error:', error);
-                    } finally {
-                        if (!isClosed) {
-                            controller.close();
-                            isClosed = true;
+                    }
+                } catch (e) {
+                    controller.error(e);
+                } finally {
+                    // Save full AI response to DB
+                    if (sessionId && userData && fullAiResponse) {
+                        try {
+                            const formData = new FormData();
+                            formData.append('userId', userData.id || 'guest');
+                            formData.append('userEmail', userData.email || 'guest@ticpin.in');
+                            formData.append('userType', userData.type || 'user');
+                            formData.append('message', fullAiResponse);
+                            formData.append('sender', 'admin'); // Saved as admin or support in DB
+
+                            await fetch(`${baseUrl}/api/chat/sessions/${sessionId}/messages`, {
+                                method: 'POST',
+                                body: formData
+                            });
+                        } catch (e) {
+                            console.error('Error saving AI response to DB:', e);
                         }
                     }
+                    controller.close();
                 }
-            }),
-            {
-                headers: {
-                    'Content-Type': 'text/plain; charset=utf-8',
-                    'Cache-Control': 'no-cache',
-                    'Connection': 'keep-alive',
-                },
             }
-        );
+        }), {
+            headers: {
+                'Content-Type': 'text/event-stream',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+            }
+        });
 
-    } catch (error) {
-        console.error('Groq API Error:', error);
-        return NextResponse.json(
-            { error: 'Failed to process chat request' },
-            { status: 500 }
-        );
+    } catch (error: any) {
+        console.error('Chat error:', error);
+        return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
     }
 }
