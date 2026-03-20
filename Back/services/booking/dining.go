@@ -8,6 +8,7 @@ import (
 	"ticpin-backend/config"
 	"ticpin-backend/models"
 	organizersvc "ticpin-backend/services/organizer"
+	"ticpin-backend/utils"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -21,7 +22,7 @@ func CreateDining(b *models.DiningBooking) error {
 		return errors.New("dining id is required")
 	}
 
-	col := config.GetDB().Collection("dining_bookings")
+	col := config.DiningBookingsCol
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -52,6 +53,7 @@ func CreateDining(b *models.DiningBooking) error {
 	}
 
 	b.ID = primitive.NewObjectID()
+	b.BookingID = utils.HashObjectID(b.ID) // Generate hashed booking ID
 	b.Status = "booked"
 	b.BookedAt = time.Now()
 

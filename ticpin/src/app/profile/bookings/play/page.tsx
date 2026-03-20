@@ -101,9 +101,12 @@ export default function PlayBookingsPage() {
                  </div>
                  
                  <div className="pt-2">
-                    <button className="w-full h-[48px] bg-black text-white rounded-xl font-bold text-[14px] relative z-10 shadow-lg shadow-black/5 active:scale-95 transition-all">
-                      Check Venue
-                    </button>
+                   <button 
+                     onClick={() => router.push(`/bookings/${booking.id}`)}
+                     className="w-full h-[48px] bg-black text-white rounded-xl font-bold text-[14px] relative z-10 shadow-lg shadow-black/5 active:scale-95 transition-all"
+                   >
+                     View Booking Details
+                   </button>
                  </div>
               </div>
             ))}

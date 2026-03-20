@@ -60,45 +60,66 @@ func Create(e *models.Event) error {
 }
 
 func GetAll(category string, artist string, limit int, after string) ([]models.Event, string, error) {
+	// Try cache first
+	cacheManager := cache.NewCacheManager()
+	params := []interface{}{category, artist, limit, after}
+	if cached, found := cacheManager.GetList("event", params); found {
+		if cachedList, ok := cached.([]models.Event); ok {
+			// Calculate next cursor from cached data
+			nextCursor := ""
+			if len(cachedList) > 0 && len(cachedList) >= limit {
+				nextCursor = cachedList[len(cachedList)-1].ID.Hex()
+			}
+			return cachedList, nextCursor, nil
+		}
+	}
+
 	col := config.EventsCol
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	filter := bson.M{}
-	if category != "" {
+	filter := bson.M{"status": "approved"}
+	if category != "" && category != "all" {
 		filter["category"] = category
 	}
 	if artist != "" {
-		filter["artists.name"] = bson.M{"$regex": primitive.Regex{Pattern: artist, Options: "i"}}
+		filter["artist"] = bson.M{"$regex": artist, "$options": "i"}
 	}
 
+	query := bson.M{"_id": 1}
 	if after != "" {
-		if oid, err := primitive.ObjectIDFromHex(after); err == nil {
-			filter["_id"] = bson.M{"$gt": oid}
+		if objectID, err := primitive.ObjectIDFromHex(after); err == nil {
+			query["_id"] = bson.M{"$gt": objectID}
 		}
 	}
 
-	if limit <= 0 || limit > 100 {
-		limit = 20
-	}
+	opts := options.Find().
+		SetSort(bson.D{{"_id", 1}}).
+		SetLimit(int64(limit)).
+		SetProjection(bson.M{
+			"_id": 1, "name": 1, "images": 1, "rating": 1, "category": 1,
+			"artist": 1, "venue": 1, "date": 1, "time": 1, "price_range": 1,
+			"status": 1,
+		})
 
-	opts := options.Find().SetLimit(int64(limit)).SetSort(bson.M{"_id": 1})
-
-	cursor, err := col.Find(ctx, filter, opts)
+	cursor, err := col.Find(ctx, bson.M{"$and": []bson.M{filter, query}}, opts)
 	if err != nil {
 		return nil, "", err
 	}
 	defer cursor.Close(ctx)
 
 	var events []models.Event
-	if err := cursor.All(ctx, &events); err != nil {
+	if err = cursor.All(ctx, &events); err != nil {
 		return nil, "", err
 	}
 
 	nextCursor := ""
-	if len(events) > 0 {
+	if len(events) > 0 && len(events) >= limit {
 		nextCursor = events[len(events)-1].ID.Hex()
 	}
+
+	// Cache the result
+	cacheManager.SetList("event", params, events, cache.TTLMedium)
 
 	return events, nextCursor, nil
 }
@@ -250,13 +271,12 @@ func Update(id string, organizerID string, update *models.Event) error {
 	updateDoc["updatedAt"] = time.Now()
 	updateDoc["status"] = "pending"
 
-	_, err = col.UpdateOne(
-		ctx,
-		bson.M{"_id": objID, "organizer_id": orgID},
-		bson.M{"$set": updateDoc},
-	)
+	_, err = col.UpdateOne(ctx, bson.M{"_id": objID, "organizer_id": orgID}, updateDoc)
 	if err == nil {
-		cache.GlobalCache.Delete("event:" + id)
+		// Enhanced cache invalidation
+		cacheManager := cache.NewCacheManager()
+		cacheManager.DeleteEntity("event", id)
+		cacheManager.DeleteList("event") // Invalidate all list caches
 	}
 	return err
 }
@@ -280,6 +300,11 @@ func Delete(id string, organizerID string) error {
 	if res.DeletedCount == 0 {
 		return errors.New("event not found or not owned by this organizer")
 	}
-	cache.GlobalCache.Delete("event:" + id)
+
+	// Enhanced cache invalidation
+	cacheManager := cache.NewCacheManager()
+	cacheManager.DeleteEntity("event", id)
+	cacheManager.DeleteList("event") // Invalidate all list caches
+
 	return nil
 }

@@ -3,6 +3,7 @@ package coupon
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -168,6 +169,9 @@ func Validate(code string, eventID string, orderAmount float64, userID string) (
 		return nil, errors.New("coupon code is required")
 	}
 
+	// Debug logging
+	fmt.Printf("DEBUG: Validate coupon - Code: %s, EventID: %s, Amount: %.2f, UserID: %s\n", code, eventID, orderAmount, userID)
+
 	col := config.CouponsCol
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -176,6 +180,10 @@ func Validate(code string, eventID string, orderAmount float64, userID string) (
 	if err := col.FindOne(ctx, bson.M{"code": code}).Decode(&c); err != nil {
 		return nil, errors.New("invalid coupon code")
 	}
+
+	// Debug logging
+	fmt.Printf("DEBUG: Found coupon - Category: %s, IsActive: %t, ValidFrom: %v, ValidUntil: %v\n", c.Category, c.IsActive, c.ValidFrom, c.ValidUntil)
+
 	if !c.IsActive {
 		return nil, errors.New("coupon is not active")
 	}

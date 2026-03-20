@@ -587,8 +587,8 @@ const CreateEventPage = () => {
                                                     />
                                                 </div>
                                                 <div className="max-h-[250px] overflow-y-auto scrollbar-hide">
-                                                    {CITIES.filter(opt => opt.toLowerCase().includes(dropdownSearch.city.toLowerCase())).map((opt) => (
-                                                        <div key={opt} onClick={() => handleSelect('city', opt)} className="dropdown-item">{opt}</div>
+                                                    {CITIES.filter(opt => opt.toLowerCase().includes(dropdownSearch.city.toLowerCase())).map((opt, index) => (
+                                                        <div key={`${opt}-${index}`} onClick={() => handleSelect('city', opt)} className="dropdown-item">{opt}</div>
                                                     ))}
                                                 </div>
                                             </div>

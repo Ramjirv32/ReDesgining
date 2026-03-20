@@ -12,6 +12,7 @@ import (
 	"ticpin-backend/middleware"
 	adminroutes "ticpin-backend/routes/admin"
 	bookingroutes "ticpin-backend/routes/booking"
+	"ticpin-backend/routes/cache"
 	diningroutes "ticpin-backend/routes/dining"
 	eventroutes "ticpin-backend/routes/event"
 	mobileroutes "ticpin-backend/routes/mobile"
@@ -152,6 +153,9 @@ func main() {
 		return c.Status(200).JSON(fiber.Map{"status": "ok"})
 	})
 
+	// Serve uploaded files
+	app.Static("/uploads", "./uploads")
+
 	organizer.OrganizerRoutes(app)
 	organizerplay.PlayRoutes(app)
 	organizerEvents.EventsRoutes(app)
@@ -169,6 +173,7 @@ func main() {
 	bookingroutes.BookingRoutes(app)
 	paymentroutes.PaymentRoutes(app)
 	chat.SetupRoutes(app)
+	cache.SetupCacheRoutes(app)
 
 	app.Get("/api/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "ok"})

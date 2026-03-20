@@ -108,7 +108,7 @@ export default function DiningClient({
     }, [venues, cityFilter, activeFilter, selectedCategories, selectedAmenities, selectedSort]);
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-100 via-purple-50 to-pink-50">
+        <div className="min-h-screen bg-gradient-to-b from-[#FFFCED] via-white to-white">
             <main className="mx-auto max-w-[1440px] px-4 md:px-10 lg:px-16 py-8 md:py-12 space-y-12 md:space-y-20">
                 <section>
                     <h2 className="font-[family-name:var(--font-anek-latin)] font-semibold mb-6 md:mb-8 uppercase text-black tracking-normal text-[24px] md:text-[30px]" style={{ fontWeight: 600 }}>Explore Dining</h2>

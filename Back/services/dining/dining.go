@@ -42,41 +42,63 @@ func Create(d *models.Dining) error {
 }
 
 func GetAll(category string, limit int, after string) ([]models.Dining, string, error) {
+	// Try cache first
+	cacheManager := cache.NewCacheManager()
+	params := []interface{}{category, limit, after}
+	if cached, found := cacheManager.GetList("dining", params); found {
+		if cachedList, ok := cached.([]models.Dining); ok {
+			// Calculate next cursor from cached data
+			nextCursor := ""
+			if len(cachedList) > 0 && len(cachedList) >= limit {
+				nextCursor = cachedList[len(cachedList)-1].ID.Hex()
+			}
+			return cachedList, nextCursor, nil
+		}
+	}
+
 	col := config.DiningsCol
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	filter := bson.M{"status": "approved"}
-	if category != "" {
+	if category != "" && category != "all" {
 		filter["category"] = category
 	}
+
+	query := bson.M{"_id": 1}
 	if after != "" {
-		if oid, err := primitive.ObjectIDFromHex(after); err == nil {
-			filter["_id"] = bson.M{"$gt": oid}
+		if objectID, err := primitive.ObjectIDFromHex(after); err == nil {
+			query["_id"] = bson.M{"$gt": objectID}
 		}
 	}
 
-	if limit <= 0 || limit > 100 {
-		limit = 20
-	}
+	opts := options.Find().
+		SetSort(bson.D{{"_id", 1}}).
+		SetLimit(int64(limit)).
+		SetProjection(bson.M{
+			"_id": 1, "name": 1, "images": 1, "rating": 1, "category": 1,
+			"location": 1, "price_range": 1, "cuisines": 1, "specialties": 1,
+			"status": 1,
+		})
 
-	opts := options.Find().SetLimit(int64(limit)).SetSort(bson.M{"_id": 1})
-
-	cursor, err := col.Find(ctx, filter, opts)
+	cursor, err := col.Find(ctx, bson.M{"$and": []bson.M{filter, query}}, opts)
 	if err != nil {
 		return nil, "", err
 	}
 	defer cursor.Close(ctx)
 
 	var dinings []models.Dining
-	if err := cursor.All(ctx, &dinings); err != nil {
+	if err = cursor.All(ctx, &dinings); err != nil {
 		return nil, "", err
 	}
 
 	nextCursor := ""
-	if len(dinings) > 0 {
+	if len(dinings) > 0 && len(dinings) >= limit {
 		nextCursor = dinings[len(dinings)-1].ID.Hex()
 	}
+
+	// Cache the result
+	cacheManager.SetList("dining", params, dinings, cache.TTLMedium)
 
 	return dinings, nextCursor, nil
 }
@@ -241,7 +263,10 @@ func Update(id string, organizerID string, update *models.Dining) error {
 		bson.M{"$set": updateDoc},
 	)
 	if err == nil {
-		cache.GlobalCache.Delete("dining:" + id)
+		// Enhanced cache invalidation
+		cacheManager := cache.NewCacheManager()
+		cacheManager.DeleteEntity("dining", id)
+		cacheManager.DeleteList("dining") // Invalidate all list caches
 	}
 	return err
 }
@@ -265,6 +290,11 @@ func Delete(id string, organizerID string) error {
 	if res.DeletedCount == 0 {
 		return errors.New("dining not found or not owned by this organizer")
 	}
-	cache.GlobalCache.Delete("dining:" + id)
+
+	// Enhanced cache invalidation
+	cacheManager := cache.NewCacheManager()
+	cacheManager.DeleteEntity("dining", id)
+	cacheManager.DeleteList("dining") // Invalidate all list caches
+
 	return nil
 }

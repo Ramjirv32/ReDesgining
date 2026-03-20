@@ -48,7 +48,9 @@ func ConnectDB() error {
 		ApplyURI(uri).
 		SetMaxPoolSize(100).
 		SetMinPoolSize(10).
-		SetMaxConnIdleTime(30 * time.Second)
+		SetMaxConnIdleTime(30 * time.Second).
+		SetRetryWrites(false).
+		SetRetryReads(false)
 
 	client, err := mongo.Connect(ctx, opts)
 	if err != nil {
@@ -87,7 +89,7 @@ func ConnectDB() error {
 }
 
 func GetDB() *mongo.Database {
-	return MongoClient.Database("ticpin")
+	return MongoClient.Database("mental")
 }
 
 func CreateIndexes() {

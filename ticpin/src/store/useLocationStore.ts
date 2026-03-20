@@ -15,7 +15,6 @@ interface LocationState {
     // Actions
     setLocation: (location: LocationData | string | null) => void;
     clearLocation: () => void;
-    syncFromBrowser: () => void;
     detectGeolocation: () => Promise<void>;
 }
 
@@ -41,29 +40,12 @@ export const useLocationStore = create<LocationState>((set, get) => ({
         }
 
         set({ currentLocation: locationData });
-        if (locationData) {
-            localStorage.setItem('ticpin_location_v2', JSON.stringify(locationData));
-        } else {
-            localStorage.removeItem('ticpin_location_v2');
-        }
         window.dispatchEvent(new CustomEvent('location-change', { detail: locationData }));
     },
 
     clearLocation: () => {
         set({ currentLocation: null });
-        localStorage.removeItem('ticpin_location_v2');
         window.dispatchEvent(new CustomEvent('location-change', { detail: null }));
-    },
-
-    syncFromBrowser: () => {
-        const saved = localStorage.getItem('ticpin_location_v2');
-        if (saved) {
-            try {
-                set({ currentLocation: JSON.parse(saved) });
-            } catch {
-                localStorage.removeItem('ticpin_location_v2');
-            }
-        }
     },
 
     detectGeolocation: async () => {

@@ -14,10 +14,7 @@ export function clearAllData(): void {
         }
     });
     
-    // Clear localStorage
-    localStorage.clear();
-    
-    // Clear sessionStorage
+    // Clear sessionStorage (for temporary payment flow data)
     sessionStorage.clear();
     
     // Clear IndexedDB

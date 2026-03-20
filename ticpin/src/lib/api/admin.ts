@@ -457,7 +457,7 @@ export const adminApi = {
     },
 
     /** GET /api/admin/coupons */
-    listCoupons: () => adminRequest<CouponRecord[]>('/coupons'),
+    listCoupons: () => adminRequest<{data: CouponRecord[], next_cursor: string}>('/coupons'),
 
     /** PUT /api/admin/coupons/:id */
     updateCoupon: (id: string, payload: Partial<CreateCouponPayload> & { is_active?: boolean }) =>

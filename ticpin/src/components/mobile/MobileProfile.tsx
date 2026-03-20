@@ -137,6 +137,7 @@ export default function MobileProfile() {
         { icon: <img src="/mobile_icons/profile_page/chat.svg" className="w-[20px] h-[20px]" alt="Chat" />, label: "Chat with us", onClick: () => router.push('/chat-support') },
         { icon: <img src="/mobile_icons/profile_page/info.svg" className="w-[20px] h-[20px]" alt="About" />, label: "About us", onClick: () => router.push('/about') },
         { icon: <img src="/mobile_icons/profile_page/profile.svg" className="w-[20px] h-[20px]" alt="Account" />, label: "Edit profile", onClick: () => router.push(organizerSession ? '/organizer/profile/edit' : '/profile/edit') },
+
         { icon: <img src="/mobile_icons/profile_page/logout.svg" className="w-[20px] h-[20px]" alt="Logout" />, label: "Logout", onClick: () => { logoutUser(); router.push('/'); } },
     ] : [
         // 1) User Menu
@@ -147,6 +148,7 @@ export default function MobileProfile() {
         { icon: <img src="/mobile_icons/profile_page/chat.svg" className="w-[20px] h-[20px]" alt="Chat" />, label: "Chat with us", onClick: () => router.push('/chat-support') },
         { icon: <img src="/mobile_icons/profile_page/info.svg" className="w-[20px] h-[20px]" alt="About" />, label: "About us", onClick: () => router.push('/about') },
         { icon: <img src="/mobile_icons/profile_page/profile.svg" className="w-[20px] h-[20px]" alt="Account" />, label: "Edit profile", onClick: () => router.push(organizerSession ? '/organizer/profile/edit' : '/profile/edit') },
+
         { icon: <img src="/mobile_icons/profile_page/logout.svg" className="w-[20px] h-[20px]" alt="Logout" />, label: "Logout", onClick: () => { logoutUser(); router.push('/'); } },
     ];
 
@@ -178,11 +180,7 @@ export default function MobileProfile() {
                         {subtitle && <p className="text-[14px] font-normal text-zinc-500 leading-none">{subtitle}</p>}
                     </div>
                 </div>
-                {!organizerSession?.isAdmin && (
-                    <button onClick={() => router.push(organizerSession ? '/organizer/profile/edit' : '/profile/edit')} className="p-2 w-10 h-10 bg-white rounded-full border border-[#D0D0D0] flex items-center justify-center">
-                        <Pencil size={18} className="text-[#212121]" />
-                    </button>
-                )}
+
             </div>
 
             {passLoading ? (

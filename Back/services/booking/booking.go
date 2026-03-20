@@ -2,18 +2,32 @@ package booking
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
+	"math/big"
 	"strconv"
 	"time"
 
 	"ticpin-backend/config"
 	"ticpin-backend/models"
-	organizersvc "ticpin-backend/services/organizer"
+	"ticpin-backend/utils"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 )
+
+// Generate a user-friendly booking ID (8 characters)
+func generateBookingID() string {
+	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	const length = 8
+
+	b := make([]byte, length)
+	for i := range b {
+		n, _ := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		b[i] = charset[n.Int64()]
+	}
+	return string(b)
+}
 
 func Create(b *models.Booking) error {
 	if b.UserEmail == "" {
@@ -26,97 +40,88 @@ func Create(b *models.Booking) error {
 		return errors.New("at least one ticket is required")
 	}
 
-	session, err := config.MongoClient.StartSession()
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	col := config.EventBookingsCol
+
+	// Find the event
+	var event models.Event
+	err := config.EventsCol.FindOne(ctx, bson.M{"_id": b.EventID}).Decode(&event)
 	if err != nil {
-		return err
+		return errors.New("event not found")
 	}
-	defer session.EndSession(context.Background())
 
-	_, err = session.WithTransaction(context.Background(), func(sessCtx mongo.SessionContext) (interface{}, error) {
-		col := config.BookingsCol
-
-		var existing models.Booking
-		err := col.FindOne(sessCtx, bson.M{"event_id": b.EventID, "user_email": b.UserEmail, "status": "booked"}).Decode(&existing)
-		if err == nil {
-			// Check if user is admin by looking up organizer
-			orgCol := config.OrgsCol
-			var org models.Organizer
-			errOrg := orgCol.FindOne(sessCtx, bson.M{"email": b.UserEmail}).Decode(&org)
-			isAdmin := errOrg == nil && organizersvc.IsAdmin(org)
-
-			if !isAdmin {
-				if errOrg != nil {
-					return nil, errors.New("this email has already booked for this event")
-				}
-			}
-		}
-
-		var event models.Event
-		err = config.EventsCol.FindOne(sessCtx, bson.M{"_id": b.EventID}).Decode(&event)
-		if err != nil {
-			return nil, errors.New("event not found")
-		}
-
+	// Safely handle OrganizerID
+	if !event.OrganizerID.IsZero() {
 		b.OrganizerID = event.OrganizerID
-		if b.OrganizerID.IsZero() {
-			adminID, _ := primitive.ObjectIDFromHex("000000000000000000000001")
-			b.OrganizerID = adminID
-		}
+	} else {
+		adminID, _ := primitive.ObjectIDFromHex("000000000000000000000001")
+		b.OrganizerID = adminID
+	}
 
-		capacityMap := map[string]int{}
+	// Generate ObjectID first
+	b.ID = primitive.NewObjectID()
+
+	// Generate hashed booking ID from the ObjectID
+	b.BookingID = utils.HashObjectID(b.ID)
+
+	if b.Status == "" {
+		b.Status = "booked"
+	}
+	b.BookedAt = time.Now()
+
+	// Check capacity per ticket category
+	capacityMap := map[string]int{}
+	if event.TicketCategories != nil {
 		for _, cat := range event.TicketCategories {
 			if cat.Capacity > 0 {
 				capacityMap[cat.Name] = cat.Capacity
 			}
 		}
+	}
 
-		if len(capacityMap) > 0 {
-			for _, t := range b.Tickets {
-				cap, hasCap := capacityMap[t.Category]
-				if !hasCap {
-					continue
+	if len(capacityMap) > 0 && b.Tickets != nil {
+		for _, t := range b.Tickets {
+			if t.Category == "" {
+				continue // Skip invalid ticket categories
+			}
+			cap, hasCap := capacityMap[t.Category]
+			if !hasCap {
+				continue
+			}
+			pipeline := []bson.M{
+				{"$match": bson.M{
+					"event_id": b.EventID,
+					"status":   "booked",
+				}},
+				{"$unwind": "$tickets"},
+				{"$match": bson.M{"tickets.category": t.Category}},
+				{"$group": bson.M{
+					"_id":   nil,
+					"total": bson.M{"$sum": "$tickets.quantity"},
+				}},
+			}
+			cursor, err := col.Aggregate(ctx, pipeline)
+			if err == nil {
+				var results []struct {
+					Total int `bson:"total"`
 				}
-				pipeline := []bson.M{
-					{"$match": bson.M{
-						"event_id": b.EventID,
-						"status":   "booked",
-					}},
-					{"$unwind": "$tickets"},
-					{"$match": bson.M{"tickets.category": t.Category}},
-					{"$group": bson.M{
-						"_id":   nil,
-						"total": bson.M{"$sum": "$tickets.quantity"},
-					}},
-				}
-				cursor, err := col.Aggregate(sessCtx, pipeline)
-				if err == nil {
-					var results []struct {
-						Total int `bson:"total"`
-					}
-					if cursor.All(sessCtx, &results) == nil && len(results) > 0 {
-						alreadyBooked := results[0].Total
-						if alreadyBooked+t.Quantity > cap {
-							available := cap - alreadyBooked
-							if available <= 0 {
-								return nil, errors.New("seats full for category: " + t.Category)
-							}
-							return nil, errors.New("only " + strconv.Itoa(available) + " seats available for: " + t.Category)
+				if cursor.All(ctx, &results) == nil && len(results) > 0 {
+					alreadyBooked := results[0].Total
+					if alreadyBooked+t.Quantity > cap {
+						available := cap - alreadyBooked
+						if available <= 0 {
+							return errors.New("seats full for category: " + t.Category)
 						}
+						return errors.New("only " + strconv.Itoa(available) + " seats available for: " + t.Category)
 					}
 				}
 			}
 		}
+	}
 
-		b.ID = primitive.NewObjectID()
-		if b.Status == "" {
-			b.Status = "booked"
-		}
-		b.BookedAt = time.Now()
-
-		_, err = col.InsertOne(sessCtx, b)
-		return nil, err
-	})
-
+	_, err = col.InsertOne(ctx, b)
 	return err
 }
 
@@ -125,7 +130,7 @@ func GetAvailability(eventID string) (map[string]int, error) {
 	if err != nil {
 		return nil, err
 	}
-	col := config.BookingsCol
+	col := config.EventBookingsCol
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 

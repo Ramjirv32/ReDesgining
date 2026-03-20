@@ -4,6 +4,10 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import { Minus, Plus, ChevronLeft } from 'lucide-react';
+import { useUserSession } from '@/lib/auth/user';
+import { getOrganizerSession, clearOrganizerSession } from '@/lib/auth/organizer';
+import AuthModal from '@/components/modals/AuthModal';
+import OrganizerLogoutModal from '@/components/modals/OrganizerLogoutModal';
 
 interface RealDining {
     id: string;
@@ -58,6 +62,10 @@ const DiningBooking: React.FC = () => {
     const [showCustomGuest, setShowCustomGuest] = useState(false);
     const [offers, setOffers] = useState<Offer[]>([]);
     const [nextDays] = useState(getNextDays());
+    const [showAuthModal, setShowAuthModal] = useState(false);
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
+    const session = useUserSession();
+    const organizerSession = getOrganizerSession();
 
     useEffect(() => {
         if (!name || typeof name !== 'string') return;
@@ -104,6 +112,16 @@ const DiningBooking: React.FC = () => {
     };
 
     const handleBooking = () => {
+        if (organizerSession) {
+            setShowLogoutModal(true);
+            return;
+        }
+
+        if (!session) {
+            setShowAuthModal(true);
+            return;
+        }
+
         if (!venue || !selectedSlot) {
             alert('Please select a time slot');
             return;
@@ -131,6 +149,11 @@ const DiningBooking: React.FC = () => {
 
         sessionStorage.setItem('dining_cart', JSON.stringify(cartItem));
         router.push(`/dining/venue/${encodeURIComponent(String(name))}/book/review`);
+    };
+
+    const handleOrganizerLogout = () => {
+        clearOrganizerSession();
+        setShowAuthModal(true);
     };
 
     const lunchSlots = ['12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM', '2:00 PM', '2:30 PM', '3:00 PM'];
@@ -420,6 +443,22 @@ const DiningBooking: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            <AuthModal
+                isOpen={showAuthModal}
+                onClose={() => setShowAuthModal(false)}
+                onSuccess={() => {
+                    setShowAuthModal(false);
+                    handleBooking();
+                }}
+            />
+            
+            <OrganizerLogoutModal
+                isOpen={showLogoutModal}
+                onClose={() => setShowLogoutModal(false)}
+                onConfirm={handleOrganizerLogout}
+                organizerName={organizerSession?.email}
+            />
         </div>
     );
 };

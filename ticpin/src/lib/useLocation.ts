@@ -3,31 +3,29 @@
 import { useState, useEffect } from 'react';
 
 /**
- * Returns the user-selected/detected city from localStorage.
+ * Returns the user-selected/detected city from location store.
  * Re-renders automatically when the location changes across the app.
  */
 import { LocationData } from './hooks/useGeolocation';
+import { useLocationStore } from '../store/useLocationStore';
 
 export function useLocation(): string {
     const [location, setLocation] = useState<string>('');
+    const { currentLocation } = useLocationStore();
 
     useEffect(() => {
-        const getFormattedLocation = () => {
-            const v2 = localStorage.getItem('ticpin_location_v2');
-            if (v2) {
-                try {
-                    const data = JSON.parse(v2) as LocationData;
-                    if (data.district || data.state) {
-                        return [data.district || data.name, data.state].filter(Boolean).join(', ');
-                    }
-                    return data.name;
-                } catch { }
+        if (!currentLocation) {
+            setLocation('');
+        } else {
+            if (currentLocation.district || currentLocation.state) {
+                setLocation([currentLocation.district || currentLocation.name, currentLocation.state].filter(Boolean).join(', '));
+            } else {
+                setLocation(currentLocation.name);
             }
-            return localStorage.getItem('ticpin_location') ?? '';
-        };
+        }
+    }, [currentLocation]);
 
-        setLocation(getFormattedLocation());
-
+    useEffect(() => {
         const handler = (e: Event) => {
             const data = (e as CustomEvent<LocationData | string | null>).detail;
             if (!data) {

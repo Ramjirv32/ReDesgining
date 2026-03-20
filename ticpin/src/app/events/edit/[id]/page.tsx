@@ -427,7 +427,7 @@ export default function EditEventPage() {
                                         </div>
                                         {openDropdown === 'city' && (
                                             <div className="absolute top-full left-0 right-0 z-50 bg-white border border-[#686868] rounded-[10px] mt-1 max-h-[300px] overflow-y-auto">
-                                                {CITIES.map(opt => <div key={opt} onClick={() => handleSelect('city', opt)} className="px-6 py-3 hover:bg-zinc-50 cursor-pointer text-[18px]">{opt}</div>)}
+                                                {CITIES.map((opt, index) => <div key={`${opt}-${index}`} onClick={() => handleSelect('city', opt)} className="px-6 py-3 hover:bg-zinc-50 cursor-pointer text-[18px]">{opt}</div>)}
                                             </div>
                                         )}
                                     </div>

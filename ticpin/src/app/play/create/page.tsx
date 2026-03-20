@@ -99,31 +99,9 @@ const CreatePlayPage = () => {
     const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const saveDraft = useCallback(() => {
-        if (!draftKey.current) return;
-        
-        // Separate sensitive data (payment) from non-sensitive data
-        const sensitiveData = { payment, pocs, salesNotifs, paymentVerified };
-        const nonSensitiveData = {
-            venueName, portraitUrl, landscapeUrl, secondaryBannerUrl, videoUrl,
-            galleryUrls, instagramLink, googleMapLink, venueAddress,
-            timeHour, timeMinute, timePeriod, closeHour, closeMinute, closePeriod, facilities, petFriendly,
-            showInstructions, showYoutube, showProhibited, showFaqs,
-            playInstructions, youtubeVideoUrl, prohibitedItems, faqs,
-            courts, selections,
-            descriptionHtml: editorRef.current?.innerHTML ?? '',
-        };
-        
-        // Sensitive data in sessionStorage (cleared on tab close, not sent to server)
-        try { sessionStorage.setItem(`${draftKey.current}_sensitive`, JSON.stringify(sensitiveData)); } catch { /* silent */ }
-        // Non-sensitive data in localStorage (persists)
-        try { localStorage.setItem(draftKey.current, JSON.stringify(nonSensitiveData)); } catch { /* silent */ }
-    }, [venueName, portraitUrl, landscapeUrl, secondaryBannerUrl, videoUrl,
-        galleryUrls, instagramLink, googleMapLink, venueAddress,
-        timeHour, timeMinute, timePeriod, facilities, petFriendly,
-        payment, pocs, salesNotifs,
-        showInstructions, showYoutube, showProhibited, showFaqs,
-        playInstructions, youtubeVideoUrl, prohibitedItems, faqs,
-        courts, selections, paymentVerified]);
+        // Draft data is kept in component state only - no localStorage usage
+        console.log('Draft data kept in memory only');
+    }, []);
 
     // Debounced auto-save on every state change (800 ms)
     useEffect(() => {
@@ -134,19 +112,18 @@ const CreatePlayPage = () => {
     }, [saveDraft]);
 
     const clearAllDraft = useCallback(() => {
-        if (draftKey.current) {
-            localStorage.removeItem(draftKey.current);
-            sessionStorage.removeItem(`${draftKey.current}_sensitive`);
-        }
+        // Clear all form state - no localStorage to clear
         setVenueName(''); setPortraitUrl(''); setLandscapeUrl(''); setSecondaryBannerUrl('');
-        setVideoUrl(''); setGalleryUrls([]); setInstagramLink(''); setGoogleMapLink('');
-        setVenueAddress(''); setTimeHour(''); setTimeMinute(''); setTimePeriod('AM');
+        setVideoUrl(''); setGalleryUrls([]); setInstagramLink(''); setGoogleMapLink(''); setVenueAddress('');
+        setTimeHour(''); setTimeMinute(''); setTimePeriod('AM');
         setCloseHour(''); setCloseMinute(''); setClosePeriod('PM');
-        setFacilities([]); setPetFriendly(''); setPayment({ organizerName: '', gstin: '', accountNumber: '', ifsc: '', accountType: '' });
-        setPocs([]); setSalesNotifs([]); setShowInstructions(false); setShowYoutube(false);
-        setShowProhibited(false); setShowFaqs(false); setPlayInstructions('');
-        setYoutubeVideoUrl(''); setProhibitedItems([]); setFaqs([]); setCourts([]);
+        setFacilities([]); setPetFriendly('');
         setSelections({ category: 'Select Sport', subCategory: 'Select Court Type', city: 'Select City' });
+        setPayment({ organizerName: '', gstin: '', accountNumber: '', ifsc: '', accountType: '' });
+        setPocs([]); setSalesNotifs([]);
+        setShowInstructions(false); setShowYoutube(false); setShowProhibited(false); setShowFaqs(false);
+        setPlayInstructions(''); setYoutubeVideoUrl(''); setProhibitedItems([]); setFaqs([]);
+        setCourts([]); 
         setPaymentVerified(false);
         if (editorRef.current) editorRef.current.innerHTML = '';
         setHasContent(false);
@@ -176,93 +153,20 @@ const CreatePlayPage = () => {
             setAuthChecked(true);
             draftKey.current = `play_create_draft_${session.id}`;
 
-            // ── Restore draft if it exists ──
-            let draftPaymentHasData = false;
-            
-            // Restore non-sensitive data from localStorage
+            // No draft restoration - always fetch fresh data from backend
             try {
-                const raw = localStorage.getItem(draftKey.current);
-                if (raw) {
-                    const d = JSON.parse(raw);
-                    if (d.venueName) setVenueName(d.venueName);
-                    if (d.portraitUrl) setPortraitUrl(d.portraitUrl);
-                    if (d.landscapeUrl) setLandscapeUrl(d.landscapeUrl);
-                    if (d.secondaryBannerUrl) setSecondaryBannerUrl(d.secondaryBannerUrl);
-                    if (d.videoUrl) setVideoUrl(d.videoUrl);
-                    if (d.galleryUrls?.length) setGalleryUrls(d.galleryUrls);
-                    if (d.instagramLink) setInstagramLink(d.instagramLink);
-                    if (d.googleMapLink) setGoogleMapLink(d.googleMapLink);
-                    if (d.venueAddress) setVenueAddress(d.venueAddress);
-                if (d.timeHour) setTimeHour(d.timeHour);
-                if (d.timeMinute) setTimeMinute(d.timeMinute);
-                if (d.timePeriod) setTimePeriod(d.timePeriod);
-                if (d.closeHour) setCloseHour(d.closeHour);
-                if (d.closeMinute) setCloseMinute(d.closeMinute);
-                if (d.closePeriod) setClosePeriod(d.closePeriod);
-                if (d.facilities?.length) setFacilities(d.facilities);
-                if (d.petFriendly) setPetFriendly(d.petFriendly);
-                setShowInstructions(!!d.showInstructions);
-                setShowYoutube(!!d.showYoutube);
-                setShowProhibited(!!d.showProhibited);
-                setShowFaqs(!!d.showFaqs);
-                if (d.playInstructions) setPlayInstructions(d.playInstructions);
-                if (d.youtubeVideoUrl) setYoutubeVideoUrl(d.youtubeVideoUrl);
-                if (d.prohibitedItems?.length) setProhibitedItems(d.prohibitedItems);
-                if (d.faqs?.length) setFaqs(d.faqs);
-                if (d.courts?.length) setCourts(d.courts);
-                if (d.selections) setSelections(d.selections);
-                // Restore rich-text editor HTML after DOM is ready
-                if (d.descriptionHtml) {
-                    requestAnimationFrame(() => {
-                        if (editorRef.current) {
-                            editorRef.current.innerHTML = d.descriptionHtml;
-                            setHasContent(true);
-                        }
-                    });
+                const res = await fetch('/backend/api/organizer/payment-setup', { credentials: 'include' });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.payment) setPayment(data.payment);
+                    if (data.pocs?.length) setPocs(data.pocs);
+                    if (data.salesNotifs?.length) setSalesNotifs(data.salesNotifs);
+                    if (data.verified) setPaymentVerified(data.verified);
                 }
-            }
-        } catch { /* corrupted draft – continue */ }
-        
-        // Restore sensitive data (payment, pocs) from sessionStorage
-        try {
-            const sensitiveRaw = sessionStorage.getItem(`${draftKey.current}_sensitive`);
-            if (sensitiveRaw) {
-                const s = JSON.parse(sensitiveRaw);
-                if (s.payment) setPayment(s.payment);
-                if (s.pocs?.length) setPocs(s.pocs);
-                if (s.salesNotifs?.length) setSalesNotifs(s.salesNotifs);
-                if (s.paymentVerified) setPaymentVerified(s.paymentVerified);
-                draftPaymentHasData = !!(s.payment?.accountNumber || s.payment?.ifsc || s.payment?.gstin);
-            }
-        } catch { /* corrupted – continue */ }
-        
-        if (draftPaymentHasData) return; // draft restored — skip verified-setup fetch
-
-        // ── No draft: fetch verified bank/GST from organizer setup ──
-        if (!draftPaymentHasData) {
-            organizerApi.getExistingSetup('play')
-                .then(setup => {
-                    if (setup) {
-                        setPayment(p => ({
-                            ...p,
-                            organizerName: setup.accountHolder || setup.panName || session.email.split('@')[0],
-                            gstin: setup.gstNumber || setup.pan || '',
-                            accountNumber: setup.bankAccountNo || '',
-                            ifsc: setup.bankIfsc || '',
-                            accountType: p.accountType,
-                        }));
-                        const hasVerifiedData = !!(setup.bankAccountNo || setup.bankIfsc || setup.gstNumber || setup.pan);
-                        setPaymentVerified(hasVerifiedData);
-                    } else {
-                        setPayment(p => ({ ...p, organizerName: session.email.split('@')[0] }));
-                        setPaymentVerified(false);
-                    }
-                })
-                .catch(() => {
-                    setPayment(p => ({ ...p, organizerName: session.email.split('@')[0] }));
-                });
-            }
+            } catch { /* silent */ }
         };
+
+        checkAuth();
 
         const timer = setTimeout(checkAuth, 100);
         return () => clearTimeout(timer);
@@ -404,8 +308,7 @@ const CreatePlayPage = () => {
                 sales_notifications: salesNotifs,
                 status: 'pending',
             });
-            // Clear saved draft on successful submit
-            if (draftKey.current) localStorage.removeItem(draftKey.current);
+            // No localStorage to clear - data is in component state only
             setSubmitMsg('✅ Venue listed successfully!');
             setTimeout(() => router.push('/organizer/dashboard?category=play'), 2000);
         } catch (err) {
@@ -629,8 +532,8 @@ const CreatePlayPage = () => {
                                                     </div>
                                                 </div>
                                                 <div className="max-h-[300px] overflow-y-auto scrollbar-hide">
-                                                    {CITIES.filter(opt => opt.toLowerCase().includes(dropdownSearch.city.toLowerCase())).map((opt) => (
-                                                        <div key={opt} onClick={() => handleSelect('city', opt)} className="dropdown-item">{opt}</div>
+                                                    {CITIES.filter(opt => opt.toLowerCase().includes(dropdownSearch.city.toLowerCase())).map((opt, index) => (
+                                                        <div key={`${opt}-${index}`} onClick={() => handleSelect('city', opt)} className="dropdown-item">{opt}</div>
                                                     ))}
                                                 </div>
                                             </div>

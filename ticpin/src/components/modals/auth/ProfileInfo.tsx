@@ -37,19 +37,14 @@ const ProfileInfo: React.FC<ProfileInfoProps> = ({
     return (
         <div className="flex items-center gap-6 px-2 py-4 relative group">
             <div className="relative w-24 h-24 shrink-0">
-                <div className="w-full h-full bg-zinc-200 rounded-full overflow-hidden flex items-center justify-center border-4 border-white shadow-lg">
+                <div className="w-full h-full bg-zinc-200 rounded-full overflow-hidden flex items-center justify-center border-4 border-white shadow-lg aspect-square">
                     {profile?.profilePhoto ? (
-                        <Image src={profile.profilePhoto} alt="Profile" fill className="object-cover" />
+                        <Image src={profile.profilePhoto} alt="Profile" fill className="object-cover rounded-full" />
                     ) : (
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" className="rounded-full"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                     )}
                 </div>
-                <button
-                    onClick={() => photoInputRef.current?.click()}
-                    className="absolute bottom-0 right-0 w-8 h-8 bg-black text-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform z-10"
-                >
-                    <Camera size={14} />
-                </button>
+
                 <input
                     type="file"
                     ref={photoInputRef}
@@ -107,18 +102,7 @@ const ProfileInfo: React.FC<ProfileInfoProps> = ({
                             >
                                 {isAdmin ? 'Admin Panel' : (profile?.name || (userPhone ? '' : 'Profile'))}
                             </h4>
-                            {!isAdmin && (
-                                <button
-                                    onClick={() => {
-                                        setIsEditing(true);
-                                        setEditedName(profile?.name || '');
-                                        setEditedEmail(profile?.email || '');
-                                    }}
-                                    className="p-2 text-zinc-400 hover:text-black transition-colors"
-                                >
-                                    <Edit2 size={18} />
-                                </button>
-                            )}
+
                         </div>
                         {!isAdmin && (
                             <p className="text-lg text-zinc-500 font-medium tracking-tight uppercase">

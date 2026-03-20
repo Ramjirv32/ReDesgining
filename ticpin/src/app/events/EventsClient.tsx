@@ -140,7 +140,7 @@ export default function EventsClient({ initialEvents }: { initialEvents: RealEve
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-100 via-purple-50 to-pink-50">
+        <div className="min-h-screen bg-gradient-to-b from-[#FFFCED] via-white to-white">
             <main className="mx-auto max-w-[1440px] px-4 md:px-10 lg:px-16 py-8 md:py-12 space-y-12 md:space-y-20">
                 <section>
                     <h2 className="font-[family-name:var(--font-anek-latin)] font-semibold mb-6 md:mb-8 uppercase text-black tracking-normal text-[24px] md:text-[30px]" style={{ fontWeight: 600 }}>Explore Events</h2>
@@ -148,55 +148,53 @@ export default function EventsClient({ initialEvents }: { initialEvents: RealEve
                 </section>
 
                 {/* Artists Section */}
-                <section>
-                    <h2 className="font-[family-name:var(--font-anek-latin)] font-semibold mb-6 md:mb-8 uppercase text-black tracking-normal text-[24px] md:text-[30px]" style={{ fontWeight: 600 }}>Artists</h2>
-                    <div className="relative group">
-                        <div
-                            id="artists-container"
-                            onScroll={handleScroll}
-                            className="flex gap-4 sm:gap-6 md:gap-8 lg:gap-10 xl:gap-12 overflow-x-auto py-4 scrollbar-hide scroll-smooth snap-x snap-mandatory"
-                        >
-                            {allArtists.length === 0 ? (
-                                <p className="text-zinc-500 italic py-4">No artists found</p>
-                            ) : (
-                                allArtists.map((artist, i) => (
+                {allArtists.length > 0 && (
+                    <section>
+                        <h2 className="font-[family-name:var(--font-anek-latin)] font-semibold mb-6 md:mb-8 uppercase text-black tracking-normal text-[24px] md:text-[30px]" style={{ fontWeight: 600 }}>Artists</h2>
+                        <div className="relative group">
+                            <div
+                                id="artists-container"
+                                onScroll={handleScroll}
+                                className="flex gap-4 sm:gap-6 md:gap-8 lg:gap-10 xl:gap-12 overflow-x-auto py-4 scrollbar-hide scroll-smooth snap-x snap-mandatory"
+                            >
+                                {allArtists.map((artist, i) => (
                                     <ArtistAvatar
                                         key={i}
                                         name={artist.name}
                                         image={artist.image}
                                     />
-                                ))
-                            )}
-                        </div>
+                                ))}
+                            </div>
 
-                        {showLeftArrow && (
+                            {showLeftArrow && (
+                                <button
+                                    onClick={() => {
+                                        const container = document.getElementById('artists-container');
+                                        if (container) container.scrollBy({ left: -400, behavior: 'smooth' });
+                                    }}
+                                    className="absolute -left-6 top-1/2 -translate-y-1/2 bg-white rounded-full w-12 h-12 items-center justify-center shadow-lg hover:shadow-xl transition-all hover:scale-110 border border-gray-200 hidden md:flex z-20 animate-in fade-in zoom-in duration-200"
+                                    aria-label="Previous artists"
+                                >
+                                    <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                    </svg>
+                                </button>
+                            )}
                             <button
                                 onClick={() => {
                                     const container = document.getElementById('artists-container');
-                                    if (container) container.scrollBy({ left: -400, behavior: 'smooth' });
+                                    if (container) container.scrollBy({ left: 400, behavior: 'smooth' });
                                 }}
-                                className="absolute -left-6 top-1/2 -translate-y-1/2 bg-white rounded-full w-12 h-12 items-center justify-center shadow-lg hover:shadow-xl transition-all hover:scale-110 border border-gray-200 hidden md:flex z-20 animate-in fade-in zoom-in duration-200"
-                                aria-label="Previous artists"
+                                className="absolute -right-6 top-1/2 -translate-y-1/2 bg-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:shadow-xl transition-all hover:scale-110 border border-gray-200 hidden md:flex z-20"
+                                aria-label="Next artists"
                             >
                                 <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                 </svg>
                             </button>
-                        )}
-                        <button
-                            onClick={() => {
-                                const container = document.getElementById('artists-container');
-                                if (container) container.scrollBy({ left: 400, behavior: 'smooth' });
-                            }}
-                            className="absolute -right-6 top-1/2 -translate-y-1/2 bg-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:shadow-xl transition-all hover:scale-110 border border-gray-200 hidden md:flex z-20"
-                            aria-label="Next artists"
-                        >
-                            <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
-                        </button>
-                    </div>
-                </section>
+                        </div>
+                    </section>
+                )}
 
                 <section>
                     <div className="mb-6">

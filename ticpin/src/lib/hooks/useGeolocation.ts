@@ -28,35 +28,15 @@ export function useGeolocation() {
         }
 
         setCurrentLocation(locationData);
-        localStorage.setItem('ticpin_location_v2', JSON.stringify(locationData));
         window.dispatchEvent(new CustomEvent('location-change', { detail: locationData }));
     }, []);
 
     const clearLocation = useCallback(() => {
         setCurrentLocation(null);
-        localStorage.removeItem('ticpin_location_v2');
         window.dispatchEvent(new CustomEvent('location-change', { detail: null }));
     }, []);
 
     useEffect(() => {
-        const saved = localStorage.getItem('ticpin_location_v2');
-        if (saved) {
-            try {
-                setCurrentLocation(JSON.parse(saved));
-            } catch {
-                localStorage.removeItem('ticpin_location_v2');
-            }
-            return;
-        }
-
-        // Fallback for old version
-        const oldSaved = localStorage.getItem('ticpin_location');
-        if (oldSaved) {
-            saveLocation(oldSaved);
-            localStorage.removeItem('ticpin_location');
-            return;
-        }
-
         if (!navigator.geolocation) return;
 
         navigator.geolocation.getCurrentPosition(

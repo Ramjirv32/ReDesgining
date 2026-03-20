@@ -120,8 +120,8 @@ export const CITIES = [
     "Uchakarani", "Udaipur", "Udgir", "Ujjain", "Ujhani", "Ullal", "Uluberia", "Umaria", "Umerkote", "Unnao",
     "Uppal Kalan", "Uttamapalayam", "Uttarakashi", "Vadodara", "Vailoppilly", "Valsad", "Vaniyambadi", "Vapi", "Vardhman",
     "Vasai", "Vasai-Virar", "Vijayapura", "Vijayawada", "Vijayanagaram", "Vijayapura (Bijapur)", "Vijaypur", "Vikarabad", "Vijapur",
-    "Viluppuram", "Vinukonda", "Virudhachalam", "Virudhunagar", "Visakhapatnam", "Visnagar", "Vizag", "Vijayanagar", "Vijayapura",
-    "Vijayanagara", "Vijaypur", "Vikarabad", "Virudhunagar", "Wadi", "Waghodia", "Waidhan", "Wairagarh", "Wardha",
+    "Viluppuram", "Vinukonda", "Virudhachalam", "Virudhunagar", "Visakhapatnam", "Visnagar", "Vizag", "Vijayanagar", "Vijayanagara",
+    "Vijaypur", "Vikarabad", "Virudhunagar", "Wadi", "Waghodia", "Waidhan", "Wairagarh", "Wardha",
     "Warangal", "Warhapur", "Washim", "Wardhman", "Yadgir", "Yamunanagar", "Yanam", "Yellandu", "Yercaud", "Yevla",
     "Zaidpur", "Zira", "Zunheboto"
 ];

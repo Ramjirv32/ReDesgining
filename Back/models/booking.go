@@ -14,6 +14,7 @@ type BookingTicket struct {
 
 type Booking struct {
 	ID             primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	BookingID      string             `bson:"booking_id" json:"booking_id"` // User-friendly booking ID
 	UserEmail      string             `bson:"user_email" json:"user_email"`
 	UserPhone      string             `bson:"user_phone" json:"user_phone"`
 	UserID         string             `bson:"user_id" json:"user_id"`
@@ -35,7 +36,9 @@ type Booking struct {
 
 type PlayBooking struct {
 	ID             primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	BookingID      string             `bson:"booking_id" json:"booking_id"` // User-friendly booking ID
 	UserEmail      string             `bson:"user_email" json:"user_email"`
+	UserPhone      string             `bson:"user_phone" json:"user_phone"`
 	UserID         string             `bson:"user_id" json:"user_id"`
 	PlayID         primitive.ObjectID `bson:"play_id" json:"play_id"`
 	OrganizerID    primitive.ObjectID `bson:"organizer_id" json:"organizer_id"`
@@ -58,7 +61,9 @@ type PlayBooking struct {
 
 type DiningBooking struct {
 	ID             primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	BookingID      string             `bson:"booking_id" json:"booking_id"` // User-friendly booking ID
 	UserEmail      string             `bson:"user_email" json:"user_email"`
+	UserPhone      string             `bson:"user_phone" json:"user_phone"`
 	UserID         string             `bson:"user_id" json:"user_id"`
 	DiningID       primitive.ObjectID `bson:"dining_id" json:"dining_id"`
 	OrganizerID    primitive.ObjectID `bson:"organizer_id" json:"organizer_id"`

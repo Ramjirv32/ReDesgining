@@ -4,19 +4,35 @@ import { ChevronDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useUserSession } from '@/lib/auth/user';
+import { getOrganizerSession, clearOrganizerSession } from '@/lib/auth/organizer';
 import AuthModal from '@/components/modals/AuthModal';
+import OrganizerLogoutModal from '@/components/modals/OrganizerLogoutModal';
 
 export default function BookingCard({ venueName }: { venueName: string }) {
     const router = useRouter();
     const session = useUserSession();
+    const organizerSession = getOrganizerSession();
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
 
     const handleBook = () => {
+        // Check if organizer is logged in
+        if (organizerSession) {
+            setShowLogoutModal(true);
+            return;
+        }
+        
         if (!session) {
             setIsLoginModalOpen(true);
             return;
         }
         router.push(`/dining/venue/${encodeURIComponent(venueName)}/book`);
+    };
+
+    const handleOrganizerLogout = () => {
+        clearOrganizerSession();
+        // Show user auth modal after organizer logout
+        setIsLoginModalOpen(true);
     };
 
     const today = new Date();
@@ -75,6 +91,13 @@ export default function BookingCard({ venueName }: { venueName: string }) {
                 isOpen={isLoginModalOpen}
                 onClose={() => setIsLoginModalOpen(false)}
                 onSuccess={() => router.push(`/dining/venue/${encodeURIComponent(venueName)}/book`)}
+            />
+            
+            <OrganizerLogoutModal
+                isOpen={showLogoutModal}
+                onClose={() => setShowLogoutModal(false)}
+                onConfirm={handleOrganizerLogout}
+                organizerName={organizerSession?.email}
             />
         </div>
     );

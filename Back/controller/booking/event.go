@@ -2,6 +2,7 @@ package bookingctrl
 
 import (
 	"context"
+	"fmt"
 	"ticpin-backend/config"
 	"ticpin-backend/models"
 	bookingsvc "ticpin-backend/services/booking"
@@ -34,6 +35,11 @@ func CreateEventBooking(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request: " + err.Error()})
 	}
+
+	// Debug logging
+	fmt.Printf("DEBUG: CreateEventBooking - EventID: %s, OrderAmount: %.2f, PaymentGateway: %s\n",
+		req.EventID, req.OrderAmount, req.PaymentGateway)
+
 	if req.UserEmail == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "user_email is required"})
 	}
@@ -60,17 +66,24 @@ func CreateEventBooking(c *fiber.Ctx) error {
 	if req.CouponCode != "" {
 		result, err := couponsvc.Validate(req.CouponCode, req.EventID, req.OrderAmount, req.UserID)
 		if err == nil {
+			fmt.Printf("DEBUG: Coupon validation successful - Code: %s, Discount: %.2f\n",
+				result.Coupon.Code, result.DiscountAmount)
 			discountAmount = result.DiscountAmount
 			appliedCouponCode = result.Coupon.Code
 			couponIDToIncrement = result.Coupon.ID
 			couponMaxUses = result.Coupon.MaxUses
+		} else {
+			fmt.Printf("DEBUG: Coupon validation failed - %s\n", err.Error())
 		}
 	}
 
 	var offerObjID primitive.ObjectID
 	if req.OfferID != "" {
 		offerResult, err := offersvc.ValidateOffer(req.OfferID, req.EventID, req.OrderAmount)
-		if err == nil {
+		if err != nil {
+			fmt.Printf("DEBUG: Offer validation failed - %s\n", err.Error())
+			// Don't return error, just skip offer if validation fails
+		} else {
 			offerObjID = offerResult.Offer.ID
 			discountAmount += offerResult.DiscountAmount // Add offer discount to existing discount
 		}
@@ -80,6 +93,9 @@ func CreateEventBooking(c *fiber.Ctx) error {
 	if grandTotal < 0 {
 		grandTotal = 0
 	}
+
+	fmt.Printf("DEBUG: Final calculation - OrderAmount: %.2f, BookingFee: %.2f, DiscountAmount: %.2f, GrandTotal: %.2f\n",
+		req.OrderAmount, req.BookingFee, discountAmount, grandTotal)
 
 	booking := &models.Booking{
 		UserEmail:      req.UserEmail,
@@ -115,9 +131,12 @@ func CreateEventBooking(c *fiber.Ctx) error {
 		defer cancel()
 		var ev models.Event
 		if err := config.GetDB().Collection("events").FindOne(ctx, bson.M{"_id": bookingEventObjID}).Decode(&ev); err == nil {
-			for _, sc := range ev.SalesNotifications {
-				if sc.Email != "" {
-					_ = config.SendSaleNotification(sc.Email, booking.EventName, bookingUserEmail, bookingGrandTotal, bookingID)
+			// Safely handle SalesNotifications
+			if ev.SalesNotifications != nil {
+				for _, sc := range ev.SalesNotifications {
+					if sc.Email != "" {
+						_ = config.SendSaleNotification(sc.Email, booking.EventName, bookingUserEmail, bookingGrandTotal, bookingID)
+					}
 				}
 			}
 		}

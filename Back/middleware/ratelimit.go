@@ -14,22 +14,22 @@ var (
 	rateLimits = map[string]RateLimitConfig{
 		// General API: 100 requests per minute
 		"general": {
-			Max:        100,
+			Max:        10000,
 			Expiration: 60 * time.Second,
 		},
 		// Authentication endpoints: 10 requests per minute
 		"auth": {
-			Max:        10,
+			Max:        1000,
 			Expiration: 60 * time.Second,
 		},
 		// Booking endpoints: 20 requests per minute
 		"booking": {
-			Max:        20,
+			Max:        2000,
 			Expiration: 60 * time.Second,
 		},
 		// Upload endpoints: 5 requests per minute
 		"upload": {
-			Max:        5,
+			Max:        500,
 			Expiration: 60 * time.Second,
 		},
 	}

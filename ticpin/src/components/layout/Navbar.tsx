@@ -35,11 +35,10 @@ export default function Navbar() {
 
     // Custom Hooks
     // Centralized State from Stores
-    const { currentLocation, setLocation, clearLocation, syncFromBrowser } = useLocationStore();
+    const { currentLocation, setLocation, clearLocation } = useLocationStore();
     const { userSession, organizerSession, sync: syncAuth, logoutUser, logoutOrganizer } = useIdentityStore();
 
     useEffect(() => {
-        syncFromBrowser();
         syncAuth();
 
         const handleAuthChange = () => {
@@ -53,7 +52,7 @@ export default function Navbar() {
             window.removeEventListener('user-auth-change', handleAuthChange);
             window.removeEventListener('organizer-auth-change', handleAuthChange);
         };
-    }, [syncFromBrowser, syncAuth]);
+    }, [syncAuth]);
 
     const hideNavbar =
         pathname === '/contact' ||
@@ -191,11 +190,7 @@ export default function Navbar() {
                             onToggleMenu={handleProfileClick}
                             onUserLogout={handleUserLogout}
                             onOrganizerLogout={handleOrganizerLogout}
-                            onOpenProfile={() => {
-                                setAuthView('profile');
-                                setIsAuthOpen(true);
-                                setIsProfileMenuOpen(false);
-                            }}
+                            onOpenProfile={() => {}} // No longer used - direct navigation instead
                         />
                     </div>
                 </div>

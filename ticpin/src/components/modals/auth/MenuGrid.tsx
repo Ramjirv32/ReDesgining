@@ -80,6 +80,7 @@ const MenuGrid: React.FC<MenuGridProps> = ({
                 icon: Edit,
                 action: onEditProfile
             },
+
             { 
                 label: 'Logout', 
                 icon: LogOut,
@@ -92,17 +93,17 @@ const MenuGrid: React.FC<MenuGridProps> = ({
             { 
                 label: 'Dining bookings', 
                 icon: Utensils,
-                action: onViewDiningBookings
+                action: () => { router.push('/profile/bookings/dining'); onClose(); }
             },
             { 
                 label: 'Event tickets', 
                 icon: Ticket,
-                action: onViewEventTickets
+                action: () => { router.push('/profile/bookings/events'); onClose(); }
             },
             { 
                 label: 'Play bookings', 
                 icon: Gamepad2,
-                action: onViewPlayBookings
+                action: () => { router.push('/profile/bookings/play'); onClose(); }
             },
             { 
                 label: 'Frequently asked questions', 
@@ -124,6 +125,7 @@ const MenuGrid: React.FC<MenuGridProps> = ({
                 icon: Edit,
                 action: onEditProfile
             },
+
             { 
                 label: 'Logout', 
                 icon: LogOut,

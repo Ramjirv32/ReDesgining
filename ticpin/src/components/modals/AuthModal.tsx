@@ -252,10 +252,10 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialView = 'n
                                     {pass && <TicPassCard pass={pass} onClose={onClose} />}
                                     <MenuGrid
                                         isAdmin={isAdmin} isOrganizer={!!organizerSession}
-                                        onViewBookings={() => setView('bookings')}
-                                        onViewDiningBookings={() => { setActiveTab('dining'); setView('bookings'); }}
-                                        onViewEventTickets={() => { setActiveTab('events'); setView('bookings'); }}
-                                        onViewPlayBookings={() => { setActiveTab('play'); setView('bookings'); }}
+                                        onViewBookings={() => { router.push('/profile/bookings/events'); onClose(); }}
+                                        onViewDiningBookings={() => { router.push('/profile/bookings/dining'); onClose(); }}
+                                        onViewEventTickets={() => { router.push('/profile/bookings/events'); onClose(); }}
+                                        onViewPlayBookings={() => { router.push('/profile/bookings/play'); onClose(); }}
                                         onEditProfile={() => { 
     if (userSession?.id) { 
         router.push('/profile/edit'); 

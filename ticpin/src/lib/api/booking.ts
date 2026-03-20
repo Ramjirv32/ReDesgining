@@ -232,6 +232,19 @@ export const bookingApi = {
         if (!res.ok) return [];
         return data as any[];
     },
+    /** Get detailed booking information by ID */
+    getBookingDetails: async (bookingId: string, userId?: string): Promise<any> => {
+        const url = userId
+            ? `${BASE}/bookings/${bookingId}?user_id=${encodeURIComponent(userId)}`
+            : `${BASE}/bookings/${bookingId}`;
+        const res = await fetch(url, {
+            credentials: 'include',
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to get booking details');
+        return data;
+    },
+
     /** Cancel a booking by ID and category */
     cancelBooking: async (id: string, category: string): Promise<{ message: string }> => {
         const res = await fetch(`${BASE}/bookings/${id}/cancel?category=${category}`, {

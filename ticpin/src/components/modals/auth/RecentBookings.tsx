@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Ticket, Utensils, Gamepad2, Loader2, Mail, ChevronRight } from 'lucide-react';
+import { Ticket, Utensils, Gamepad2, Loader2, Mail, ChevronRight, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useUserSession } from '@/lib/auth/user';
 
 interface RecentBookingsProps {
     bookings: any[];
@@ -24,6 +25,7 @@ const RecentBookings: React.FC<RecentBookingsProps> = ({
     onClose
 }) => {
     const router = useRouter();
+    const session = useUserSession();
 
     const tabs = [
         { id: 'events', label: 'Events', icon: <Ticket size={18} /> },
@@ -31,10 +33,28 @@ const RecentBookings: React.FC<RecentBookingsProps> = ({
         { id: 'play', label: 'Play', icon: <Gamepad2 size={18} /> }
     ];
 
-    const filtered = bookings?.filter(b => b.category === activeTab) || [];
+    const filtered = bookings?.filter(b => {
+    const bookingType = b.type || b.category || 'events';
+    return bookingType === activeTab;
+}) || [];
 
     return (
         <div className="space-y-6">
+            {/* Profile Section */}
+            {session && (
+                <div className="bg-gradient-to-r from-[#7c00e6] to-purple-600 p-4 rounded-2xl text-white">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                            <User size={24} />
+                        </div>
+                        <div>
+                            <div className="font-bold text-lg">{session.name || session.email?.split('@')[0] || 'User'}</div>
+                            <div className="text-sm opacity-90">{session.email || 'No email'}</div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            
             {/* Tabs */}
             <div className="flex bg-zinc-100 p-1.5 rounded-2xl w-full">
                 {tabs.map(tab => (
@@ -98,17 +118,50 @@ const RecentBookings: React.FC<RecentBookingsProps> = ({
                                     </div>
                                 </div>
                                 <div className="pt-4 border-t border-zinc-50 flex justify-between items-center">
-                                    <p className="text-[12px] text-zinc-400 font-medium tracking-tight">Booking ID: {booking.id.slice(-8).toUpperCase()}</p>
+                                    <p className="text-[12px] text-zinc-400 font-medium tracking-tight">Booking ID: {booking.booking_id || booking.id?.slice(-8).toUpperCase()}</p>
                                     <div className="flex gap-4">
                                         {booking.status !== 'cancelled' && (
                                             <button
-                                                onClick={() => handleCancel(booking.id, booking.category)}
+                                                onClick={() => {
+                                                    router.push(`/bookings/${booking.booking_id || booking.id}/cancel`);
+                                                    // Close modal and refresh parent
+                                                    onClose();
+                                                    // Trigger a refresh of bookings after a delay
+                                                    setTimeout(() => {
+                                                        window.dispatchEvent(new Event('refresh-bookings'));
+                                                    }, 1000);
+                                                }}
                                                 className="text-red-500 text-sm font-bold hover:underline"
                                             >
                                                 Cancel
                                             </button>
                                         )}
-                                        <button className="text-[#7c00e6] text-sm font-bold flex items-center gap-1 group">
+                                        <button 
+                                            onClick={() => {
+                                                // Navigate to individual booking detail page using booking's actual type
+                                                const bookingId = booking.booking_id || booking.id;
+                                                const bookingType = booking.type || booking.category || 'events';
+                                                
+                                                if (bookingType === 'events' || bookingType === 'event') {
+                                                    router.push(`/bookings/events/${bookingId}`);
+                                                } else if (bookingType === 'play') {
+                                                    router.push(`/bookings/play/${bookingId}`);
+                                                } else if (bookingType === 'dining') {
+                                                    router.push(`/bookings/dining/${bookingId}`);
+                                                } else {
+                                                    // Fallback to active tab
+                                                    if (activeTab === 'events') {
+                                                        router.push(`/bookings/events/${bookingId}`);
+                                                    } else if (activeTab === 'play') {
+                                                        router.push(`/bookings/play/${bookingId}`);
+                                                    } else if (activeTab === 'dining') {
+                                                        router.push(`/bookings/dining/${bookingId}`);
+                                                    }
+                                                }
+                                                onClose();
+                                            }}
+                                            className="text-[#7c00e6] text-sm font-bold flex items-center gap-1 group"
+                                        >
                                             View Details <ChevronRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
                                         </button>
                                     </div>

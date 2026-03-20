@@ -80,7 +80,7 @@ func GetUserBookings(c *fiber.Ctx) error {
 	}
 	type Booking = map[string]interface{}
 	allBookings := []Booking{}
-	cols := []string{"bookings", "dining_bookings", "play_bookings"}
+	cols := []string{"bookings", "event_bookings", "dining_bookings", "play_bookings"}
 	for _, col := range cols {
 		cursor, err := config.GetDB().Collection(col).Find(ctx, bson.M{"user_email": u.Phone})
 		if err != nil {
@@ -105,11 +105,12 @@ func GetUserStats(c *fiber.Ctx) error {
 	if err := config.GetDB().Collection("users").FindOne(ctx, bson.M{"_id": id}).Decode(&u); err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "user not found"})
 	}
+	eventBookingsCount, _ := config.GetDB().Collection("event_bookings").CountDocuments(ctx, bson.M{"user_email": u.Phone})
 	eventCount, _ := config.GetDB().Collection("bookings").CountDocuments(ctx, bson.M{"user_email": u.Phone})
 	diningCount, _ := config.GetDB().Collection("dining_bookings").CountDocuments(ctx, bson.M{"user_email": u.Phone})
 	playCount, _ := config.GetDB().Collection("play_bookings").CountDocuments(ctx, bson.M{"user_email": u.Phone})
 	return c.JSON(fiber.Map{
-		"events": eventCount,
+		"events": eventCount + eventBookingsCount,
 		"dining": diningCount,
 		"play":   playCount,
 	})

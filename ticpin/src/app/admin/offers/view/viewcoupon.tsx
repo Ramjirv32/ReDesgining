@@ -16,13 +16,17 @@ export default function ViewCouponForm({ onBack }: { onBack: () => void }) {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [couponData, userData] = await Promise.all([
+            const [couponResponse, userData] = await Promise.all([
                 adminApi.listCoupons(),
                 adminApi.listUsers().catch(() => [])
             ]);
+            console.log('Coupon response:', couponResponse); // Debug log
+            const couponData = Array.isArray(couponResponse?.data) ? couponResponse.data : 
+                            Array.isArray(couponResponse) ? couponResponse : [];
             setCoupons(couponData);
             setUsers(userData);
         } catch (err) {
+            console.error('Error fetching coupons:', err);
             setError('Failed to load coupon data');
         } finally {
             setLoading(false);

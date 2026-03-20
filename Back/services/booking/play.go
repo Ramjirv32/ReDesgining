@@ -9,6 +9,7 @@ import (
 
 	"ticpin-backend/config"
 	"ticpin-backend/models"
+	"ticpin-backend/utils"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -356,107 +357,107 @@ func CreatePlay(b *models.PlayBooking) error {
 	}
 	b.Duration = duration
 
-	session, err := config.MongoClient.StartSession()
-	if err != nil {
-		return fmt.Errorf("could not start session: %w", err)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	// Fetch the play document (non-transactional)
+	var play models.Play
+	if err := config.PlaysCol.FindOne(ctx, bson.M{"_id": b.PlayID}).Decode(&play); err != nil {
+		return fmt.Errorf("play not found: %w", err)
 	}
-	defer session.EndSession(context.Background())
 
-	_, err = session.WithTransaction(context.Background(), func(sessCtx mongo.SessionContext) (interface{}, error) {
+	b.OrganizerID = play.OrganizerID
+	if b.OrganizerID.IsZero() {
+		adminID, _ := primitive.ObjectIDFromHex("000000000000000000000001")
+		b.OrganizerID = adminID
+	}
 
-		var play models.Play
-		if err := config.PlaysCol.FindOne(sessCtx, bson.M{"_id": b.PlayID}).Decode(&play); err != nil {
-			return nil, fmt.Errorf("play not found: %w", err)
-		}
+	open, close := venueHours(&play)
+	venueSlots := generateSlots(open, close)
+	n := slotCount(open, close)
 
-		b.OrganizerID = play.OrganizerID
-		if b.OrganizerID.IsZero() {
-			adminID, _ := primitive.ObjectIDFromHex("000000000000000000000001")
-			b.OrganizerID = adminID
-		}
+	startMin := slotLabelStartMin(b.Slot)
+	if startMin < 0 {
+		return fmt.Errorf("invalid slot format %q", b.Slot)
+	}
+	si := slotIndex(open, startMin)
+	if si < 0 || si+duration > n {
+		return fmt.Errorf(
+			"slot %q is outside this venue's operating hours (%s – %s)",
+			b.Slot, formatTimeMins(open), formatTimeMins(close),
+		)
+	}
 
-		open, close := venueHours(&play)
-		venueSlots := generateSlots(open, close)
-		n := slotCount(open, close)
+	grid, err := buildOccupiedGrid(ctx, b.PlayID, b.Date, open, close, venueSlots)
+	if err != nil {
+		return err
+	}
 
-		startMin := slotLabelStartMin(b.Slot)
-		if startMin < 0 {
-			return nil, fmt.Errorf("invalid slot format %q", b.Slot)
-		}
-		si := slotIndex(open, startMin)
-		if si < 0 || si+duration > n {
-			return nil, fmt.Errorf(
-				"slot %q is outside this venue's operating hours (%s – %s)",
-				b.Slot, formatTimeMins(open), formatTimeMins(close),
-			)
-		}
-
-		grid, err := buildOccupiedGrid(sessCtx, b.PlayID, b.Date, open, close, venueSlots)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, ticket := range b.Tickets {
-			courtGrid := grid[ticket.Category]
-			for i := 0; i < duration; i++ {
-				idx := si + i
-				if courtGrid != nil && idx < len(courtGrid) && courtGrid[idx] {
-					// Use the already-built grid — no extra DB round-trip.
-					nextLabel := findNextFromGrid(grid, venueSlots, n, si+1, duration, ticket.Category)
-					msg := fmt.Sprintf(
-						"court %q is already booked during %s",
-						ticket.Category, b.Slot,
-					)
-					if nextLabel != "" {
-						msg += fmt.Sprintf(". Next available slot: %s", nextLabel)
-					}
-					return nil, errors.New(msg)
+	for _, ticket := range b.Tickets {
+		courtGrid := grid[ticket.Category]
+		for i := 0; i < duration; i++ {
+			idx := si + i
+			if courtGrid != nil && idx < len(courtGrid) && courtGrid[idx] {
+				nextLabel := findNextFromGrid(grid, venueSlots, n, si+1, duration, ticket.Category)
+				msg := fmt.Sprintf(
+					"court %q is already booked during %s",
+					ticket.Category, b.Slot,
+				)
+				if nextLabel != "" {
+					msg += fmt.Sprintf(". Next available slot: %s", nextLabel)
 				}
+				return errors.New(msg)
 			}
 		}
+	}
 
-		// Assign the booking ID before inserting lock docs so the ID is embedded
-		// in each lock document — allows targeted cleanup if needed.
-		b.ID = primitive.NewObjectID()
-		b.Status = "booked"
-		b.BookedAt = time.Now()
+	// Assign the booking ID before inserting lock docs so the ID is embedded
+	// in each lock document — allows targeted cleanup if needed.
+	b.ID = primitive.NewObjectID()
+	b.BookingID = utils.HashObjectID(b.ID) // Generate hashed booking ID
+	b.Status = "booked"
+	b.BookedAt = time.Now()
 
-		// Insert one slot-lock document per (court × 30-min unit).
-		// The unique compound index on play_slot_locks atomically prevents
-		// concurrent double-bookings — if another request races us to this point,
-		// one of the InsertMany calls will get a duplicate-key error and the
-		// entire transaction (including these lock docs) is rolled back.
-		var lockDocs []interface{}
-		for _, ticket := range b.Tickets {
-			for i := 0; i < duration; i++ {
-				idx := si + i
-				if idx < len(venueSlots) {
-					lockDocs = append(lockDocs, bson.M{
-						"play_id":    b.PlayID,
-						"date":       b.Date,
-						"slot":       venueSlots[idx],
-						"court_name": ticket.Category,
-						"booking_id": b.ID,
-					})
-				}
+	// Insert slot-lock documents using unique index to prevent concurrent double-bookings.
+	// The unique compound index on play_slot_locks atomically prevents
+	// concurrent double-bookings via duplicate key errors.
+	var lockDocs []interface{}
+	for _, ticket := range b.Tickets {
+		for i := 0; i < duration; i++ {
+			idx := si + i
+			if idx < len(venueSlots) {
+				lockDocs = append(lockDocs, bson.M{
+					"play_id":    b.PlayID,
+					"date":       b.Date,
+					"slot":       venueSlots[idx],
+					"court_name": ticket.Category,
+					"booking_id": b.ID,
+				})
 			}
 		}
+	}
+	if len(lockDocs) > 0 {
+		_, lockErr := config.SlotLocksCol.InsertMany(ctx, lockDocs,
+			options.InsertMany().SetOrdered(true))
+		if lockErr != nil {
+			if mongo.IsDuplicateKeyError(lockErr) {
+				return fmt.Errorf(
+					"this slot was just booked by someone else — please select a different time",
+				)
+			}
+			return fmt.Errorf("could not reserve slot: %w", lockErr)
+		}
+	}
+
+	_, err = config.PlayBookingsCol.InsertOne(ctx, b)
+	if err != nil {
+		// Attempt to clean up lock docs if booking insert fails
 		if len(lockDocs) > 0 {
-			_, lockErr := config.SlotLocksCol.InsertMany(sessCtx, lockDocs,
-				options.InsertMany().SetOrdered(true))
-			if lockErr != nil {
-				if mongo.IsDuplicateKeyError(lockErr) {
-					return nil, fmt.Errorf(
-						"this slot was just booked by someone else — please select a different time",
-					)
-				}
-				return nil, fmt.Errorf("could not reserve slot: %w", lockErr)
-			}
+			cleanCtx, cleanCancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cleanCancel()
+			_, _ = config.SlotLocksCol.DeleteMany(cleanCtx, bson.M{"booking_id": b.ID})
 		}
-
-		_, err = config.PlayBookingsCol.InsertOne(sessCtx, b)
-		return nil, err
-	})
-
-	return err
+		return err
+	}
+	return nil
 }

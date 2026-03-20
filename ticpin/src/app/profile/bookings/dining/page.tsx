@@ -99,8 +99,11 @@ export default function DiningBookingsPage() {
                     </div>
                  </div>
                  
-                 <button className="w-full h-[48px] bg-zinc-50 border border-zinc-100 rounded-xl text-black font-bold text-[14px] mt-2">
-                   View Details
+                 <button 
+                   onClick={() => router.push(`/bookings/${booking.id}`)}
+                   className="w-full h-[48px] bg-zinc-50 border border-zinc-100 rounded-xl text-black font-bold text-[14px] mt-2"
+                 >
+                   View Booking Details
                  </button>
               </div>
             ))}

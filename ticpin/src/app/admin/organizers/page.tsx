@@ -27,6 +27,7 @@ function OrganizerDetailView({ organizerId, onClose, onStatusChange }: {
     const [isEditMode, setIsEditMode] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [savedOk, setSavedOk] = useState(false);
+    const [panViewerUrl, setPanViewerUrl] = useState<string | null>(null);
 
     useEffect(() => {
         adminApi.getOrganizerDetail(organizerId)
@@ -142,205 +143,274 @@ function OrganizerDetailView({ organizerId, onClose, onStatusChange }: {
     };
 
     return (
-        <div className="fixed inset-0 z-[70] bg-[#F3F0FF] h-screen overflow-hidden flex flex-col">
-            <div className="max-w-[1800px] mx-auto w-full h-full flex flex-col p-8">
-                {/* Header */}
-                <div className="mb-6 flex justify-between items-start">
-                    <div className="flex flex-col">
-                        <div className="flex items-center gap-4">
-                            <button onClick={onClose} className="p-2 hover:bg-white/50 rounded-full transition-colors">
-                                <ArrowLeft size={32} />
-                            </button>
-                            <h1 className="text-[40px] font-semibold text-black leading-tight" style={{ fontFamily: 'var(--font-anek-latin)' }}>Admin Panel</h1>
-                        </div>
-                        <div className="w-16 h-1 bg-black mt-2 ml-14" />
-                        <h2 className="text-[28px] font-medium text-black mt-3 ml-14" style={{ fontFamily: 'var(--font-anek-latin)' }}>Organizer Moderation</h2>
-                    </div>
-
-                    {/* Edit Toggle */}
-                    <div className="flex items-center gap-3 mt-2">
-                        {savedOk && (
-                            <span className="flex items-center gap-1.5 text-green-600 font-bold text-[15px] bg-green-50 px-4 py-2 rounded-xl">
-                                <Check size={18} /> Saved!
-                            </span>
-                        )}
-                        {!isEditMode ? (
-                            <button
-                                onClick={() => setIsEditMode(true)}
-                                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#5331EA] text-white font-bold hover:bg-[#4020C9] transition-all shadow-sm"
-                            >
-                                <Edit3 size={18} /> Edit Details
-                            </button>
-                        ) : (
-                            <>
-                                <button onClick={handleDiscard}
-                                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-zinc-300 text-zinc-600 font-bold hover:bg-white transition-all">
-                                    <DiscardIcon size={18} /> Discard
+        <>
+            <div className="fixed inset-0 z-[70] bg-[#F3F0FF] h-screen overflow-hidden flex flex-col">
+                <div className="max-w-[1800px] mx-auto w-full h-full flex flex-col p-8">
+                    {/* Header */}
+                    <div className="mb-6 flex justify-between items-start">
+                        <div className="flex flex-col">
+                            <div className="flex items-center gap-4">
+                                <button onClick={onClose} className="p-2 hover:bg-white/50 rounded-full transition-colors">
+                                    <ArrowLeft size={32} />
                                 </button>
-                                <button onClick={handleSave} disabled={isSaving}
-                                    className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-black text-white font-bold hover:bg-zinc-800 transition-all disabled:opacity-50">
-                                    <Save size={18} /> {isSaving ? 'Saving…' : 'Save'}
+                                <h1 className="text-[40px] font-semibold text-black leading-tight" style={{ fontFamily: 'var(--font-anek-latin)' }}>Admin Panel</h1>
+                            </div>
+                            <div className="w-16 h-1 bg-black mt-2 ml-14" />
+                            <h2 className="text-[28px] font-medium text-black mt-3 ml-14" style={{ fontFamily: 'var(--font-anek-latin)' }}>Organizer Moderation</h2>
+                        </div>
+
+                        {/* Edit Toggle */}
+                        <div className="flex items-center gap-3 mt-2">
+                            {savedOk && (
+                                <span className="flex items-center gap-1.5 text-green-600 font-bold text-[15px] bg-green-50 px-4 py-2 rounded-xl">
+                                    <Check size={18} /> Saved!
+                                </span>
+                            )}
+                            {!isEditMode ? (
+                                <button
+                                    onClick={() => setIsEditMode(true)}
+                                    className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#5331EA] text-white font-bold hover:bg-[#4020C9] transition-all shadow-sm"
+                                >
+                                    <Edit3 size={18} /> Edit Details
                                 </button>
-                            </>
-                        )}
-                    </div>
-                </div>
-
-                {/* Content Area */}
-                <div className="flex-1 bg-white rounded-[40px] shadow-sm p-12 flex gap-10 overflow-hidden">
-                    {/* Left: Identity */}
-                    <div className="w-1/4 flex flex-col">
-                        <div className="bg-[#EEEDFC] rounded-[30px] flex-1 flex flex-col items-center p-10 shadow-inner overflow-y-auto">
-                            <div className="w-36 h-36 bg-white rounded-full flex items-center justify-center shadow-lg mb-6 overflow-hidden flex-shrink-0 relative">
-                                {profile?.profilePhoto ? (
-                                    <Image src={profile.profilePhoto} alt="Profile" fill className="object-cover" />
-                                ) : (
-                                    <User size={72} className="text-[#AC9BF7]" />
-                                )}
-                            </div>
-                            <h3 className="text-[22px] font-bold text-black text-center break-words w-full leading-tight">
-                                {profile?.name || 'NAME NOT SET'}
-                            </h3>
-                            <p className="text-[16px] text-[#686868] mt-1 break-all text-center w-full">{org.email}</p>
-                            <p className="text-[12px] text-[#686868] mt-2 font-mono bg-white/50 px-3 py-1 rounded-full border border-[#AC9BF7]/20 break-all text-center">
-                                ID: {org.id}
-                            </p>
-
-                            {/* Category Status Badges */}
-                            <div className="mt-6 pt-6 border-t border-black/10 w-full space-y-3">
-                                <p className="text-[12px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Category Status</p>
-                                {Object.entries(org.categoryStatus || {}).map(([cat, status]) => (
-                                    <div key={cat} className={`flex items-center justify-between px-4 py-2 rounded-xl text-[14px] font-bold border-2
-                                        ${status === 'approved' ? 'bg-[#D1FAE5] text-[#065F46] border-[#065F46]/10'
-                                            : status === 'rejected' ? 'bg-red-50 text-red-700 border-red-100'
-                                                : 'bg-[#FFD9B7] text-[#8B4D1A] border-orange-200/20'}`}>
-                                        <span className="uppercase tracking-widest text-[11px]">{cat}</span>
-                                        <span>{(status as string).toUpperCase()}</span>
-                                    </div>
-                                ))}
-                            </div>
+                            ) : (
+                                <>
+                                    <button onClick={handleDiscard}
+                                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-zinc-300 text-zinc-600 font-bold hover:bg-white transition-all">
+                                        <DiscardIcon size={18} /> Discard
+                                    </button>
+                                    <button onClick={handleSave} disabled={isSaving}
+                                        className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-black text-white font-bold hover:bg-zinc-800 transition-all disabled:opacity-50">
+                                        <Save size={18} /> {isSaving ? 'Saving…' : 'Save'}
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
 
-                    {/* Right: All Fields + Setup Details */}
-                    <div className="w-3/4 flex flex-col overflow-y-auto px-4">
-
-                        {/* --- Organizer & Profile Fields --- */}
-                        <div className="mb-8">
-                            <div className="flex items-center justify-between mb-4">
-                                <h4 className="text-[20px] font-bold text-black uppercase tracking-wider">Account Details</h4>
-                                {isEditMode && <span className="text-[12px] text-[#5331EA] bg-[#EEEDFC] px-3 py-1 rounded-full font-bold">✏ Edit mode on</span>}
-                            </div>
-                            <div className="grid grid-cols-2 gap-x-10 gap-y-4">
-                                {orgFields.map((row, i) => (
-                                    <div key={i} className={`flex flex-col border-b pb-1.5 ${isEditMode && !row.readOnly ? 'border-[#AC9BF7]/50' : 'border-[#AEAEAE]'}`}>
-                                        <span className="text-[14px] font-medium text-[#686868]">{row.label}</span>
-                                        <div className="mt-0.5 flex justify-between items-center">
-                                            {renderField(row)}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* --- Setup Details per category --- */}
-                        {detail.setups && detail.setups.length > 0 ? (
-                            detail.setups.map((setup, idx) => (
-                                <div key={setup.id} className={`${idx > 0 ? 'mt-10 pt-10 border-t-2 border-dashed border-[#EEEDFC]' : ''}`}>
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h4 className="text-[20px] font-bold text-black uppercase tracking-wider">{setup.category} Application</h4>
-                                        <span className={`px-5 py-1.5 rounded-full text-[14px] font-bold border-2 ${detail.organizer.categoryStatus?.[setup.category] === 'approved' ? 'bg-[#D1FAE5] text-[#065F46] border-[#065F46]/20' :
-                                            detail.organizer.categoryStatus?.[setup.category] === 'rejected' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-[#FFD9B7] text-[#8B4D1A] border-orange-200/20'
-                                            }`}>
-                                            {detail.organizer.categoryStatus?.[setup.category]?.toUpperCase() || 'PENDING'}
-                                        </span>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-x-10 gap-y-4">
-                                        {[
-                                            { label: 'Organisation Type', path: `setups.${idx}.orgType`, value: setup.orgType },
-                                            { label: 'Phone', path: `setups.${idx}.phone`, value: setup.phone },
-                                            { label: 'GST Number', path: `setups.${idx}.gstNumber`, value: setup.gstNumber },
-                                            { label: 'PAN Card No.', path: `setups.${idx}.pan`, value: setup.pan },
-                                            { label: 'PAN Name', path: `setups.${idx}.panName`, value: setup.panName },
-                                            { label: 'Date of Birth', path: `setups.${idx}.panDOB`, value: setup.panDOB },
-                                            { label: 'Bank Account No.', path: `setups.${idx}.bankAccountNo`, value: setup.bankAccountNo },
-                                            { label: 'Bank Name', path: `setups.${idx}.bankName`, value: setup.bankName },
-                                            { label: 'IFSC Code', path: `setups.${idx}.bankIfsc`, value: setup.bankIfsc },
-                                            { label: 'Account Holder', path: `setups.${idx}.accountHolder`, value: setup.accountHolder },
-                                            { label: 'Backup Email', path: `setups.${idx}.backupEmail`, value: setup.backupEmail },
-                                            { label: 'Backup Phone', path: `setups.${idx}.backupPhone`, value: setup.backupPhone },
-                                        ].map((row, i) => (
-                                            <div key={i} className={`flex flex-col border-b pb-1.5 ${isEditMode ? 'border-[#AC9BF7]/50' : 'border-[#AEAEAE]'}`}>
-                                                <span className="text-[14px] font-medium text-[#686868]">{row.label}</span>
-                                                <div className="mt-0.5 flex justify-between items-center">
-                                                    {renderField(row)}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {/* PAN Document Link */}
-                                    {setup.panCardUrl && (
-                                        <div className="mt-5">
-                                            <a href={setup.panCardUrl} target="_blank" rel="noreferrer"
-                                                className="inline-flex items-center gap-2 text-[#5331EA] font-bold text-[16px] bg-[#EEEDFC] px-6 py-2.5 rounded-[12px] hover:bg-[#AC9BF7] hover:text-white transition-all shadow-sm">
-                                                <ExternalLink size={18} /> View PAN Document
-                                            </a>
-                                        </div>
+                    {/* Content Area */}
+                    <div className="flex-1 bg-white rounded-[40px] shadow-sm p-12 flex gap-10 overflow-hidden">
+                        {/* Left: Identity */}
+                        <div className="w-1/4 flex flex-col">
+                            <div className="bg-[#EEEDFC] rounded-[30px] flex-1 flex flex-col items-center p-10 shadow-inner overflow-y-auto">
+                                <div className="w-36 h-36 bg-white rounded-full flex items-center justify-center shadow-lg mb-6 overflow-hidden flex-shrink-0 relative">
+                                    {profile?.profilePhoto ? (
+                                        <Image src={profile.profilePhoto} alt="Profile" fill className="object-cover" />
+                                    ) : (
+                                        <User size={72} className="text-[#AC9BF7]" />
                                     )}
-
-                                    {/* Approval Actions */}
-                                    <div className="mt-6 flex gap-4 justify-end">
-                                        {showRejectInput === setup.id ? (
-                                            <div className="flex flex-1 gap-3 items-center">
-                                                <input
-                                                    type="text"
-                                                    placeholder="Rejection reason…"
-                                                    className="flex-1 h-12 px-5 rounded-[12px] border-2 border-red-100 focus:border-red-400 focus:outline-none text-[16px]"
-                                                    value={rejectionReason}
-                                                    onChange={e => setRejectionReason(e.target.value)}
-                                                />
-                                                <button onClick={() => handleStatusUpdate(setup.category, 'rejected')}
-                                                    className="h-12 px-6 rounded-[12px] bg-red-600 text-white font-bold text-[16px] hover:scale-105 transition-transform shadow-md">
-                                                    Confirm
-                                                </button>
-                                                <button onClick={() => { setShowRejectInput(null); setRejectionReason(''); }}
-                                                    className="text-[#686868] font-bold hover:text-black px-2">
-                                                    Cancel
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <>
-                                                <button onClick={() => handleStatusUpdate(setup.category, 'approved')}
-                                                    disabled={detail.organizer.categoryStatus?.[setup.category] === 'approved' || updating === setup.category}
-                                                    className="px-8 py-2.5 rounded-[12px] bg-[#D1FAE5] text-[#065F46] text-[16px] font-bold transition-all hover:scale-105 disabled:opacity-50 shadow-sm">
-                                                    ✓ Approve
-                                                </button>
-                                                <button onClick={() => setShowRejectInput(setup.id)}
-                                                    disabled={detail.organizer.categoryStatus?.[setup.category] === 'rejected' || updating === setup.category}
-                                                    className="px-8 py-2.5 rounded-[12px] bg-red-50 text-red-700 text-[16px] font-bold transition-all hover:scale-105 disabled:opacity-50 shadow-sm">
-                                                    ✗ Reject
-                                                </button>
-                                                <button onClick={() => handleStatusUpdate(setup.category, 'pending')}
-                                                    className="px-8 py-2.5 rounded-[12px] bg-[#EEEDFC] text-black border border-[#AC9BF7]/30 text-[16px] font-bold transition-all hover:scale-105 shadow-sm">
-                                                    ⟳ Pending
-                                                </button>
-                                            </>
-                                        )}
-                                    </div>
                                 </div>
-                            ))
-                        ) : (
-                            <div className="flex-1 flex items-center justify-center flex-col opacity-40 mt-10">
-                                <Clock size={64} className="mb-4" />
-                                <p className="text-[22px] font-bold">No application setups submitted yet</p>
+                                <h3 className="text-[22px] font-bold text-black text-center break-words w-full leading-tight">
+                                    {profile?.name || 'NAME NOT SET'}
+                                </h3>
+                                <p className="text-[16px] text-[#686868] mt-1 break-all text-center w-full">{org.email}</p>
+                                <p className="text-[12px] text-[#686868] mt-2 font-mono bg-white/50 px-3 py-1 rounded-full border border-[#AC9BF7]/20 break-all text-center">
+                                    ID: {org.id}
+                                </p>
+
+                                {/* Category Status Badges */}
+                                <div className="mt-6 pt-6 border-t border-black/10 w-full space-y-3">
+                                    <p className="text-[12px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Category Status</p>
+                                    {Object.entries(org.categoryStatus || {}).map(([cat, status]) => (
+                                        <div key={cat} className={`flex items-center justify-between px-4 py-2 rounded-xl text-[14px] font-bold border-2
+                                            ${status === 'approved' ? 'bg-[#D1FAE5] text-[#065F46] border-[#065F46]/10'
+                                                : status === 'rejected' ? 'bg-red-50 text-red-700 border-red-100'
+                                                    : 'bg-[#FFD9B7] text-[#8B4D1A] border-orange-200/20'}`}>
+                                            <span className="uppercase tracking-widest text-[11px]">{cat}</span>
+                                            <span>{(status as string).toUpperCase()}</span>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
-                        )}
+                        </div>
+
+                        {/* Right: All Fields + Setup Details */}
+                        <div className="w-3/4 flex flex-col overflow-y-auto px-4">
+
+                            {/* --- Organizer & Profile Fields --- */}
+                            <div className="mb-8">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h4 className="text-[20px] font-bold text-black uppercase tracking-wider">Account Details</h4>
+                                    {isEditMode && <span className="text-[12px] text-[#5331EA] bg-[#EEEDFC] px-3 py-1 rounded-full font-bold">✏ Edit mode on</span>}
+                                </div>
+                                <div className="grid grid-cols-2 gap-x-10 gap-y-4">
+                                    {orgFields.map((row, i) => (
+                                        <div key={i} className={`flex flex-col border-b pb-1.5 ${isEditMode && !row.readOnly ? 'border-[#AC9BF7]/50' : 'border-[#AEAEAE]'}`}>
+                                            <span className="text-[14px] font-medium text-[#686868]">{row.label}</span>
+                                            <div className="mt-0.5 flex justify-between items-center">
+                                                {renderField(row)}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* --- Setup Details per category --- */}
+                            {detail.setups && detail.setups.length > 0 ? (
+                                detail.setups.map((setup, idx) => (
+                                    <div key={setup.id} className={`${idx > 0 ? 'mt-10 pt-10 border-t-2 border-dashed border-[#EEEDFC]' : ''}`}>
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h4 className="text-[20px] font-bold text-black uppercase tracking-wider">{setup.category} Application</h4>
+                                            <span className={`px-5 py-1.5 rounded-full text-[14px] font-bold border-2 ${detail.organizer.categoryStatus?.[setup.category] === 'approved' ? 'bg-[#D1FAE5] text-[#065F46] border-[#065F46]/20' :
+                                                detail.organizer.categoryStatus?.[setup.category] === 'rejected' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-[#FFD9B7] text-[#8B4D1A] border-orange-200/20'
+                                                }`}>
+                                                {detail.organizer.categoryStatus?.[setup.category]?.toUpperCase() || 'PENDING'}
+                                            </span>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-x-10 gap-y-4">
+                                            {[
+                                                { label: 'Organisation Type', path: `setups.${idx}.orgType`, value: setup.orgType },
+                                                { label: 'Phone', path: `setups.${idx}.phone`, value: setup.phone },
+                                                { label: 'GST Number', path: `setups.${idx}.gstNumber`, value: setup.gstNumber },
+                                                { label: 'PAN Card No.', path: `setups.${idx}.pan`, value: setup.pan },
+                                                { label: 'PAN Name', path: `setups.${idx}.panName`, value: setup.panName },
+                                                { label: 'Date of Birth', path: `setups.${idx}.panDOB`, value: setup.panDOB },
+                                                { label: 'Bank Account No.', path: `setups.${idx}.bankAccountNo`, value: setup.bankAccountNo },
+                                                { label: 'Bank Name', path: `setups.${idx}.bankName`, value: setup.bankName },
+                                                { label: 'IFSC Code', path: `setups.${idx}.bankIfsc`, value: setup.bankIfsc },
+                                                { label: 'Account Holder', path: `setups.${idx}.accountHolder`, value: setup.accountHolder },
+                                                { label: 'Backup Email', path: `setups.${idx}.backupEmail`, value: setup.backupEmail },
+                                                { label: 'Backup Phone', path: `setups.${idx}.backupPhone`, value: setup.backupPhone },
+                                            ].map((row, i) => (
+                                                <div key={i} className={`flex flex-col border-b pb-1.5 ${isEditMode ? 'border-[#AC9BF7]/50' : 'border-[#AEAEAE]'}`}>
+                                                    <span className="text-[14px] font-medium text-[#686868]">{row.label}</span>
+                                                    <div className="mt-0.5 flex justify-between items-center">
+                                                        {renderField(row)}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* PAN Document Viewer Trigger */}
+                                        {setup.panCardUrl && (
+                                            <div className="mt-5 flex gap-3 flex-wrap">
+                                                <button
+                                                    onClick={() => setPanViewerUrl(setup.panCardUrl)}
+                                                    className="inline-flex items-center gap-2 text-[#5331EA] font-bold text-[16px] bg-[#EEEDFC] px-6 py-2.5 rounded-[12px] hover:bg-[#AC9BF7] hover:text-white transition-all shadow-sm"
+                                                >
+                                                    <ExternalLink size={18} /> View PAN Document
+                                                </button>
+                                                <a
+                                                    href={setup.panCardUrl}
+                                                    download
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="inline-flex items-center gap-2 text-zinc-600 font-bold text-[16px] bg-zinc-100 px-6 py-2.5 rounded-[12px] hover:bg-zinc-200 transition-all shadow-sm"
+                                                >
+                                                    ↓ Download
+                                                </a>
+                                            </div>
+                                        )}
+
+                                        {/* Approval Actions */}
+                                        <div className="mt-6 flex gap-4 justify-end">
+                                            {showRejectInput === setup.id ? (
+                                                <div className="flex flex-1 gap-3 items-center">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Rejection reason…"
+                                                        className="flex-1 h-12 px-5 rounded-[12px] border-2 border-red-100 focus:border-red-400 focus:outline-none text-[16px]"
+                                                        value={rejectionReason}
+                                                        onChange={e => setRejectionReason(e.target.value)}
+                                                    />
+                                                    <button onClick={() => handleStatusUpdate(setup.category, 'rejected')}
+                                                        className="h-12 px-6 rounded-[12px] bg-red-600 text-white font-bold text-[16px] hover:scale-105 transition-transform shadow-md">
+                                                        Confirm
+                                                    </button>
+                                                    <button onClick={() => { setShowRejectInput(null); setRejectionReason(''); }}
+                                                        className="text-[#686868] font-bold hover:text-black px-2">
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <button onClick={() => handleStatusUpdate(setup.category, 'approved')}
+                                                        disabled={detail.organizer.categoryStatus?.[setup.category] === 'approved' || updating === setup.category}
+                                                        className="px-8 py-2.5 rounded-[12px] bg-[#D1FAE5] text-[#065F46] text-[16px] font-bold transition-all hover:scale-105 disabled:opacity-50 shadow-sm">
+                                                        ✓ Approve
+                                                    </button>
+                                                    <button onClick={() => setShowRejectInput(setup.id)}
+                                                        disabled={detail.organizer.categoryStatus?.[setup.category] === 'rejected' || updating === setup.category}
+                                                        className="px-8 py-2.5 rounded-[12px] bg-red-50 text-red-700 text-[16px] font-bold transition-all hover:scale-105 disabled:opacity-50 shadow-sm">
+                                                        ✗ Reject
+                                                    </button>
+                                                    <button onClick={() => handleStatusUpdate(setup.category, 'pending')}
+                                                        className="px-8 py-2.5 rounded-[12px] bg-[#EEEDFC] text-black border border-[#AC9BF7]/30 text-[16px] font-bold transition-all hover:scale-105 shadow-sm">
+                                                        ⟳ Pending
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="flex-1 flex items-center justify-center flex-col opacity-40 mt-10">
+                                    <Clock size={64} className="mb-4" />
+                                    <p className="text-[22px] font-bold">No application setups submitted yet</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+
+            {/* PAN Document Modal Overlay */}
+            {panViewerUrl && (
+                <div
+                    className="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center p-4"
+                    onClick={() => setPanViewerUrl(null)}
+                >
+                    <div
+                        className="relative bg-white rounded-[20px] overflow-hidden shadow-2xl w-full max-w-5xl"
+                        style={{ height: '90vh' }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between px-6 py-3 bg-[#EEEDFC] border-b border-[#AC9BF7]/30">
+                            <span className="text-[16px] font-bold text-[#5331EA]">PAN Document Viewer</span>
+                            <div className="flex items-center gap-3">
+                                <a
+                                    href={panViewerUrl ?? '#'}
+                                    download
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-[13px] font-semibold text-[#5331EA] bg-white px-4 py-1.5 rounded-lg hover:bg-[#5331EA] hover:text-white transition-all"
+                                >
+                                    ↓ Download
+                                </a>
+                                <a
+                                    href={panViewerUrl ?? '#'}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-[13px] font-semibold text-zinc-600 bg-white px-4 py-1.5 rounded-lg hover:bg-zinc-100 transition-all"
+                                >
+                                    Open in Tab ↗
+                                </a>
+                                <button
+                                    onClick={() => setPanViewerUrl(null)}
+                                    className="w-8 h-8 rounded-full bg-white flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all text-zinc-500"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* PDF iframe Viewer */}
+                        {panViewerUrl && (
+                            <iframe
+                                key={panViewerUrl}
+                                src={`https://docs.google.com/viewer?url=${encodeURIComponent(panViewerUrl)}&embedded=true`}
+                                className="w-full"
+                                style={{ height: 'calc(90vh - 56px)', border: 'none' }}
+                                title="PAN Document"
+                                allow="fullscreen"
+                            />
+                        )}
+                    </div>
+                </div>
+            )}
+        </>
     );
 }
 

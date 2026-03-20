@@ -96,8 +96,11 @@ export default function EventBookingsPage() {
                     </div>
                  </div>
                  
-                 <button className="w-full h-[48px] bg-zinc-900 text-white rounded-xl text-black font-bold text-[14px] mt-2 relative z-10 active:bg-black transition-colors">
-                   View QR Ticket
+                 <button 
+                   onClick={() => router.push(`/bookings/${booking.id}`)}
+                   className="w-full h-[48px] bg-zinc-900 text-white rounded-xl text-black font-bold text-[14px] mt-2 relative z-10 active:bg-black transition-colors"
+                 >
+                   View Booking Details
                  </button>
               </div>
             ))}

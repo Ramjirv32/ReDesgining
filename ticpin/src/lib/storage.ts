@@ -4,7 +4,7 @@
  * Storage utility with proper security classification:
  * - Cookies: Important/sensitive data (user session, auth tokens)
  * - sessionStorage: Temporary payment flow data (cleared on tab close)
- * - localStorage: Non-sensitive app data (location, preferences, drafts)
+ * - No localStorage: All data comes from backend with proper caching
  */
 
 const COOKIE_OPTIONS = '; path=/; SameSite=Lax';
@@ -58,21 +58,6 @@ export const storage = {
         sessionStorage.removeItem(key);
     },
 
-    // ─── localStorage: Non-sensitive app data ──────────────────────
-    // Use for: location, preferences, drafts, UI state
-    
-    getLocal: (key: string): string | null => {
-        if (typeof window === 'undefined') return null;
-        return localStorage.getItem(key);
-    },
-    
-    setLocal: (key: string, value: string): void => {
-        if (typeof window === 'undefined') return;
-        localStorage.setItem(key, value);
-    },
-    
-    removeLocal: (key: string): void => {
-        if (typeof window === 'undefined') return;
-        localStorage.removeItem(key);
-    },
+    // ─── NO localStorage: All data from backend ─────────────────────
+    // All backend data should be fetched fresh or cached in React state
 };

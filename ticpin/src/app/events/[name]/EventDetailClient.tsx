@@ -6,7 +6,9 @@ import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import DOMPurify from 'isomorphic-dompurify';
 import { useUserSession } from '@/lib/auth/user';
+import { getOrganizerSession, clearOrganizerSession } from '@/lib/auth/organizer';
 import AuthModal from '@/components/modals/AuthModal';
+import OrganizerLogoutModal from '@/components/modals/OrganizerLogoutModal';
 import MobileEventDetails from '@/components/mobile/MobileEventDetails';
 
 interface Artist {
@@ -59,7 +61,9 @@ export default function EventDetailClient({ event, id }: { event: EventData, id:
     const [showFullDesc, setShowFullDesc] = useState(false);
     const [activeFaq, setActiveFaq] = useState<number | null>(null);
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
     const session = useUserSession();
+    const organizerSession = getOrganizerSession();
 
     // Scroll to top when page loads
     useEffect(() => {
@@ -67,11 +71,23 @@ export default function EventDetailClient({ event, id }: { event: EventData, id:
     }, []);
 
     const handleBook = () => {
+        // Check if organizer is logged in
+        if (organizerSession) {
+            setShowLogoutModal(true);
+            return;
+        }
+        
         if (!session) {
             setIsLoginModalOpen(true);
             return;
         }
         router.push(`/events/${id}/book/tickets`);
+    };
+
+    const handleOrganizerLogout = () => {
+        clearOrganizerSession();
+        // Show user auth modal after organizer logout
+        setIsLoginModalOpen(true);
     };
 
     const formattedDate = useMemo(() => {
@@ -359,6 +375,13 @@ export default function EventDetailClient({ event, id }: { event: EventData, id:
                 isOpen={isLoginModalOpen}
                 onClose={() => setIsLoginModalOpen(false)}
                 onSuccess={() => router.push(`/events/${id}/book/tickets`)}
+            />
+            
+            <OrganizerLogoutModal
+                isOpen={showLogoutModal}
+                onClose={() => setShowLogoutModal(false)}
+                onConfirm={handleOrganizerLogout}
+                organizerName={organizerSession?.email}
             />
         </div>
     );

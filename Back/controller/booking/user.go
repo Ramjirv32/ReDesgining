@@ -2,13 +2,13 @@ package bookingctrl
 
 import (
 	"context"
+	"fmt"
 	"ticpin-backend/config"
 	"ticpin-backend/models"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -47,7 +47,8 @@ func GetBookingHistory(c *fiber.Ctx) error {
 		if cursor.All(ctx, &events) == nil {
 			for _, b := range events {
 				allBookings = append(allBookings, fiber.Map{
-					"id":           b.ID.Hex(),
+					"id":           b.BookingID, // Use booking_id instead of ObjectId
+					"booking_id":   b.BookingID, // Include booking_id explicitly
 					"category":     "events",
 					"event_name":   b.EventName,
 					"order_amount": b.OrderAmount,
@@ -67,7 +68,8 @@ func GetBookingHistory(c *fiber.Ctx) error {
 		if cursor.All(ctx, &dinings) == nil {
 			for _, b := range dinings {
 				allBookings = append(allBookings, fiber.Map{
-					"id":           b.ID.Hex(),
+					"id":           b.BookingID, // Use booking_id instead of ObjectId
+					"booking_id":   b.BookingID, // Include booking_id explicitly
 					"category":     "dining",
 					"venue_name":   b.VenueName,
 					"date":         b.Date,
@@ -88,7 +90,8 @@ func GetBookingHistory(c *fiber.Ctx) error {
 		if cursor.All(ctx, &plays) == nil {
 			for _, b := range plays {
 				allBookings = append(allBookings, fiber.Map{
-					"id":           b.ID.Hex(),
+					"id":           b.BookingID, // Use booking_id instead of ObjectId
+					"booking_id":   b.BookingID, // Include booking_id explicitly
 					"category":     "play",
 					"venue_name":   b.VenueName,
 					"date":         b.Date,
@@ -130,7 +133,8 @@ func GetBookingsByEmail(c *fiber.Ctx) error {
 		if cursor.All(ctx, &events) == nil {
 			for _, b := range events {
 				allBookings = append(allBookings, fiber.Map{
-					"id":           b.ID.Hex(),
+					"id":           b.BookingID, // Use booking_id instead of ObjectId
+					"booking_id":   b.BookingID, // Include booking_id explicitly
 					"category":     "events",
 					"event_name":   b.EventName,
 					"order_amount": b.OrderAmount,
@@ -150,7 +154,8 @@ func GetBookingsByEmail(c *fiber.Ctx) error {
 		if cursor.All(ctx, &dinings) == nil {
 			for _, b := range dinings {
 				allBookings = append(allBookings, fiber.Map{
-					"id":           b.ID.Hex(),
+					"id":           b.BookingID, // Use booking_id instead of ObjectId
+					"booking_id":   b.BookingID, // Include booking_id explicitly
 					"category":     "dining",
 					"venue_name":   b.VenueName,
 					"date":         b.Date,
@@ -171,7 +176,8 @@ func GetBookingsByEmail(c *fiber.Ctx) error {
 		if cursor.All(ctx, &plays) == nil {
 			for _, b := range plays {
 				allBookings = append(allBookings, fiber.Map{
-					"id":           b.ID.Hex(),
+					"id":           b.BookingID, // Use booking_id instead of ObjectId
+					"booking_id":   b.BookingID, // Include booking_id explicitly
 					"category":     "play",
 					"venue_name":   b.VenueName,
 					"date":         b.Date,
@@ -191,10 +197,12 @@ func GetBookingsByEmail(c *fiber.Ctx) error {
 func CancelBooking(c *fiber.Ctx) error {
 	id := c.Params("id")
 	category := c.Query("category") // events, dining, play
+	userID := c.Query("user_id")
 
-	objID, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid booking id"})
+	fmt.Printf("DEBUG: CancelBooking called - ID: %s, Category: %s, UserID: %s\n", id, category, userID)
+
+	if id == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "booking id is required"})
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -202,27 +210,113 @@ func CancelBooking(c *fiber.Ctx) error {
 
 	var col *mongo.Collection
 	switch category {
-	case "events":
+	case "events", "event":
 		col = config.BookingsCol
 	case "dining":
 		col = config.DiningBookingsCol
 	case "play":
 		col = config.PlayBookingsCol
 	default:
-		return c.Status(400).JSON(fiber.Map{"error": "invalid category"})
+		// Try to find in all collections using booking_id - same logic as GetBookingDetails
+		var booking interface{}
+
+		// Check main bookings (events)
+		booking = &models.Booking{}
+		err := config.BookingsCol.FindOne(ctx, bson.M{"booking_id": id}).Decode(booking)
+		if err == nil {
+			col = config.BookingsCol
+			category = "events"
+		} else {
+			// Check play bookings
+			booking = &models.PlayBooking{}
+			err = config.PlayBookingsCol.FindOne(ctx, bson.M{"booking_id": id}).Decode(booking)
+			if err == nil {
+				col = config.PlayBookingsCol
+				category = "play"
+			} else {
+				// Check dining bookings
+				booking = &models.DiningBooking{}
+				err = config.DiningBookingsCol.FindOne(ctx, bson.M{"booking_id": id}).Decode(booking)
+				if err == nil {
+					col = config.DiningBookingsCol
+					category = "dining"
+				} else {
+					return c.Status(404).JSON(fiber.Map{"error": "booking not found"})
+				}
+			}
+		}
 	}
 
-	_, err = col.UpdateOne(ctx, bson.M{"_id": objID}, bson.M{"$set": bson.M{"status": "cancelled"}})
+	// Verify user access if userID provided
+	if userID != "" {
+		var hasAccess bool
+		switch category {
+		case "events":
+			var booking models.Booking
+			col.FindOne(ctx, bson.M{"booking_id": id}).Decode(&booking)
+			hasAccess = booking.UserID == userID || booking.UserEmail == c.Query("email")
+		case "play":
+			var booking models.PlayBooking
+			col.FindOne(ctx, bson.M{"booking_id": id}).Decode(&booking)
+			hasAccess = booking.UserID == userID || booking.UserEmail == c.Query("email")
+		case "dining":
+			var booking models.DiningBooking
+			col.FindOne(ctx, bson.M{"booking_id": id}).Decode(&booking)
+			hasAccess = booking.UserID == userID || booking.UserEmail == c.Query("email")
+		}
+
+		if !hasAccess {
+			return c.Status(403).JSON(fiber.Map{"error": "access denied"})
+		}
+	}
+
+	// Check if already cancelled
+	var existingBooking interface{}
+	switch category {
+	case "events":
+		existingBooking = &models.Booking{}
+		col.FindOne(ctx, bson.M{"booking_id": id}).Decode(existingBooking)
+	case "play":
+		existingBooking = &models.PlayBooking{}
+		col.FindOne(ctx, bson.M{"booking_id": id}).Decode(existingBooking)
+	case "dining":
+		existingBooking = &models.DiningBooking{}
+		col.FindOne(ctx, bson.M{"booking_id": id}).Decode(existingBooking)
+	}
+
+	var isCancelled bool
+	switch b := existingBooking.(type) {
+	case *models.Booking:
+		isCancelled = b.Status == "cancelled"
+	case *models.PlayBooking:
+		isCancelled = b.Status == "cancelled"
+	case *models.DiningBooking:
+		isCancelled = b.Status == "cancelled"
+	}
+
+	if isCancelled {
+		return c.Status(400).JSON(fiber.Map{"error": "booking already cancelled"})
+	}
+
+	update := bson.M{
+		"$set": bson.M{
+			"status":       "cancelled",
+			"cancelled_at": time.Now(),
+		},
+	}
+
+	_, err := col.UpdateOne(ctx, bson.M{"booking_id": id}, update)
 	if err != nil {
+		fmt.Printf("DEBUG: Error updating booking status: %v\n", err)
 		return c.Status(500).JSON(fiber.Map{"error": "failed to cancel booking"})
 	}
 
-	// For play bookings: release the slot-lock documents so the slots can be rebooked.
-	// Cancelling the booking without removing these locks would permanently block those slots
-	// because the unique index on play_slot_locks would reject any future InsertMany attempt.
-	if category == "play" {
-		_, _ = config.SlotLocksCol.DeleteMany(ctx, bson.M{"booking_id": objID})
-	}
+	fmt.Printf("DEBUG: Successfully cancelled booking %s in collection %s\n", id, category)
 
-	return c.JSON(fiber.Map{"message": "booking cancelled successfully"})
+	return c.JSON(fiber.Map{
+		"message":      "booking cancelled successfully",
+		"booking_id":   id,
+		"status":       "cancelled",
+		"cancelled_at": time.Now(),
+	})
 }

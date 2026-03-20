@@ -8,6 +8,9 @@ import { bookingApi, OfferItem, PaymentOrderResponse } from '@/lib/api/booking';
 import { profileApi } from '@/lib/api/profile';
 import Link from 'next/link';
 import { useUserSession } from '@/lib/auth/user';
+import { useOrganizerSession, clearOrganizerSession } from '@/lib/auth/organizer';
+import AuthModal from '@/components/modals/AuthModal';
+import OrganizerLogoutModal from '@/components/modals/OrganizerLogoutModal';
 
 interface CartData {
     eventId: string;
@@ -43,6 +46,7 @@ export default function ReviewBookingPage() {
     const params = useParams();
     const name = params?.name as string;
     const session = useUserSession();
+    const organizerSession = useOrganizerSession();
     const billingRef = useRef<HTMLDivElement>(null);
     const [cart, setCart] = useState<CartData | null>(null);
     const [eventData, setEventData] = useState<{id: string; name: string} | null>(null);
@@ -95,13 +99,21 @@ export default function ReviewBookingPage() {
     const [bookingLoading, setBookingLoading] = useState(false);
     const [bookingError, setBookingError] = useState('');
     const [bookingId, setBookingId] = useState('');
+    const [showAuthModal, setShowAuthModal] = useState(false);
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
 
     useEffect(() => {
         const saved = sessionStorage.getItem('ticpin_cart');
         if (saved) {
             const data = JSON.parse(saved);
             // Default to 'event' if not specified
-            setCart({ ...data, type: data.type || 'event' });
+            const cartData = { ...data, type: data.type || 'event' };
+            setCart(cartData);
+            
+            // Set eventData when cart is loaded for events
+            if (cartData.type === 'event' && cartData.eventId) {
+                setEventData({ id: cartData.eventId, name: cartData.eventName });
+            }
         }
 
         const savedEmail = sessionStorage.getItem('ticpin_billing_email');
@@ -135,6 +147,12 @@ export default function ReviewBookingPage() {
                     const p = JSON.parse(pending);
                     if (p.cart) {
                         setCart(p.cart);
+                        
+                        // Set eventData for events
+                        if (p.cart.type === 'event' && p.cart.eventId) {
+                            setEventData({ id: p.cart.eventId, name: p.cart.eventName });
+                        }
+                        
                         setStep('billing');
                         setBookingLoading(true);
                         // Clear the URL params without reload
@@ -328,6 +346,17 @@ export default function ReviewBookingPage() {
             setBookingError('Please enter a valid 10-digit mobile number');
             return;
         }
+
+        if (organizerSession) {
+            setShowLogoutModal(true);
+            return;
+        }
+
+        if (!session) {
+            setShowAuthModal(true);
+            return;
+        }
+
         setBookingError('');
         setStep('billing');
         setTimeout(() => {
@@ -541,6 +570,11 @@ export default function ReviewBookingPage() {
 
     const toggleSection = (section: 'offers' | 'coupons') => {
         setExpandedSection(prev => prev === section ? 'none' : section);
+    };
+
+    const handleOrganizerLogout = () => {
+        clearOrganizerSession();
+        setShowAuthModal(true);
     };
 
     if (step === 'success') {
@@ -1128,6 +1162,14 @@ export default function ReviewBookingPage() {
                     </div>
                 )}
             </main>
+
+            <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+            <OrganizerLogoutModal 
+                isOpen={showLogoutModal} 
+                onClose={() => setShowLogoutModal(false)} 
+                onConfirm={handleOrganizerLogout}
+                organizerName={organizerSession?.email}
+            />
         </div>
     );
 }

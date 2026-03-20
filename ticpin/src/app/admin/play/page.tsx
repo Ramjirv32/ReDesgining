@@ -4,6 +4,8 @@ import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { adminApi, AdminListing, ListingStatus } from '@/lib/api/admin';
+import ImageUpload from '@/components/admin/ImageUpload';
+import TimeInput from '@/components/admin/TimeInput';
 import {
   X, RefreshCw, Trash2, ChevronRight, Search, User, Edit3, Save, XCircle, 
   ImageOff, Upload, Check, Plus, Minus, ExternalLink, Play, Instagram, Youtube,
@@ -23,7 +25,7 @@ function DetailViewPanel({ ev, onStatus, updating, onUpdate, onNext, currentInde
   currentIndex: number;
   totalCount: number;
 }) {
-  const id = ev.id || ev._id || '';
+  const id = ev.name || ev.id || '';
   const [editedEv, setEditedEv] = useState<AdminListing>({ ...ev });
   const [isSaving, setIsSaving] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -682,7 +684,7 @@ function DetailViewPanel({ ev, onStatus, updating, onUpdate, onNext, currentInde
 function AdminPlayContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const detailId = searchParams.get('id');
+  const detailName = searchParams.get('id');
 
   const [listings, setListings] = useState<AdminListing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -700,15 +702,15 @@ function AdminPlayContent() {
 
   useEffect(() => { load(); }, [load]);
 
-  const getId = (item: AdminListing) => item.id || item._id || '';
+  const getName = (item: AdminListing) => item.name || item.id || '';
   const filtered = (listings || []).filter(l => l.status === activeTab);
-  const preview = detailId ? listings.find(l => getId(l) === detailId) : null;
+  const preview = detailName ? listings.find(l => getName(l) === detailName) : null;
 
   const handleStatus = async (id: string, status: ListingStatus) => {
     setUpdating(id);
     try {
       await adminApi.updatePlayStatus(id, status);
-      setListings(prev => prev.map(item => (getId(item) === id ? { ...item, status } : item)));
+      setListings(prev => prev.map(item => (getName(item) === id ? { ...item, status } : item)));
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Update failed');
     } finally {
@@ -719,17 +721,20 @@ function AdminPlayContent() {
   const handleUpdate = async (id: string, payload: Partial<AdminListing>) => {
     try {
       await adminApi.updatePlay(id, payload);
-      setListings(prev => prev.map(l => (getId(l) === id ? { ...l, ...payload } : l)));
+      setListings(prev => prev.map(item => (getName(item) === id ? { ...item, ...payload } : item)));
     } catch (e) {
-      throw e;
+      alert(e instanceof Error ? e.message : 'Update failed');
     }
   };
 
   const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this play listing?')) return;
     try {
       await adminApi.deletePlay(id);
-      setListings(prev => prev.filter(l => getId(l) !== id));
-      router.push('/admin/play');
+      setListings(prev => prev.filter(item => getName(item) !== id));
+      if (preview && getName(preview) === id) {
+        router.replace('/admin/play');
+      }
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Delete failed');
     }
@@ -746,14 +751,14 @@ function AdminPlayContent() {
           onUpdate={handleUpdate}
           onClose={() => router.push('/admin/play')}
           onNext={() => {
-            const idx = filtered.findIndex(l => getId(l) === getId(preview));
+            const idx = filtered.findIndex(l => getName(l) === getName(preview));
             if (idx !== -1 && idx < filtered.length - 1) {
-              router.push(`?id=${getId(filtered[idx + 1])}`);
+              router.push(`?id=${getName(filtered[idx + 1])}`);
             } else if (filtered.length > 0) {
-              router.push(`?id=${getId(filtered[0])}`);
+              router.push(`?id=${getName(filtered[0])}`);
             }
           }}
-          currentIndex={filtered.findIndex(l => getId(l) === getId(preview))}
+          currentIndex={filtered.findIndex(l => getName(l) === getName(preview))}
           totalCount={filtered.length}
         />
       </div>
@@ -798,7 +803,7 @@ function AdminPlayContent() {
           ) : (
             <div className="grid grid-cols-1 gap-12 relative">
               {filtered.map(item => {
-                const id = getId(item);
+                const id = getName(item);
                 const thumb = item.portrait_image_url || item.images?.[0] || item.image || null;
                 return (
                   <div key={id} className="relative group">

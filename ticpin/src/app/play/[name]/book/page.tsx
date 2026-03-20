@@ -5,7 +5,9 @@ import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Sunrise, Sun, Sunset, Moon } from 'lucide-react';
 import { useUserSession } from '@/lib/auth/user';
+import { getOrganizerSession, clearOrganizerSession } from '@/lib/auth/organizer';
 import AuthModal from '@/components/modals/AuthModal';
+import OrganizerLogoutModal from '@/components/modals/OrganizerLogoutModal';
 
 interface Court {
     id: string;
@@ -99,10 +101,12 @@ export default function PlayBookPage() {
     const params = useParams();
     const venueName = params?.name as string;
     const session = useUserSession();
+    const organizerSession = getOrganizerSession();
 
     const [venue, setVenue] = useState<RealPlay | null>(null);
     const [loading, setLoading] = useState(true);
     const [showAuthModal, setShowAuthModal] = useState(false);
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
 
     const dates = getNextDays(7);
     const [selectedDate, setSelectedDate] = useState(dates[0].key);
@@ -309,10 +313,23 @@ export default function PlayBookPage() {
 
     const handleBooking = () => {
         if (!venue) return;
+        
+        // Check if organizer is logged in
+        if (organizerSession) {
+            setShowLogoutModal(true);
+            return;
+        }
+        
         if (!session) { setShowAuthModal(true); return; }
         if (selectedCourtIds.length === 0) { alert('Please select at least one court.'); return; }
         if (!selectedSlot) { alert('Please select a time slot.'); return; }
         doBooking(venue);
+    };
+
+    const handleOrganizerLogout = () => {
+        clearOrganizerSession();
+        // Show user auth modal after organizer logout
+        setShowAuthModal(true);
     };
 
     if (loading) {
@@ -679,6 +696,13 @@ export default function PlayBookPage() {
                     setShowAuthModal(false);
                     if (venue) doBooking(venue);
                 }}
+            />
+            
+            <OrganizerLogoutModal
+                isOpen={showLogoutModal}
+                onClose={() => setShowLogoutModal(false)}
+                onConfirm={handleOrganizerLogout}
+                organizerName={organizerSession?.email}
             />
         </div>
     );

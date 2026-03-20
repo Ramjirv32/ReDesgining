@@ -93,7 +93,8 @@ export default function FAQPage() {
 
       {/* FAQ Accordion */}
       <main className="px-4 space-y-8 pb-[100px]">
-        {faqs.map((group, groupIdx) => {
+        <div className="max-w-3xl mx-auto">
+          {faqs.map((group, groupIdx) => {
           const filteredQuestions = group.questions.filter(q => 
             q.q.toLowerCase().includes(searchQuery.toLowerCase()) || 
             q.a.toLowerCase().includes(searchQuery.toLowerCase())
@@ -135,6 +136,7 @@ export default function FAQPage() {
             </div>
           );
         })}
+        </div>
       </main>
 
       {/* Still Have Questions? */}

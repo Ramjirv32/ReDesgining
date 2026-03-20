@@ -6,6 +6,7 @@
 // The frontend reads/writes ticpin_session for UI state.
 // clearOrganizerSession() calls the logout endpoint to clear the HttpOnly cookie too.
 
+import { useState, useEffect } from 'react';
 import { clearAllData } from './clearAll';
 
 export interface OrganizerSession {
@@ -85,4 +86,18 @@ export function updateSessionCategoryStatus(category: string, status: string): v
     ...session,
     categoryStatus: { ...(session.categoryStatus ?? {}), [category]: status },
   });
+}
+
+/** React hook to get and track organizer session */
+export function useOrganizerSession() {
+  const [session, setSession] = useState<OrganizerSession | null>(null);
+
+  useEffect(() => {
+    const load = () => setSession(getOrganizerSession());
+    load();
+    window.addEventListener('organizer-auth-change', load);
+    return () => window.removeEventListener('organizer-auth-change', load);
+  }, []);
+
+  return session;
 }

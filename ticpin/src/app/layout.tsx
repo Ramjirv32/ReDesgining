@@ -5,6 +5,8 @@ import "./globals.css";
 import NavbarWrapper from "@/components/layout/NavbarWrapper";
 import Providers from "@/components/providers/Providers";
 import { ToastProvider } from "@/components/ui/Toast";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import FloatingChatWidget from "@/components/FloatingChatWidget";
 
 const anekLatin = Anek_Latin({
   subsets: ["latin"],
@@ -64,8 +66,11 @@ export default function RootLayout({
       <body className={`${anekLatin.variable} ${inter.variable} ${anekTamil.variable} ${anekTamilCondensed.variable} font-sans antialiased text-black`}>
         <ToastProvider>
           <Providers>
-            <NavbarWrapper />
-            {children}
+            <ErrorBoundary>
+              <NavbarWrapper />
+              {children}
+              <FloatingChatWidget />
+            </ErrorBoundary>
           </Providers>
         </ToastProvider>
       </body>
