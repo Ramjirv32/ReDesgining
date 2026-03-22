@@ -65,7 +65,6 @@ func GetExistingSetupHandler(c *fiber.Ctx) error {
 	return c.JSON(setup)
 }
 
-// GetMyExistingSetup reads organizerID from JWT — no URL param / no RequireSelfOrAdmin needed.
 func GetMyExistingSetup(c *fiber.Ctx) error {
 	organizerID, ok := c.Locals("organizerId").(string)
 	if !ok || organizerID == "" {
@@ -85,7 +84,7 @@ func GetMyExistingSetup(c *fiber.Ctx) error {
 	}).Decode(&setup)
 
 	if err != nil && category != "" {
-		// Fall back to any setup for this organizer
+
 		err = config.GetDB().Collection("organizer_setups").FindOne(context.Background(), bson.M{
 			"organizerId": objID,
 		}).Decode(&setup)
@@ -97,7 +96,6 @@ func GetMyExistingSetup(c *fiber.Ctx) error {
 	return c.JSON(setup)
 }
 
-// GetMyStatus reads organizerID from JWT — no URL param / no RequireSelfOrAdmin needed.
 func GetMyStatus(c *fiber.Ctx) error {
 	organizerID, ok := c.Locals("organizerId").(string)
 	if !ok || organizerID == "" {
@@ -117,7 +115,6 @@ func GetMyStatus(c *fiber.Ctx) error {
 	}
 	return c.JSON(fiber.Map{"categoryStatus": catStatus})
 }
-
 
 func SendBackupOTPHandler(c *fiber.Ctx) error {
 	organizerID, ok := c.Locals("organizerId").(string)
@@ -174,7 +171,6 @@ func VerifyPANHandler(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	// Check for duplicate PAN before verification
 	if err := organizersvc.CheckPANDuplicate(req.PAN, organizerID); err != nil {
 		if err.Error() == "pan_already_used" {
 			return c.Status(400).JSON(fiber.Map{"error": "This PAN card is already registered by another account."})

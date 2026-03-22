@@ -22,6 +22,7 @@ func CreateCoupon(c *fiber.Ctx) error {
 		DiscountType  string   `json:"discount_type" validate:"required,oneof=percent flat"`
 		DiscountValue float64  `json:"discount_value" validate:"required,gt=0"`
 		UserIDs       []string `json:"user_ids"`
+		IsPublic      bool     `json:"is_public"`
 		ValidFrom     string   `json:"valid_from"`
 		ValidUntil    string   `json:"valid_until"`
 		MaxUses       int      `json:"max_uses"`
@@ -64,6 +65,7 @@ func CreateCoupon(c *fiber.Ctx) error {
 		DiscountType:  input.DiscountType,
 		DiscountValue: input.DiscountValue,
 		UserIDs:       userObjIDs,
+		IsPublic:      input.IsPublic,
 		ValidFrom:     validFrom,
 		ValidUntil:    validUntil,
 		MaxUses:       input.MaxUses,
@@ -125,11 +127,12 @@ func ValidateCoupon(c *fiber.Ctx) error {
 		EventID     string  `json:"event_id"`
 		OrderAmount float64 `json:"order_amount"`
 		UserID      string  `json:"user_id"`
+		UserEmail   string  `json:"user_email"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
 	}
-	result, err := couponsvc.Validate(req.Code, req.EventID, req.OrderAmount, req.UserID)
+	result, err := couponsvc.Validate(req.Code, req.EventID, req.OrderAmount, req.UserID, req.UserEmail)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -149,6 +152,7 @@ func UpdateCoupon(c *fiber.Ctx) error {
 		DiscountType  string   `json:"discount_type"`
 		DiscountValue float64  `json:"discount_value"`
 		UserIDs       []string `json:"user_ids"`
+		IsPublic      bool     `json:"is_public"`
 		ValidFrom     string   `json:"valid_from"`
 		ValidUntil    string   `json:"valid_until"`
 		MaxUses       int      `json:"max_uses"`
@@ -185,6 +189,7 @@ func UpdateCoupon(c *fiber.Ctx) error {
 		DiscountType:  input.DiscountType,
 		DiscountValue: input.DiscountValue,
 		UserIDs:       userObjIDs,
+		IsPublic:      input.IsPublic,
 		ValidFrom:     validFrom,
 		ValidUntil:    validUntil,
 		MaxUses:       input.MaxUses,

@@ -1,8 +1,8 @@
 package play
 
 import (
-	ctrl "ticpin-backend/controller/play"
 	offerctrl "ticpin-backend/controller/admin/offer"
+	ctrl "ticpin-backend/controller/play"
 
 	"github.com/gofiber/fiber/v2"
 )

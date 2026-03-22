@@ -142,7 +142,6 @@ function UserProfileContent() {
                             Home Address
                         </h3>
                         <div className="space-y-4">
-                            <DetailRow icon={<Globe size={18} />} label="Country" value={profile.country || 'India'} />
                             <DetailRow icon={<Map size={18} />} label="City / State" value={`${profile.city || profile.district || 'Not set'}, ${profile.state || ''}`} />
                             <div className="pt-2">
                                 <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Full Address</p>

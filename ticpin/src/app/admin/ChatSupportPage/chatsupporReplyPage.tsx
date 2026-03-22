@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useState, useEffect, useRef } from "react";
 import { useUserSession } from "@/lib/auth/user";
 import { getOrganizerSession } from "@/lib/auth/organizer";
+import { FileText } from "lucide-react";
 
 interface Question {
     question: string;
@@ -17,21 +18,34 @@ interface Message {
     message: string;
     sender: string;
     createdAt: string;
+    fileUrl?: string;
+    fileType?: string;
+}
+
+interface ChatSession {
+    sessionId: string;
+    status: 'pending' | 'active' | 'closed';
+    userEmail: string;
+    category: string;
 }
 
 const ChatSupportReplyContent = () => {
     const searchParams = useSearchParams();
     const sessionId = searchParams.get("sessionId") || "";
     const supportType = searchParams.get("type") || "General";
-    
+
     const userSession = useUserSession();
     const organizerSession = getOrganizerSession();
-    
+
     const [questions, setQuestions] = useState<Question[]>([]);
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputMessage, setInputMessage] = useState("");
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
+    const [sessionStatus, setSessionStatus] = useState<'pending' | 'active' | 'closed'>('pending');
+    const [accepting, setAccepting] = useState(false);
+    const [ending, setEnding] = useState(false);
+    const [lightboxImage, setLightboxImage] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const userType = organizerSession ? "organizer" : "user";
@@ -51,9 +65,9 @@ const ChatSupportReplyContent = () => {
 
             try {
                 // Fetch questions
-                const category = supportType.toLowerCase().includes("dining") ? "dining" : 
-                               supportType.toLowerCase().includes("event") ? "event" : "play";
-                
+                const category = supportType.toLowerCase().includes("dining") ? "dining" :
+                    supportType.toLowerCase().includes("event") ? "event" : "play";
+
                 const questionsRes = await fetch(`/backend/api/chat/questions?category=${category}`);
                 if (questionsRes.ok) {
                     const qData = await questionsRes.json();
@@ -66,6 +80,16 @@ const ChatSupportReplyContent = () => {
                     const mData = await messagesRes.json();
                     setMessages(mData);
                 }
+
+                // Fetch session details to get status
+                const sessionsRes = await fetch(`/backend/api/chat/sessions?admin=true`);
+                if (sessionsRes.ok) {
+                    const sessionsData = await sessionsRes.json();
+                    const currentSession = sessionsData.sessions?.find((s: any) => s.sessionId === sessionId || s.session_id === sessionId);
+                    if (currentSession) {
+                        setSessionStatus(currentSession.status);
+                    }
+                }
             } catch (error) {
                 console.error("Error fetching chat data:", error);
             } finally {
@@ -74,8 +98,8 @@ const ChatSupportReplyContent = () => {
         };
 
         fetchData();
-        
-        // Poll for new messages every 5 seconds
+
+        // Poll for new messages every 15 seconds
         const interval = setInterval(async () => {
             if (sessionId) {
                 try {
@@ -88,7 +112,7 @@ const ChatSupportReplyContent = () => {
                     console.error("Error polling messages:", error);
                 }
             }
-        }, 5000);
+        }, 15000);
 
         return () => clearInterval(interval);
     }, [sessionId, supportType]);
@@ -133,6 +157,54 @@ const ChatSupportReplyContent = () => {
             console.error("Error sending message:", error);
         } finally {
             setSending(false);
+        }
+    };
+
+    const handleAcceptTicket = async () => {
+        if (!sessionId || accepting) return;
+        setAccepting(true);
+        try {
+            const response = await fetch(`/backend/api/chat/sessions/${sessionId}/accept`, {
+                method: 'POST',
+                credentials: 'include',
+            });
+            if (response.ok) {
+                setSessionStatus('active');
+                // Refresh messages to show welcome message
+                const messagesRes = await fetch(`/backend/api/chat/sessions/${sessionId}/messages`);
+                if (messagesRes.ok) {
+                    const mData = await messagesRes.json();
+                    setMessages(mData);
+                }
+            }
+        } catch (error) {
+            console.error('Error accepting ticket:', error);
+        } finally {
+            setAccepting(false);
+        }
+    };
+
+    const handleEndChat = async () => {
+        if (!sessionId || ending) return;
+        setEnding(true);
+        try {
+            const response = await fetch(`/backend/api/chat/sessions/${sessionId}/end`, {
+                method: 'POST',
+                credentials: 'include',
+            });
+            if (response.ok) {
+                setSessionStatus('closed');
+                // Refresh messages to show system message
+                const messagesRes = await fetch(`/backend/api/chat/sessions/${sessionId}/messages`);
+                if (messagesRes.ok) {
+                    const mData = await messagesRes.json();
+                    setMessages(mData);
+                }
+            }
+        } catch (error) {
+            console.error('Error ending chat:', error);
+        } finally {
+            setEnding(false);
         }
     };
 
@@ -209,13 +281,47 @@ const ChatSupportReplyContent = () => {
                         <p className="text-[12px] text-[#686868]">User: {searchParams.get("userEmail") || "Unknown"}</p>
                     </div>
                 </div>
-                <div className="relative w-[120px] h-[30px]">
-                    <Image
-                        src="/ticpin-logo-black.png"
-                        alt="TICPIN"
-                        fill
-                        className="object-contain"
-                    />
+                <div className="flex items-center gap-3">
+                    {/* Status Badge */}
+                    <span className={`px-3 py-1 rounded-full text-[12px] font-medium ${
+                        sessionStatus === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                        sessionStatus === 'active' ? 'bg-green-100 text-green-700' :
+                        'bg-gray-100 text-gray-600'
+                    }`}>
+                        {sessionStatus === 'pending' ? 'Pending' : 
+                         sessionStatus === 'active' ? 'Active' : 'Closed'}
+                    </span>
+                    
+                    {/* Accept Ticket Button - Only for pending */}
+                    {sessionStatus === 'pending' && (
+                        <button
+                            onClick={handleAcceptTicket}
+                            disabled={accepting}
+                            className="px-4 py-2 bg-[#5331EA] text-white rounded-full text-[13px] font-medium hover:bg-[#4529c9] transition-colors disabled:opacity-50"
+                        >
+                            {accepting ? 'Accepting...' : 'Accept Ticket'}
+                        </button>
+                    )}
+                    
+                    {/* End Chat Button - Only for active */}
+                    {sessionStatus === 'active' && (
+                        <button
+                            onClick={handleEndChat}
+                            disabled={ending}
+                            className="px-4 py-2 bg-red-500 text-white rounded-full text-[13px] font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
+                        >
+                            {ending ? 'Ending...' : 'End Chat'}
+                        </button>
+                    )}
+                    
+                    <div className="relative w-[120px] h-[30px]">
+                        <Image
+                            src="/ticpin-logo-black.png"
+                            alt="TICPIN"
+                            fill
+                            className="object-contain"
+                        />
+                    </div>
                 </div>
             </header>
 
@@ -243,13 +349,44 @@ const ChatSupportReplyContent = () => {
                                         </div>
                                     )}
                                     <div
-                                        className={`max-w-[70%] p-3 rounded-lg ${
-                                            msg.sender === "user"
+                                        className={`max-w-[70%] p-3 rounded-lg ${msg.sender === "user"
                                                 ? "bg-[#5331EA] text-white"
                                                 : "bg-[#D8D3EF] text-black"
-                                        }`}
+                                            }`}
                                     >
                                         <p className="text-[14px]">{msg.message}</p>
+                                        
+                                        {/* Display file attachment */}
+                                        {msg.fileUrl && (
+                                            <div className="mt-1">
+                                                {msg.fileType === 'image' ? (
+                                                    <div className="relative group cursor-pointer overflow-hidden rounded-xl border-2 border-white/30 shadow-md bg-zinc-900 flex items-center justify-center min-h-[150px] w-full max-w-[280px]"
+                                                         onClick={() => setLightboxImage(msg.fileUrl?.startsWith('blob:') ? msg.fileUrl : msg.fileUrl?.startsWith('http') ? msg.fileUrl : `/backend${msg.fileUrl}`)}>
+                                                        <img 
+                                                            src={msg.fileUrl?.startsWith('blob:') ? msg.fileUrl : msg.fileUrl?.startsWith('http') ? msg.fileUrl : `/backend${msg.fileUrl}`} 
+                                                            alt="Shared image" 
+                                                            className="max-w-full max-h-[220px] object-cover transition-all duration-300 group-hover:scale-105"
+                                                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                                        />
+                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                                            <div className="bg-white/10 backdrop-blur-md px-3 py-1 rounded-full text-white text-[10px] border border-white/20">
+                                                                View Full
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg p-3 cursor-pointer hover:bg-white/20 transition-all shadow-sm max-w-[250px]"
+                                                         onClick={() => window.open(msg.fileUrl?.startsWith('blob:') ? msg.fileUrl : msg.fileUrl?.startsWith('http') ? msg.fileUrl : `/backend${msg.fileUrl}`, '_blank')}>
+                                                        <div className="w-8 h-8 bg-red-500 rounded flex items-center justify-center flex-shrink-0 text-white shadow-sm">
+                                                            <FileText size={16} />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <span className="text-[11px] font-bold block truncate">PDF Document</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             ))}
@@ -274,7 +411,8 @@ const ChatSupportReplyContent = () => {
                             </div>
                         )}
 
-                        {/* Input */}
+                        {/* Input - Disabled if not active */}
+                        {sessionStatus === 'active' ? (
                         <div className="flex items-center gap-3">
                             <div className="w-[18px] h-[18px] flex items-center justify-center cursor-pointer transform rotate-90 relative">
                                 <Image
@@ -305,9 +443,39 @@ const ChatSupportReplyContent = () => {
                                 />
                             </button>
                         </div>
+                        ) : (
+                        <div className="flex items-center justify-center py-4">
+                            <p className="text-[14px] text-[#686868]">
+                                {sessionStatus === 'pending' 
+                                    ? 'Accept this ticket to start chatting' 
+                                    : 'This chat has been ended'}
+                            </p>
+                        </div>
+                        )}
                     </div>
                 </div>
             </div>
+
+            {/* Lightbox Modal */}
+            {lightboxImage && (
+                <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center animate-in fade-in duration-300"
+                     onClick={() => setLightboxImage(null)}>
+                    <button 
+                        className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+                        onClick={() => setLightboxImage(null)}
+                    >
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M18 6L6 18M6 6l12 12" />
+                        </svg>
+                    </button>
+                    <img 
+                        src={lightboxImage || ''} 
+                        alt="Full size" 
+                        className="max-w-[95vw] max-h-[90vh] object-contain shadow-2xl animate-in zoom-in-95 duration-300"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
+            )}
         </div>
     );
 };

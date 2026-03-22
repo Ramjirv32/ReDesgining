@@ -64,8 +64,9 @@ export default function ViewCouponForm({ onBack }: { onBack: () => void }) {
                 day: '2-digit',
                 month: 'long',
                 year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
             });
         } catch { return iso; }
     };

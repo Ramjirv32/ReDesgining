@@ -61,5 +61,5 @@ func UploadProfilePhoto(c *fiber.Ctx) error {
 	if err := profilesvc.UpdatePhoto(userID, photoURL); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	return c.JSON(fiber.Map{"photoURL": photoURL})
+	return c.JSON(fiber.Map{"url": photoURL})
 }

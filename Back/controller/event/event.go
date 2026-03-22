@@ -30,7 +30,6 @@ func GetAllEvents(c *fiber.Ctx) error {
 func GetEventByID(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	// Decode URL-encoded event name
 	decodedId, err := url.QueryUnescape(id)
 	if err != nil {
 		decodedId = id
@@ -47,17 +46,15 @@ func GetEventByID(c *fiber.Ctx) error {
 func GetEventAvailability(c *fiber.Ctx) error {
 	eventId := c.Params("id")
 
-	// Decode URL-encoded event name
 	decodedId, err := url.QueryUnescape(eventId)
 	if err != nil {
 		decodedId = eventId
 	}
 
-	// For now, return empty availability - this can be enhanced later
 	availability := map[string]interface{}{
 		"booked":  map[string]int{},
 		"total":   map[string]int{},
-		"eventId": decodedId, // Use the decodedId to avoid unused variable error
+		"eventId": decodedId,
 	}
 
 	return c.Status(fiber.StatusOK).JSON(availability)
@@ -66,7 +63,6 @@ func GetEventAvailability(c *fiber.Ctx) error {
 func GetEventOffers(c *fiber.Ctx) error {
 	eventId := c.Params("id")
 
-	// Decode URL-encoded event name
 	decodedId, err := url.QueryUnescape(eventId)
 	if err != nil {
 		decodedId = eventId

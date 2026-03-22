@@ -37,7 +37,6 @@ func SendOTP(email string) error {
 		return err
 	}
 
-	// Send OTP synchronously to ensure delivery in serverless environments (like Vercel)
 	if err := config.SendPlayOTP(email, otp); err != nil {
 		return err
 	}

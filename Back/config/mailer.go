@@ -125,3 +125,60 @@ func SendNotificationEmail(toEmail, subject, content, imageURL string) error {
 
 	return sendOTP(from, pass, toEmail, subject, body)
 }
+
+func SendCancellationEmail(toEmail, bookingID, category, venueName, date, grandTotal string) error {
+	from := os.Getenv("EVENTS_EMAIL")
+	if from == "" {
+		from = os.Getenv("ADMIN_EMAIL")
+	}
+	pass := os.Getenv("EVENTS_APP_PASSWORD")
+	if pass == "" {
+		pass = os.Getenv("ADMIN_APP_PASSWORD")
+	}
+	if from == "" || pass == "" {
+		return nil
+	}
+
+	subject := fmt.Sprintf("[Ticpin] Booking Cancelled: #%s", bookingID)
+
+	var categoryLabel string
+	switch category {
+	case "events":
+		categoryLabel = "Event"
+	case "play":
+		categoryLabel = "Play"
+	case "dining":
+		categoryLabel = "Dining"
+	default:
+		categoryLabel = "Booking"
+	}
+
+	body := fmt.Sprintf(`
+<html><body style="font-family:sans-serif;color:#222;max-width:600px;margin:auto;">
+  <div style="background:#FF4444;color:white;padding:20px;text-align:center;border-radius:12px 12px 0 0;">
+    <h2 style="margin:0;">Booking Cancelled</h2>
+  </div>
+  <div style="background:#f9f9f9;padding:24px;border-radius:0 0 12px 12px;">
+    <p style="font-size:16px;line-height:1.6;">Hello,</p>
+    <p style="font-size:16px;line-height:1.6;">Your %s booking has been successfully cancelled.</p>
+    
+    <table style="width:100%%;background:white;border-radius:8px;margin:20px 0;border-collapse:collapse;">
+      <tr><td style="padding:12px;border-bottom:1px solid #eee;color:#666;">Booking ID</td><td style="padding:12px;border-bottom:1px solid #eee;font-weight:600;">#%s</td></tr>
+      <tr><td style="padding:12px;border-bottom:1px solid #eee;color:#666;">Category</td><td style="padding:12px;border-bottom:1px solid #eee;font-weight:600;">%s</td></tr>
+      <tr><td style="padding:12px;border-bottom:1px solid #eee;color:#666;">Venue/Event</td><td style="padding:12px;border-bottom:1px solid #eee;font-weight:600;">%s</td></tr>
+      <tr><td style="padding:12px;border-bottom:1px solid #eee;color:#666;">Date</td><td style="padding:12px;border-bottom:1px solid #eee;font-weight:600;">%s</td></tr>
+      <tr><td style="padding:12px;color:#666;">Refund Amount</td><td style="padding:12px;font-weight:600;color:#2E7D32;">₹%s</td></tr>
+    </table>
+    
+    <p style="font-size:14px;line-height:1.6;color:#666;margin-top:24px;">
+      If you have any questions about your cancellation or refund, please contact our support team.
+    </p>
+    
+    <p style="font-size:14px;line-height:1.6;color:#999;margin-top:30px;">
+      This is an automated message from Ticpin. Please do not reply to this email.
+    </p>
+  </div>
+</body></html>`, categoryLabel, bookingID, categoryLabel, venueName, date, grandTotal)
+
+	return sendOTP(from, pass, toEmail, subject, body)
+}

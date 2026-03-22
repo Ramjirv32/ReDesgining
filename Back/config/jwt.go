@@ -40,7 +40,7 @@ func IsProduction() bool {
 type OrganizerClaims struct {
 	OrganizerID    string            `json:"organizerId"`
 	Email          string            `json:"email"`
-	Role           string            `json:"role"` // "admin", "organizer"
+	Role           string            `json:"role"`
 	IsAdmin        bool              `json:"isAdmin"`
 	CategoryStatus map[string]string `json:"categoryStatus"`
 	jwt.RegisteredClaims
@@ -55,7 +55,7 @@ type SessionInfo struct {
 }
 
 func GenerateOrganizerToken(organizerID, email, role string, isAdmin bool, categoryStatus map[string]string) (string, error) {
-	// Set default role if empty
+
 	if role == "" {
 		if isAdmin {
 			role = "admin"

@@ -12,7 +12,7 @@ import (
 )
 
 func ClearDatabase() {
-	// MongoDB connection - update with your actual connection string
+
 	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
 	client, err := mongo.Connect(context.Background(), clientOptions)
 	if err != nil {
@@ -20,11 +20,9 @@ func ClearDatabase() {
 	}
 	defer client.Disconnect(context.Background())
 
-	// Get database name - update with your actual database name
-	dbName := "ticpin" // Change this to your database name
+	dbName := "ticpin"
 	db := client.Database(dbName)
 
-	// List all collections
 	collections, err := db.ListCollectionNames(context.Background(), bson.M{})
 	if err != nil {
 		log.Fatal("Failed to list collections:", err)
@@ -36,7 +34,6 @@ func ClearDatabase() {
 		fmt.Printf("%d. %s\n", i+1, name)
 	}
 
-	// Confirmation prompt
 	fmt.Print("\n⚠️  WARNING: This will permanently delete ALL collections and data!")
 	fmt.Print("Type 'DELETE ALL' to confirm: ")
 	var confirmation string
@@ -47,7 +44,6 @@ func ClearDatabase() {
 		return
 	}
 
-	// Delete all collections
 	fmt.Println("\n🗑️  Deleting collections...")
 	startTime := time.Now()
 

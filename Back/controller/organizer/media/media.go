@@ -156,7 +156,6 @@ func GetOrganizerMe(c *fiber.Ctx) error {
 		role = "admin"
 	}
 
-	// Always refresh session cookies with latest categoryStatus from database
 	err = config.SetAuthCookies(c, org.ID.Hex(), org.Email, role, "", isAdmin, org.CategoryStatus)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "failed to refresh session"})

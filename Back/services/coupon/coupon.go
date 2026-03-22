@@ -106,44 +106,43 @@ func GetByCategory(category string, userID string) ([]models.Coupon, error) {
 		},
 	}
 
-	var filter bson.M
+	var userFilter bson.M
 	if userID != "" {
 		userObjID, err := primitive.ObjectIDFromHex(userID)
 		if err == nil {
-			filter = bson.M{
-				"$and": bson.A{
-					base,
-					usageFilter,
-					bson.M{"$or": bson.A{
-						bson.M{"user_ids": bson.M{"$exists": false}},
-						bson.M{"user_ids": bson.M{"$size": 0}},
-						bson.M{"user_ids": userObjID},
-					}},
+			userFilter = bson.M{
+				"$or": bson.A{
+					bson.M{"is_public": true},
+					bson.M{"user_ids": bson.M{"$exists": false}},
+					bson.M{"user_ids": bson.M{"$size": 0}},
+					bson.M{"user_ids": userObjID},
 				},
 			}
 		} else {
-			filter = bson.M{
-				"$and": bson.A{
-					base,
-					usageFilter,
-					bson.M{"$or": bson.A{
-						bson.M{"user_ids": bson.M{"$exists": false}},
-						bson.M{"user_ids": bson.M{"$size": 0}},
-					}},
+			userFilter = bson.M{
+				"$or": bson.A{
+					bson.M{"is_public": true},
+					bson.M{"user_ids": bson.M{"$exists": false}},
+					bson.M{"user_ids": bson.M{"$size": 0}},
 				},
 			}
 		}
 	} else {
-		filter = bson.M{
-			"$and": bson.A{
-				base,
-				usageFilter,
-				bson.M{"$or": bson.A{
-					bson.M{"user_ids": bson.M{"$exists": false}},
-					bson.M{"user_ids": bson.M{"$size": 0}},
-				}},
+		userFilter = bson.M{
+			"$or": bson.A{
+				bson.M{"is_public": true},
+				bson.M{"user_ids": bson.M{"$exists": false}},
+				bson.M{"user_ids": bson.M{"$size": 0}},
 			},
 		}
+	}
+
+	filter := bson.M{
+		"$and": bson.A{
+			base,
+			usageFilter,
+			userFilter,
+		},
 	}
 
 	cursor, err := col.Find(ctx, filter)
@@ -163,13 +162,12 @@ type ValidateResult struct {
 	DiscountAmount float64
 }
 
-func Validate(code string, eventID string, orderAmount float64, userID string) (*ValidateResult, error) {
+func Validate(code string, eventID string, orderAmount float64, userID string, userEmail string) (*ValidateResult, error) {
 	code = strings.ToUpper(strings.TrimSpace(code))
 	if code == "" {
 		return nil, errors.New("coupon code is required")
 	}
 
-	// Debug logging
 	fmt.Printf("DEBUG: Validate coupon - Code: %s, EventID: %s, Amount: %.2f, UserID: %s\n", code, eventID, orderAmount, userID)
 
 	col := config.CouponsCol
@@ -181,8 +179,7 @@ func Validate(code string, eventID string, orderAmount float64, userID string) (
 		return nil, errors.New("invalid coupon code")
 	}
 
-	// Debug logging
-	fmt.Printf("DEBUG: Found coupon - Category: %s, IsActive: %t, ValidFrom: %v, ValidUntil: %v\n", c.Category, c.IsActive, c.ValidFrom, c.ValidUntil)
+	fmt.Printf("DEBUG: Found coupon - Category: %s, IsActive: %t, IsPublic: %t, ValidFrom: %v, ValidUntil: %v\n", c.Category, c.IsActive, c.IsPublic, c.ValidFrom, c.ValidUntil)
 
 	if !c.IsActive {
 		return nil, errors.New("coupon is not active")
@@ -198,7 +195,7 @@ func Validate(code string, eventID string, orderAmount float64, userID string) (
 		return nil, errors.New("coupon usage limit reached")
 	}
 
-	if len(c.UserIDs) > 0 {
+	if !c.IsPublic && len(c.UserIDs) > 0 {
 		if userID == "" {
 			return nil, errors.New("this coupon is restricted and requires a logged-in user")
 		}
@@ -231,10 +228,18 @@ func Validate(code string, eventID string, orderAmount float64, userID string) (
 	return &ValidateResult{Coupon: &c, DiscountAmount: discount}, nil
 }
 
-func IncrementUsage(couponID primitive.ObjectID, maxUses int) error {
+func IncrementUsage(couponID primitive.ObjectID, maxUses int, userID string, userEmail string, bookingID string, amount float64) error {
 	col := config.CouponsCol
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
+	usage := models.CouponUsage{
+		UserID:    userID,
+		UserEmail: userEmail,
+		UsedAt:    time.Now(),
+		BookingID: bookingID,
+		Amount:    amount,
+	}
 
 	filter := bson.M{"_id": couponID}
 	if maxUses > 0 {
@@ -244,7 +249,12 @@ func IncrementUsage(couponID primitive.ObjectID, maxUses int) error {
 		}
 	}
 
-	res, err := col.UpdateOne(ctx, filter, bson.M{"$inc": bson.M{"used_count": 1}})
+	update := bson.M{
+		"$inc":  bson.M{"used_count": 1},
+		"$push": bson.M{"used_by_users": usage},
+	}
+
+	res, err := col.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return err
 	}
@@ -271,6 +281,7 @@ func Update(id string, c *models.Coupon) error {
 			"discount_type":  c.DiscountType,
 			"discount_value": c.DiscountValue,
 			"user_ids":       c.UserIDs,
+			"is_public":      c.IsPublic,
 			"valid_from":     c.ValidFrom,
 			"valid_until":    c.ValidUntil,
 			"max_uses":       c.MaxUses,

@@ -7,7 +7,18 @@ interface User {
     id: string;
     name: string;
     phone: string;
+    email?: string;
+    profilePhoto?: string;
     createdAt: string;
+    bookings?: Array<{
+        id: string;
+        type: 'dining' | 'event' | 'play';
+        entityName: string;
+        status: string;
+        bookingDate: string;
+        amount?: number;
+        createdAt: string;
+    }>;
 }
 
 export default function UserDetails2() {
@@ -30,9 +41,13 @@ export default function UserDetails2() {
 
     useEffect(() => {
         if (!userId) return;
-        fetch(`/backend/api/admin/users/${userId}`, { credentials: 'include' })
+        fetch(`/backend/api/admin/users/${userId}/details`, { credentials: 'include' })
             .then(r => r.json())
-            .then(data => { setUser(data); setEditName(data.name); setEditPhone(data.phone); })
+            .then(data => { 
+                setUser(data); 
+                setEditName(data.name); 
+                setEditPhone(data.phone); 
+            })
             .catch(() => {});
     }, [userId]);
 
@@ -72,10 +87,25 @@ export default function UserDetails2() {
                     </div>
 
                     <div className="absolute left-[119px] top-[75px] flex flex-col items-center">
-                        <div className="w-[152px] h-[152px] bg-[rgba(189,177,243,0.3)] rounded-full mb-[26px]"></div>
+                        <div className="w-[152px] h-[152px] bg-[rgba(189,177,243,0.3)] rounded-full mb-[26px] overflow-hidden relative">
+                            {user?.profilePhoto ? (
+                                <img 
+                                    src={user.profilePhoto} 
+                                    alt={user.name} 
+                                    className="w-full h-full object-cover rounded-full"
+                                />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-[#5331EA] text-[48px] font-semibold">
+                                    {user?.name?.[0] || user?.phone?.[0] || '?'}
+                                </div>
+                            )}
+                        </div>
                         <div className="text-center mb-[50px] w-[153px]">
                             <h3 className="text-[30px] font-medium leading-[33px] text-black">{user?.name ?? '—'}</h3>
                             <p className="text-[30px] font-medium leading-[33px] text-[#6B7280]">{user?.phone ?? '—'}</p>
+                            {user?.email && (
+                                <p className="text-[20px] font-medium leading-[22px] text-[#6B7280] mt-2">{user.email}</p>
+                            )}
                         </div>
                         <div className="w-[250px] h-[54px] bg-[rgba(189,177,243,0.3)] rounded-[20px] flex items-center justify-center">
                             <span className="text-[20px] font-medium leading-[22px] text-black">Member Since {memberSince}</span>
@@ -107,6 +137,15 @@ export default function UserDetails2() {
                                     <span className="text-[14px] font-medium text-black">{user?.phone ?? '—'}</span>
                                 </div>
                                 <div className="w-[200px] h-[0.5px] bg-[#686868]"></div>
+                                {user?.email && (
+                                    <>
+                                        <div className="flex items-center gap-[60px]">
+                                            <span className="text-[14px] font-medium text-[#686868] w-[70px]">Email</span>
+                                            <span className="text-[14px] font-medium text-black">{user.email}</span>
+                                        </div>
+                                        <div className="w-[200px] h-[0.5px] bg-[#686868]"></div>
+                                    </>
+                                )}
                                 <div className="flex items-center gap-[60px]">
                                     <span className="text-[14px] font-medium text-[#686868] w-[70px]">Joined</span>
                                     <span className="text-[14px] font-medium text-black">{user ? new Date(user.createdAt).toLocaleDateString() : '—'}</span>

@@ -103,9 +103,13 @@ export default function EventsClient({ initialEvents }: { initialEvents: RealEve
             ? events
             : events.filter(e => e.category === activeFilter);
 
-        // Filter by selected city
+        // Filter by selected city (case-insensitive and partial match)
         if (cityFilter) {
-            result = result.filter(e => e.city?.toLowerCase().includes(cityFilter));
+            result = result.filter(e => {
+                const eventCity = e.city?.toLowerCase() || '';
+                // Match if event city is in user's selected location OR vice-versa
+                return eventCity.includes(cityFilter) || cityFilter.includes(eventCity);
+            });
         }
 
         result = result.filter(e => {

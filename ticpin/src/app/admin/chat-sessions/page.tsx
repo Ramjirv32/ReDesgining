@@ -30,11 +30,21 @@ const categories = [
 export default function AdminChatSessionsPage() {
     const router = useRouter();
     const [activeCategory, setActiveCategory] = useState("dining");
+    const [selectedUserType, setSelectedUserType] = useState<"organizer" | "user" | null>(null);
+    const [selectedDateFilter, setSelectedDateFilter] = useState<string>("all");
     const [sessions, setSessions] = useState<ChatSession[]>([]);
     const [loading, setLoading] = useState(true);
     const [authorized, setAuthorized] = useState(false);
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
+
+    const dateFilters = [
+        { value: "all", label: "All Time" },
+        { value: "yesterday", label: "Yesterday" },
+        { value: "3days", label: "Last 3 Days" },
+        { value: "week", label: "Last Week" },
+        { value: "2weeks", label: "Last 2 Weeks" },
+    ];
 
     useEffect(() => {
         // Reset check for admin
@@ -47,16 +57,17 @@ export default function AdminChatSessionsPage() {
     }, [router]);
 
     useEffect(() => {
-        if (authorized) {
+        if (authorized && selectedUserType) {
             fetchSessions(1);
             setPage(1);
         }
-    }, [activeCategory, authorized]);
+    }, [activeCategory, authorized, selectedUserType, selectedDateFilter]);
 
     const fetchSessions = async (pageNum: number = page) => {
+        if (!selectedUserType) return;
         setLoading(true);
         try {
-            const res = await fetch(`/backend/api/chat/sessions?category=${activeCategory}&admin=true&limit=10&page=${pageNum}`);
+            const res = await fetch(`/backend/api/chat/sessions?category=${activeCategory}&userType=${selectedUserType}&dateFilter=${selectedDateFilter}&admin=true&limit=10&page=${pageNum}`);
             if (res.ok) {
                 const data = await res.json();
                 setSessions(data.sessions || []);
@@ -81,6 +92,22 @@ export default function AdminChatSessionsPage() {
         router.push(`/admin/ChatSupportPage/reply?sessionId=${session.sessionId}&type=${encodeURIComponent(categoryTitle)}&admin=true&userEmail=${encodeURIComponent(session.userEmail)}`);
     };
 
+    const handleAcceptTicket = async (e: React.MouseEvent, session: ChatSession) => {
+        e.stopPropagation();
+        try {
+            const res = await fetch(`/backend/api/chat/sessions/${session.sessionId}/accept`, {
+                method: 'POST',
+                credentials: 'include',
+            });
+            if (res.ok) {
+                // Refresh sessions to show updated status
+                fetchSessions(page);
+            }
+        } catch (error) {
+            console.error('Error accepting ticket:', error);
+        }
+    };
+
     const formatTime = (dateString: string) => {
         const date = new Date(dateString);
         const now = new Date();
@@ -99,10 +126,18 @@ export default function AdminChatSessionsPage() {
             {/* Header */}
             <header className="w-full h-[75px] bg-white border-b border-[#D9D9D9] flex items-center justify-between px-4 sticky top-0 z-50">
                 <div className="flex items-center gap-3">
-                    <Link href="/admin" className="p-2">
+                    <button 
+                        onClick={() => {
+                            if (selectedUserType) setSelectedUserType(null);
+                            else router.push('/admin');
+                        }} 
+                        className="p-2"
+                    >
                         <ChevronLeft size={24} className="text-black" />
-                    </Link>
-                    <h1 className="text-[20px] font-semibold text-black">Chat Support</h1>
+                    </button>
+                    <h1 className="text-[20px] font-semibold text-black">
+                        {selectedUserType ? `${selectedUserType.charAt(0).toUpperCase() + selectedUserType.slice(1)} Chats` : "Chat Support"}
+                    </h1>
                 </div>
                 <div className="relative w-[120px] h-[30px]">
                     <Image
@@ -113,6 +148,36 @@ export default function AdminChatSessionsPage() {
                     />
                 </div>
             </header>
+
+            {!selectedUserType ? (
+                <div className="max-w-[1440px] mx-auto p-10 flex flex-col items-center">
+                    <h2 className="text-[32px] font-bold text-black mb-12">Select Chat Type</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12 w-full max-w-[800px]">
+                        <div 
+                            onClick={() => setSelectedUserType("organizer")}
+                            className="bg-white rounded-[40px] p-10 border border-[#E5E5E5] flex flex-col items-center justify-center cursor-pointer hover:border-[#5331EA] hover:shadow-xl transition-all group"
+                        >
+                            <div className="w-24 h-24 bg-[#FFD9B7]/30 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                                <User size={48} className="text-[#8B4D1A]" />
+                            </div>
+                            <h3 className="text-[24px] font-bold text-black">Organizer Chat</h3>
+                            <p className="text-[#686868] text-center mt-2">Manage tickets raised by event organizers</p>
+                        </div>
+
+                        <div 
+                            onClick={() => setSelectedUserType("user")}
+                            className="bg-white rounded-[40px] p-10 border border-[#E5E5E5] flex flex-col items-center justify-center cursor-pointer hover:border-[#5331EA] hover:shadow-xl transition-all group"
+                        >
+                            <div className="w-24 h-24 bg-[#D1FAE5]/30 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                                <User size={48} className="text-[#065F46]" />
+                            </div>
+                            <h3 className="text-[24px] font-bold text-black">User Chat</h3>
+                            <p className="text-[#686868] text-center mt-2">Manage tickets raised by regular users</p>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <>
 
             {/* Category Tabs */}
             <div className="bg-white border-b border-[#E5E5E5]">
@@ -129,13 +194,36 @@ export default function AdminChatSessionsPage() {
                         >
                             <Image src={cat.icon} alt={cat.title} width={24} height={24} />
                             <span className="text-[14px] font-medium">{cat.title}</span>
-                            {(sessions || []).filter(s => s.category === cat.id && s.status === "active").length > 0 && (
+                            {(sessions || []).filter(s => s.category === cat.id && (s.status === "active" || s.status === "pending")).length > 0 && (
                                 <span className="ml-2 px-2 py-0.5 bg-[#5331EA] text-white text-[10px] rounded-full">
-                                    {(sessions || []).filter(s => s.category === cat.id && s.status === "active").length}
+                                    {(sessions || []).filter(s => s.category === cat.id && (s.status === "active" || s.status === "pending")).length}
                                 </span>
                             )}
                         </button>
                     ))}
+                </div>
+            </div>
+
+            {/* Date Filter */}
+            <div className="bg-white border-b border-[#E5E5E5] px-4 py-3">
+                <div className="max-w-[1440px] mx-auto flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <span className="text-[12px] text-[#686868] font-medium">Filter by date:</span>
+                        <select
+                            value={selectedDateFilter}
+                            onChange={(e) => setSelectedDateFilter(e.target.value)}
+                            className="px-3 py-1 border border-[#E5E5E5] rounded-lg text-[12px] bg-white focus:outline-none focus:border-[#5331EA]"
+                        >
+                            {dateFilters.map((filter) => (
+                                <option key={filter.value} value={filter.value}>
+                                    {filter.label}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="text-[12px] text-[#999]">
+                        {sessions.length} chat{sessions.length !== 1 ? 's' : ''} found
+                    </div>
                 </div>
             </div>
 
@@ -178,6 +266,11 @@ export default function AdminChatSessionsPage() {
                                             }`}>
                                                 {session.userType}
                                             </span>
+                                            {session.status === "pending" && (
+                                                <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] rounded-full font-medium">
+                                                    Pending
+                                                </span>
+                                            )}
                                         </div>
                                         <p className="text-[12px] text-[#686868] truncate">{session.userEmail}</p>
                                         <p className="text-[13px] text-[#999] mt-1 truncate">
@@ -192,6 +285,14 @@ export default function AdminChatSessionsPage() {
                                             <span className="inline-block mt-1 px-2 py-0.5 bg-[#5331EA] text-white text-[10px] rounded-full">
                                                 {session.unreadCount}
                                             </span>
+                                        )}
+                                        {session.status === "pending" && (
+                                            <button
+                                                onClick={(e) => handleAcceptTicket(e, session)}
+                                                className="mt-2 px-3 py-1 bg-[#5331EA] text-white text-[11px] rounded-full font-medium hover:bg-[#4529c9] transition-colors"
+                                            >
+                                                Accept
+                                            </button>
                                         )}
                                     </div>
                                 </div>
@@ -222,7 +323,9 @@ export default function AdminChatSessionsPage() {
                         )}
                     </>
                 )}
-            </div>
+                </div>
+                </>
+            )}
         </div>
     );
 }

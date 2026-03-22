@@ -55,12 +55,12 @@ export default function EventTicketsPage() {
     
     try {
       await bookingApi.cancelBooking(bookingId, 'events');
-      // Refresh bookings after cancellation
-      setBookings(prev => prev.map(booking => 
-        booking.booking_id === bookingId 
-          ? { ...booking, status: 'cancelled' }
-          : booking
-      ));
+      // Refetch bookings after cancellation to get updated status
+      if (session?.id) {
+        const data = await bookingApi.getUserBookings({ userId: session.id });
+        const eventBookings = data.filter(booking => booking.category === 'events');
+        setBookings(eventBookings);
+      }
     } catch (err) {
       alert('Failed to cancel booking. Please try again.');
     }

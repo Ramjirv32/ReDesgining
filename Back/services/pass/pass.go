@@ -37,7 +37,6 @@ func GetActiveByUserID(userID string) (*models.TicpinPass, error) {
 		}
 	}
 
-	// Fallback: search by phone field (normalized)
 	phonesToTry := []string{userID}
 	if len(userID) == 10 {
 		phonesToTry = append(phonesToTry, "+91"+userID)

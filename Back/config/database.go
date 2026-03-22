@@ -151,8 +151,6 @@ func CreateIndexes() {
 		{Keys: bson.D{{Key: "booked_at", Value: -1}}},
 	})
 
-	// Unique per-30min-slot lock — prevents concurrent double-bookings even without
-	// serializable transactions. Each lock document represents one court × one 30-min slot.
 	SlotLocksCol.Indexes().CreateOne(ctx, mongo.IndexModel{
 		Keys: bson.D{
 			{Key: "play_id", Value: 1},

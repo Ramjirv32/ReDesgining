@@ -1,8 +1,8 @@
 package dining
 
 import (
-	ctrl "ticpin-backend/controller/dining"
 	offerctrl "ticpin-backend/controller/admin/offer"
+	ctrl "ticpin-backend/controller/dining"
 
 	"github.com/gofiber/fiber/v2"
 )

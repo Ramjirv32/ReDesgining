@@ -72,7 +72,7 @@ export interface AdminStats {
 
 // ─── Listings types ───────────────────────────────────────────────────────────
 
-export type ListingStatus = 'pending' | 'approved' | 'rejected' | 'draft';
+export type ListingStatus = 'pending' | 'approved' | 'rejected' | 'draft' | '';
 
 export interface AdminListing {
     _id?: string;
@@ -171,7 +171,15 @@ export interface NotificationRecord {
     image_url: string;
     target_type: 'all_users' | 'all_organizers' | 'selected_users' | 'selected_organizers' | 'both';
     recipient_ids?: string[];
+    recipient_details?: Array<{
+        id: string;
+        name?: string;
+        email?: string;
+        phone?: string;
+        type: 'user' | 'organizer';
+    }>;
     created_at: string;
+    sender?: string; // Admin who sent the notification
 }
 
 // ─── Offer & Coupon types ─────────────────────────────────────────────────────
@@ -225,6 +233,7 @@ export interface CouponRecord {
     max_uses: number;
     used_count: number;
     is_active: boolean;
+    is_public: boolean;
     created_at: string;
     user_id?: string;
     user_ids?: (string | { $oid: string })[];
@@ -234,6 +243,21 @@ export interface UserRecord {
     id: string;
     name: string;
     phone: string;
+    email?: string;
+    profilePhoto?: string;
+    createdAt?: string;
+    bookings?: UserBooking[];
+}
+
+export interface UserBooking {
+    id: string;
+    type: 'dining' | 'event' | 'play';
+    entityName: string;
+    entity_id: string;
+    status: 'confirmed' | 'cancelled' | 'completed';
+    bookingDate: string;
+    amount?: number;
+    createdAt: string;
 }
 
 // ─── Admin API ────────────────────────────────────────────────────────────────
@@ -457,7 +481,7 @@ export const adminApi = {
     },
 
     /** GET /api/admin/coupons */
-    listCoupons: () => adminRequest<{data: CouponRecord[], next_cursor: string}>('/coupons'),
+    listCoupons: () => adminRequest<{ data: CouponRecord[], next_cursor: string }>('/coupons'),
 
     /** PUT /api/admin/coupons/:id */
     updateCoupon: (id: string, payload: Partial<CreateCouponPayload> & { is_active?: boolean }) =>
@@ -485,6 +509,9 @@ export const adminApi = {
 
     /** GET /api/admin/users — for coupon user-selector */
     listUsers: () => adminRequest<UserRecord[]>('/users'),
+
+    /** GET /api/admin/users/:id/details */
+    getUserDetails: (id: string) => adminRequest<UserRecord>(`/users/${id}/details`),
 
     /** PUT /api/admin/users/:id */
     updateUser: (id: string, payload: Partial<UserRecord>) =>

@@ -101,7 +101,6 @@ func RequireSelfUser(c *fiber.Ctx) error {
 	authUserID := c.Locals("userId").(string)
 	authPhone, _ := c.Locals("phone").(string)
 
-	// Allow if matches either hex ID or phone number
 	if authUserID == targetUserID || (authPhone != "" && authPhone == targetUserID) {
 		return c.Next()
 	}

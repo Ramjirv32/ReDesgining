@@ -35,9 +35,7 @@ func Submit(task Task) {
 		task()
 		return
 	}
-	
-	// Non-blocking submission to avoid hanging the caller if queue is full
-	// (Alternatively, could use a select with timeout if blocking is desired)
+
 	select {
 	case taskQueue <- task:
 	default:

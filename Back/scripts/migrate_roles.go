@@ -12,14 +12,12 @@ import (
 	"ticpin-backend/models"
 )
 
-// Migrate existing organizers to have proper role field
 func MigrateRoles() error {
 	fmt.Println("Starting role migration for existing organizers...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// Get all organizers without role field or with empty role
 	collection := config.GetDB().Collection("organizers")
 	cursor, err := collection.Find(ctx, bson.M{
 		"$or": []bson.M{
@@ -41,7 +39,6 @@ func MigrateRoles() error {
 			continue
 		}
 
-		// Determine role based on email comparison (legacy method)
 		role := "organizer"
 		if organizer.Email == config.GetAdminEmail() {
 			role = "admin"
@@ -50,7 +47,6 @@ func MigrateRoles() error {
 			updatedCount++
 		}
 
-		// Update the organizer with role
 		update := bson.M{"$set": bson.M{"role": role, "updatedAt": time.Now()}}
 		_, err = collection.UpdateOne(ctx, bson.M{"_id": organizer.ID}, update)
 		if err != nil {

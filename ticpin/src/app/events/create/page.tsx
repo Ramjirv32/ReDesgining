@@ -127,8 +127,11 @@ const CreateEventPage = () => {
             setPayment(p => ({ ...p, organizerName: session.email.split('@')[0] }));
             // Pre-fill bank details from saved organizer setup
             try {
+                console.log('DEBUG: Fetching events setup...');
                 const setup = await organizerApi.getExistingSetup('events');
+                console.log('DEBUG: Events setup response:', setup);
                 if (setup) {
+                    console.log('DEBUG: Setting payment details from setup:', setup);
                     setPayment(p => ({
                         ...p,
                         organizerName: setup.accountHolder || p.organizerName,
@@ -137,8 +140,12 @@ const CreateEventPage = () => {
                         ifsc: setup.bankIfsc || p.ifsc,
                         accountType: p.accountType,
                     }));
+                } else {
+                    console.log('DEBUG: No setup found for events');
                 }
-            } catch { /* ignore fetch error */ }
+            } catch (error) {
+                console.error('DEBUG: Error fetching events setup:', error);
+            }
         };
 
         const timer = setTimeout(checkAuth, 100);

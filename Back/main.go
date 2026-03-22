@@ -81,24 +81,20 @@ func main() {
 		return err
 	})
 
-	// Domain restriction middleware
 	app.Use(func(c *fiber.Ctx) error {
 		origin := c.Get("Origin")
 		referer := c.Get("Referer")
 
-		// Allow localhost for development
 		if c.IP() == "127.0.0.1" || c.IP() == "::1" {
 			return c.Next()
 		}
 
-		// Check allowed domains
 		allowedOrigins := []string{
 			"https://re-desgining.vercel.app",
 			"https://ticpin.in",
 			"http://localhost:3000",
 		}
 
-		// Check Origin header
 		if origin != "" {
 			allowed := false
 			for _, allowedOrigin := range allowedOrigins {
@@ -112,7 +108,6 @@ func main() {
 			}
 		}
 
-		// Check Referer header as fallback
 		if referer != "" {
 			allowed := false
 			for _, allowedOrigin := range allowedOrigins {
@@ -132,10 +127,8 @@ func main() {
 	app.Use(fiberRecover.New())
 	app.Use(compress.New(compress.Config{Level: compress.LevelDefault}))
 
-	// Start rate limiting cleanup
 	middleware.StartRateLimitCleanup()
 
-	// Apply rate limiting to all routes
 	app.Use(middleware.RateLimitByPath)
 
 	corsOrigins := os.Getenv("CORS_ORIGINS")
@@ -153,7 +146,6 @@ func main() {
 		return c.Status(200).JSON(fiber.Map{"status": "ok"})
 	})
 
-	// Serve uploaded files
 	app.Static("/uploads", "./uploads")
 
 	organizer.OrganizerRoutes(app)

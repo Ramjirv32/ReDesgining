@@ -4,6 +4,7 @@ import (
 	admincoupon "ticpin-backend/controller/admin/coupon"
 	adminoffer "ticpin-backend/controller/admin/offer"
 	bookingctrl "ticpin-backend/controller/booking"
+	bookinguser "ticpin-backend/controller/booking/user"
 	"ticpin-backend/middleware"
 
 	"github.com/gofiber/fiber/v2"
@@ -14,10 +15,10 @@ func BookingRoutes(app *fiber.App) {
 	app.Post("/api/bookings/events", middleware.RequireUserAuth, bookingctrl.CreateEventBooking)
 	app.Post("/api/bookings/dining", middleware.RequireUserAuth, bookingctrl.CreateDiningBooking)
 	app.Post("/api/bookings/play", middleware.RequireUserAuth, bookingctrl.CreatePlayBooking)
-	app.Get("/api/bookings/user/history", middleware.RequireUserAuth, bookingctrl.GetBookingHistory)
-	app.Get("/api/bookings/user/:email", middleware.RequireUserAuth, bookingctrl.GetBookingsByEmail)
+	app.Get("/api/bookings/user/history", middleware.RequireUserAuth, bookinguser.GetBookingHistory)
+	app.Get("/api/bookings/user/:email", middleware.RequireUserAuth, bookinguser.GetBookingsByEmail)
 	app.Get("/api/bookings/:id", middleware.RequireUserAuth, bookingctrl.GetBookingDetails)
-	app.Put("/api/bookings/:id/cancel", middleware.RequireUserAuth, bookingctrl.CancelBooking)
+	app.Put("/api/bookings/:id/cancel", middleware.RequireUserAuth, bookinguser.CancelBooking)
 	app.Get("/api/events/:id/availability", bookingctrl.GetEventAvailability)
 	app.Get("/api/play/:id/booked-slots", bookingctrl.GetPlaySlotAvailability)
 

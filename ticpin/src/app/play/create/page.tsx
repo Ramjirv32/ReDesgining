@@ -153,17 +153,27 @@ const CreatePlayPage = () => {
             setAuthChecked(true);
             draftKey.current = `play_create_draft_${session.id}`;
 
-            // No draft restoration - always fetch fresh data from backend
+            // Fetch organizer setup data from backend
             try {
-                const res = await fetch('/backend/api/organizer/payment-setup', { credentials: 'include' });
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.payment) setPayment(data.payment);
-                    if (data.pocs?.length) setPocs(data.pocs);
-                    if (data.salesNotifs?.length) setSalesNotifs(data.salesNotifs);
-                    if (data.verified) setPaymentVerified(data.verified);
+                console.log('DEBUG: Fetching play setup...');
+                const setup = await organizerApi.getExistingSetup('play');
+                console.log('DEBUG: Play setup response:', setup);
+                if (setup) {
+                    console.log('DEBUG: Setting payment details from setup:', setup);
+                    setPayment(p => ({
+                        ...p,
+                        organizerName: setup.accountHolder || p.organizerName,
+                        gstin: setup.gstNumber || setup.pan || p.gstin,
+                        accountNumber: setup.bankAccountNo || p.accountNumber,
+                        ifsc: setup.bankIfsc || p.ifsc,
+                        accountType: p.accountType,
+                    }));
+                } else {
+                    console.log('DEBUG: No setup found for play');
                 }
-            } catch { /* silent */ }
+            } catch (error) {
+                console.error('DEBUG: Error fetching play setup:', error);
+            }
         };
 
         checkAuth();

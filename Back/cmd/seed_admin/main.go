@@ -20,7 +20,6 @@ func main() {
 
 	config.ConnectDB()
 
-	// Create admin collection and index
 	collection := config.GetDB().Collection("admins")
 	_, err := collection.Indexes().CreateOne(ctx, mongo.IndexModel{
 		Keys:    bson.M{"email": 1},
@@ -30,7 +29,6 @@ func main() {
 		fmt.Printf("Index error (may already exist): %v\n", err)
 	}
 
-	// Check if admin already exists
 	var existing bson.M
 	err = collection.FindOne(ctx, bson.M{"email": "23cs139@kpriet.ac.in"}).Decode(&existing)
 	if err == nil {
@@ -38,7 +36,6 @@ func main() {
 		return
 	}
 
-	// Create admin user
 	_, err = admin.Create("23cs139@kpriet.ac.in", "12345678", "Admin", "7845613278")
 	if err != nil {
 		fmt.Printf("Error creating admin: %v\n", err)

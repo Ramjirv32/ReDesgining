@@ -24,7 +24,6 @@ export interface UserProfile {
     city?: string;
     district?: string;
     state?: string;
-    country?: string;
     gps?: GPS;
     profilePhoto?: string;
     dob?: string;

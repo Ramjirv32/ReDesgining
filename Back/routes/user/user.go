@@ -18,7 +18,6 @@ func UserRoutes(app *fiber.App) {
 	user.Post("/login", ctrl.LoginUser)
 	user.Get("/:id", ctrl.GetUser)
 
-	// OTP routes
 	user.Post("/send-otp", otp.SendOTP)
 	user.Post("/verify-otp", otp.VerifyOTP)
 

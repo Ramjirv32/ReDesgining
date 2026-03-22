@@ -21,6 +21,12 @@ func CreateEventBooking(c *fiber.Ctx) error {
 	var req struct {
 		UserEmail      string                 `json:"user_email"`
 		UserName       string                 `json:"user_name"`
+		UserPhone      string                 `json:"user_phone"`
+		Address        string                 `json:"address"`
+		City           string                 `json:"city"`
+		State          string                 `json:"state"`
+		Pincode        string                 `json:"pincode"`
+		Nationality    string                 `json:"nationality"`
 		EventID        string                 `json:"event_id"`
 		EventName      string                 `json:"event_name"`
 		Tickets        []models.BookingTicket `json:"tickets"`
@@ -36,7 +42,6 @@ func CreateEventBooking(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request: " + err.Error()})
 	}
 
-	// Debug logging
 	fmt.Printf("DEBUG: CreateEventBooking - EventID: %s, OrderAmount: %.2f, PaymentGateway: %s\n",
 		req.EventID, req.OrderAmount, req.PaymentGateway)
 
@@ -64,7 +69,7 @@ func CreateEventBooking(c *fiber.Ctx) error {
 	var couponIDToIncrement primitive.ObjectID
 	var couponMaxUses int
 	if req.CouponCode != "" {
-		result, err := couponsvc.Validate(req.CouponCode, req.EventID, req.OrderAmount, req.UserID)
+		result, err := couponsvc.Validate(req.CouponCode, req.EventID, req.OrderAmount, req.UserID, req.UserEmail)
 		if err == nil {
 			fmt.Printf("DEBUG: Coupon validation successful - Code: %s, Discount: %.2f\n",
 				result.Coupon.Code, result.DiscountAmount)
@@ -82,10 +87,10 @@ func CreateEventBooking(c *fiber.Ctx) error {
 		offerResult, err := offersvc.ValidateOffer(req.OfferID, req.EventID, req.OrderAmount)
 		if err != nil {
 			fmt.Printf("DEBUG: Offer validation failed - %s\n", err.Error())
-			// Don't return error, just skip offer if validation fails
+
 		} else {
 			offerObjID = offerResult.Offer.ID
-			discountAmount += offerResult.DiscountAmount // Add offer discount to existing discount
+			discountAmount += offerResult.DiscountAmount
 		}
 	}
 
@@ -99,7 +104,14 @@ func CreateEventBooking(c *fiber.Ctx) error {
 
 	booking := &models.Booking{
 		UserEmail:      req.UserEmail,
+		UserName:       req.UserName,
+		UserPhone:      req.UserPhone,
 		UserID:         req.UserID,
+		Address:        req.Address,
+		City:           req.City,
+		State:          req.State,
+		Pincode:        req.Pincode,
+		Nationality:    req.Nationality,
 		EventID:        eventObjID,
 		EventName:      req.EventName,
 		Tickets:        req.Tickets,
@@ -118,11 +130,12 @@ func CreateEventBooking(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
+	bookingID := booking.ID.Hex()
+
 	if !couponIDToIncrement.IsZero() {
-		_ = couponsvc.IncrementUsage(couponIDToIncrement, couponMaxUses)
+		_ = couponsvc.IncrementUsage(couponIDToIncrement, couponMaxUses, req.UserID, req.UserEmail, bookingID, grandTotal)
 	}
 
-	bookingID := booking.ID.Hex()
 	bookingEventObjID := eventObjID
 	bookingUserEmail := req.UserEmail
 	bookingGrandTotal := grandTotal
@@ -131,7 +144,7 @@ func CreateEventBooking(c *fiber.Ctx) error {
 		defer cancel()
 		var ev models.Event
 		if err := config.GetDB().Collection("events").FindOne(ctx, bson.M{"_id": bookingEventObjID}).Decode(&ev); err == nil {
-			// Safely handle SalesNotifications
+
 			if ev.SalesNotifications != nil {
 				for _, sc := range ev.SalesNotifications {
 					if sc.Email != "" {
@@ -144,7 +157,8 @@ func CreateEventBooking(c *fiber.Ctx) error {
 
 	return c.Status(201).JSON(fiber.Map{
 		"message":         "booking confirmed",
-		"booking_id":      bookingID,
+		"booking_id":      booking.BookingID,
+		"id":              booking.ID.Hex(),
 		"grand_total":     grandTotal,
 		"discount_amount": discountAmount,
 		"status":          "booked",

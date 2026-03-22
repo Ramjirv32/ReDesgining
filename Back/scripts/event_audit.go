@@ -26,21 +26,18 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Check events collection
 	eventCount, err := eventsCol.CountDocuments(ctx, bson.M{})
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("Total events: %d\n", eventCount)
 
-	// Check event bookings collection
 	bookingCount, err := bookingsCol.CountDocuments(ctx, bson.M{})
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("Total event bookings: %d\n", bookingCount)
 
-	// Get sample events
 	cursor, err := eventsCol.Find(ctx, bson.M{}, options.Find().SetLimit(3))
 	if err != nil {
 		log.Fatal(err)
@@ -51,14 +48,13 @@ func main() {
 	for cursor.Next(ctx) {
 		var event bson.M
 		cursor.Decode(&event)
-		fmt.Printf("- Event: %s | Status: %v | Category: %v\n", 
+		fmt.Printf("- Event: %s | Status: %v | Category: %v\n",
 			event["name"], event["status"], event["category"])
 		if ticketCats, ok := event["ticket_categories"]; ok {
 			fmt.Printf("  Ticket Categories: %v\n", ticketCats)
 		}
 	}
 
-	// Get sample bookings
 	cursor2, err := bookingsCol.Find(ctx, bson.M{}, options.Find().SetLimit(3))
 	if err != nil {
 		log.Fatal(err)
@@ -69,20 +65,19 @@ func main() {
 	for cursor2.Next(ctx) {
 		var booking bson.M
 		cursor2.Decode(&booking)
-		fmt.Printf("- Booking ID: %s | Event: %s | Status: %v | Amount: %.2f\n", 
+		fmt.Printf("- Booking ID: %s | Event: %s | Status: %v | Amount: %.2f\n",
 			booking["booking_id"], booking["event_name"], booking["status"], booking["grand_total"])
 		if tickets, ok := booking["tickets"]; ok {
 			fmt.Printf("  Tickets: %v\n", tickets)
 		}
 	}
 
-	// Check capacity management
 	fmt.Println("\n=== Capacity Management Check ===")
 	pipeline := []bson.M{
 		{"$match": bson.M{"status": "booked"}},
 		{"$unwind": "$tickets"},
 		{"$group": bson.M{
-			"_id": bson.M{"event_id": "$event_id", "category": "$tickets.category"},
+			"_id":          bson.M{"event_id": "$event_id", "category": "$tickets.category"},
 			"total_booked": bson.M{"$sum": "$tickets.quantity"},
 		}},
 		{"$sort": bson.M{"total_booked": -1}},
@@ -97,23 +92,22 @@ func main() {
 	fmt.Println("Ticket category booking summary:")
 	for cursor3.Next(ctx) {
 		var result struct {
-			ID           bson.M `bson:"_id"`
-			TotalBooked  int    `bson:"total_booked"`
+			ID          bson.M `bson:"_id"`
+			TotalBooked int    `bson:"total_booked"`
 		}
 		cursor3.Decode(&result)
 		fmt.Printf("- Event: %s | Category: %s | Booked: %d\n",
 			result.ID["event_id"], result.ID["category"], result.TotalBooked)
 	}
 
-	// Check for overbooking
 	fmt.Println("\n=== Overbooking Check ===")
 	pipeline2 := []bson.M{
 		{"$match": bson.M{"status": "booked"}},
 		{"$lookup": bson.M{
-			"from": "events",
-			"localField": "event_id",
+			"from":         "events",
+			"localField":   "event_id",
 			"foreignField": "_id",
-			"as": "event",
+			"as":           "event",
 		}},
 		{"$unwind": "$event"},
 		{"$unwind": "$tickets"},

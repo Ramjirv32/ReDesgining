@@ -98,7 +98,7 @@ func GetByID(id string, bypassCache bool) (*models.Play, error) {
 
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		// If input is not a valid ObjectID, try fetching by name.
+
 		p, errNamed := GetByName(id)
 		if errNamed == nil {
 			cache.GlobalCache.Set(cacheKey, p, 5*time.Minute)
@@ -174,6 +174,12 @@ func Update(id string, organizerID string, update *models.Play) error {
 	if update.Category != "" {
 		updateDoc["category"] = update.Category
 	}
+	if update.SubCategory != "" {
+		updateDoc["sub_category"] = update.SubCategory
+	}
+	if update.City != "" {
+		updateDoc["city"] = update.City
+	}
 	if update.VenueName != "" {
 		updateDoc["venue_name"] = update.VenueName
 	}
@@ -189,23 +195,75 @@ func Update(id string, organizerID string, update *models.Play) error {
 	if update.VenueAddress != "" {
 		updateDoc["venue_address"] = update.VenueAddress
 	}
+	if update.GoogleMapLink != "" {
+		updateDoc["google_map_link"] = update.GoogleMapLink
+	}
+	if update.InstagramLink != "" {
+		updateDoc["instagram_link"] = update.InstagramLink
+	}
 	if update.PortraitImageURL != "" {
 		updateDoc["portrait_image_url"] = update.PortraitImageURL
 	}
 	if update.LandscapeImageURL != "" {
 		updateDoc["landscape_image_url"] = update.LandscapeImageURL
 	}
+	if update.SecondaryBannerURL != "" {
+		updateDoc["secondary_banner_url"] = update.SecondaryBannerURL
+	}
+	if update.CardVideoURL != "" {
+		updateDoc["card_video_url"] = update.CardVideoURL
+	}
+	if len(update.GalleryURLs) > 0 {
+		updateDoc["gallery_urls"] = update.GalleryURLs
+	}
+	if len(update.Courts) > 0 {
+		updateDoc["courts"] = update.Courts
+	}
+	if update.Guide.MinAge > 0 {
+		updateDoc["guide.min_age"] = update.Guide.MinAge
+	}
+	if len(update.Guide.Facilities) > 0 {
+		updateDoc["guide.facilities"] = update.Guide.Facilities
+	}
+	updateDoc["guide.is_pet_friendly"] = update.Guide.IsPetFriendly
+	if update.EventInstructions != "" {
+		updateDoc["event_instructions"] = update.EventInstructions
+	}
+	if update.YoutubeVideoURL != "" {
+		updateDoc["youtube_video_url"] = update.YoutubeVideoURL
+	}
+	if len(update.ProhibitedItems) > 0 {
+		updateDoc["prohibited_items"] = update.ProhibitedItems
+	}
+	if len(update.FAQs) > 0 {
+		updateDoc["faqs"] = update.FAQs
+	}
+	if update.Payment.OrganizerName != "" {
+		updateDoc["payment.organizer_name"] = update.Payment.OrganizerName
+	}
+	if update.Payment.GSTIN != "" {
+		updateDoc["payment.gstin"] = update.Payment.GSTIN
+	}
+	if update.Payment.AccountNumber != "" {
+		updateDoc["payment.account_number"] = update.Payment.AccountNumber
+	}
+	if update.Payment.IFSC != "" {
+		updateDoc["payment.ifsc"] = update.Payment.IFSC
+	}
+	if update.Payment.AccountType != "" {
+		updateDoc["payment.account_type"] = update.Payment.AccountType
+	}
+	if len(update.PointsOfContact) > 0 {
+		updateDoc["points_of_contact"] = update.PointsOfContact
+	}
+	if len(update.SalesNotifications) > 0 {
+		updateDoc["sales_notifications"] = update.SalesNotifications
+	}
 	if update.PriceStartsFrom > 0 {
 		updateDoc["price_starts_from"] = update.PriceStartsFrom
 	}
 	if update.Description != "" {
 		updateDoc["description"] = update.Description
-	}
-	if len(update.Courts) > 0 {
-		updateDoc["courts"] = update.Courts
-	}
-	if update.EventInstructions != "" {
-		updateDoc["event_instructions"] = update.EventInstructions
 	}
 
 	updateDoc["updatedAt"] = time.Now()

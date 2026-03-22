@@ -132,5 +132,98 @@ func GetAll() ([]models.Notification, error) {
 	if err := cursor.All(ctx, &list); err != nil {
 		return nil, err
 	}
+
+	for i := range list {
+		recipientDetails := []map[string]interface{}{}
+
+		if list[i].TargetType == "all_users" || list[i].TargetType == "both" {
+			cursor, _ := config.UsersCol.Find(ctx, bson.M{}, options.Find().SetProjection(bson.M{"phone": 1, "name": 1}))
+			var users []models.User
+			cursor.All(ctx, &users)
+			for _, u := range users {
+				if u.Phone != "" {
+					recipientDetails = append(recipientDetails, map[string]interface{}{
+						"id":    u.ID.Hex(),
+						"phone": u.Phone,
+						"name":  u.Name,
+						"type":  "user",
+					})
+				}
+			}
+		}
+
+		if list[i].TargetType == "all_organizers" || list[i].TargetType == "both" {
+			cursor, _ := config.OrgsCol.Find(ctx, bson.M{}, options.Find().SetProjection(bson.M{"email": 1, "name": 1}))
+			var orgs []models.Organizer
+			cursor.All(ctx, &orgs)
+			for _, o := range orgs {
+				if o.Email != "" {
+					recipientDetails = append(recipientDetails, map[string]interface{}{
+						"id":    o.ID.Hex(),
+						"email": o.Email,
+						"name":  o.Name,
+						"type":  "organizer",
+					})
+				}
+			}
+		}
+
+		if list[i].TargetType == "selected_users" {
+			var oids []primitive.ObjectID
+			for _, idStr := range list[i].RecipientIDs {
+				if oid, err := primitive.ObjectIDFromHex(idStr); err == nil {
+					oids = append(oids, oid)
+				}
+			}
+			if len(oids) > 0 {
+				cursor, err := config.UsersCol.Find(ctx, bson.M{"_id": bson.M{"$in": oids}}, options.Find().SetProjection(bson.M{"phone": 1, "name": 1}))
+				if err == nil {
+					var users []models.User
+					cursor.All(ctx, &users)
+					for _, u := range users {
+						if u.Phone != "" {
+							recipientDetails = append(recipientDetails, map[string]interface{}{
+								"id":    u.ID.Hex(),
+								"phone": u.Phone,
+								"name":  u.Name,
+								"type":  "user",
+							})
+						}
+					}
+				}
+			}
+		}
+
+		if list[i].TargetType == "selected_organizers" {
+			var oids []primitive.ObjectID
+			for _, idStr := range list[i].RecipientIDs {
+				if oid, err := primitive.ObjectIDFromHex(idStr); err == nil {
+					oids = append(oids, oid)
+				}
+			}
+			if len(oids) > 0 {
+				cursor, err := config.OrgsCol.Find(ctx, bson.M{"_id": bson.M{"$in": oids}}, options.Find().SetProjection(bson.M{"email": 1, "name": 1}))
+				if err == nil {
+					var orgs []models.Organizer
+					cursor.All(ctx, &orgs)
+					for _, o := range orgs {
+						if o.Email != "" {
+							recipientDetails = append(recipientDetails, map[string]interface{}{
+								"id":    o.ID.Hex(),
+								"email": o.Email,
+								"name":  o.Name,
+								"type":  "organizer",
+							})
+						}
+					}
+				}
+			}
+		}
+
+		if len(recipientDetails) > 0 {
+			list[i].RecipientDetails = recipientDetails
+		}
+	}
+
 	return list, nil
 }

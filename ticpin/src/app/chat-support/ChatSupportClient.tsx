@@ -69,6 +69,7 @@ interface ChatSession {
     lastMessage: string;
     updatedAt: string;
     unreadCount?: number;
+    status?: 'pending' | 'active' | 'closed';
 }
 
 export default function ChatSupportClient() {
@@ -90,9 +91,12 @@ export default function ChatSupportClient() {
     const [loading, setLoading] = useState(false);
     const [isTyping, setIsTyping] = useState(false);
     const [questions, setQuestions] = useState<any[]>([]);
-    const [sessionEnded, setSessionEnded] = useState(false);
+    const [sessionStatus, setSessionStatus] = useState<'pending' | 'active' | 'closed'>('pending');
     const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
     const [uploadingFiles, setUploadingFiles] = useState(false);
+    const [confirmingCategory, setConfirmingCategory] = useState<SupportOption | null>(null);
+    const [filePreview, setFilePreview] = useState<string | null>(null);
+    const [lightboxImage, setLightboxImage] = useState<string | null>(null);
     
     const isAdmin = userSession?.phone === '6383667872' || (organizerSession?.isAdmin === true);
 
@@ -101,8 +105,27 @@ export default function ChatSupportClient() {
             fetch(`/backend/api/chat/questions?category=${selectedCategory}`)
                 .then(r => r.json())
                 .then(d => setQuestions(Array.isArray(d) ? d : []));
+            
+            // Check for existing session for this category
+            if (effectiveSession?.id) {
+                fetch(`/backend/api/chat/sessions?userId=${effectiveSession.id}&category=${selectedCategory}`, { credentials: 'include' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.sessions && data.sessions.length > 0) {
+                            const existingSession = data.sessions.find((s: ChatSession) => 
+                                s.status === 'pending' || s.status === 'active'
+                            );
+                            if (existingSession) {
+                                setActiveSession(existingSession);
+                                setSessionStatus(existingSession.status);
+                                fetchMessages(existingSession.sessionId);
+                            }
+                        }
+                    })
+                    .catch(err => console.error('Failed to check existing sessions:', err));
+            }
         }
-    }, [selectedCategory]);
+    }, [selectedCategory, effectiveSession?.id]);
 
     const fetchAdminSessions = async (category: string) => {
         setLoading(true);
@@ -125,6 +148,7 @@ export default function ChatSupportClient() {
             return;
         }
         
+        console.log('Starting chat with category:', category);
         setLoading(true);
         try {
             const res = await fetch('/backend/api/chat/sessions', {
@@ -142,12 +166,18 @@ export default function ChatSupportClient() {
             if (res.ok) {
                 const data = await res.json();
                 setActiveSession(data);
-                // Simulate typing for the welcome message
-                setIsTyping(true);
-                setTimeout(() => {
-                    setIsTyping(false);
+                setSessionStatus(data.status || 'pending');
+                if (data.status === 'active') {
+                    // Only simulate typing for active sessions
+                    setIsTyping(true);
+                    setTimeout(() => {
+                        setIsTyping(false);
+                        fetchMessages(data.sessionId);
+                    }, 1500);
+                } else {
+                    // Fetch messages immediately for pending sessions
                     fetchMessages(data.sessionId);
-                }, 1500);
+                }
             }
         } catch (error) {
             console.error('Failed to start chat:', error);
@@ -170,10 +200,10 @@ export default function ChatSupportClient() {
                 // Check if session has been terminated
                 if (Array.isArray(data) && data.length > 0) {
                     const lastMessage = data[data.length - 1];
-                    if (lastMessage.sender === 'system' && lastMessage.message.includes('ended by administrator')) {
+                    if (lastMessage.sender === 'system' && (lastMessage.message.includes('ended by') || lastMessage.message.includes('closed by'))) {
                         // Session ended - disable input and show terminated message
                         setMessages(data);
-                        setSessionEnded(true);
+                        setSessionStatus('closed');
                         return;
                     }
                 }
@@ -187,19 +217,19 @@ export default function ChatSupportClient() {
         }
     };
 
-    // Auto-poll for new messages every 5 seconds
+    // Auto-poll for new messages every 15 seconds
     useEffect(() => {
         if (!activeSession?.sessionId) return;
         
         const interval = setInterval(() => {
             fetchMessages(activeSession.sessionId);
-        }, 5000);
+        }, 15000); // Poll every 15 seconds instead of 5
         
         return () => clearInterval(interval);
     }, [activeSession?.sessionId, effectiveSession?.id]);
 
-    const handleSendMessageWithContent = async (content: string, fileUrl?: string, fileType?: string) => {
-        if (!content.trim() && !fileUrl) return;
+    const handleSendMessageWithContent = async (content: string, previewUrl?: string, fileType?: string, filesToUpload: File[] = []) => {
+        if (!content.trim() && filesToUpload.length === 0) return;
         if (!activeSession || !effectiveSession?.id) return;
         
         // Optimistic update
@@ -207,11 +237,12 @@ export default function ChatSupportClient() {
             message: content,
             sender: isAdmin ? 'admin' : 'user',
             createdAt: new Date().toISOString(),
-            fileUrl: fileUrl,
+            fileUrl: previewUrl,
             fileType: fileType
         };
         setMessages(prev => [...prev, userMsg]);
         
+        setUploadingFiles(true);
         try {
             const formData = new FormData();
             formData.append('userId', effectiveSession.id);
@@ -221,72 +252,64 @@ export default function ChatSupportClient() {
             formData.append('sender', isAdmin ? 'admin' : 'user');
             
             // Add file if any
-            if (attachedFiles.length > 0) {
-                formData.append('file0', attachedFiles[0]);
+            if (filesToUpload.length > 0) {
+                formData.append('file0', filesToUpload[0]);
             }
             
-            await fetch(`/backend/api/chat/sessions/${activeSession.sessionId}/messages`, {
+            const res = await fetch(`/backend/api/chat/sessions/${activeSession.sessionId}/messages`, {
                 method: 'POST',
                 body: formData,
                 credentials: 'include'
             });
 
-            if (!isAdmin) {
-                setIsTyping(true);
-                // Call Groq AI for response
-                try {
-                    await fetch('/api/chat/groq', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            message: content,
-                            conversationHistory: messages.map(m => ({ sender: m.sender, message: m.message })),
-                            sessionId: activeSession.sessionId,
-                            userData: {
-                                id: effectiveSession.id,
-                                email: effectiveSession.email || (effectiveSession as any).phone || '',
-                                type: organizerSession ? 'organizer' : 'user'
-                            }
-                        })
-                    });
-                    // Refresh messages to show AI response saved in DB
-                    setTimeout(() => {
-                        fetchMessages(activeSession.sessionId);
-                        setIsTyping(false);
-                    }, 2000);
-                } catch (e) {
-                    console.error('Error getting AI response:', e);
-                    setIsTyping(false);
-                }
-            } else {
+            if (res.ok) {
+                // Refresh messages after sending to get permanent URLs
                 fetchMessages(activeSession.sessionId);
+            }
+            
+            // Update status message after sending
+            if (sessionStatus === 'pending') {
+                setSessionStatus('pending');
             }
         } catch (error) {
             console.error('Failed to send message:', error);
-            // Optionally remove the optimistic message on failure
+        } finally {
+            setUploadingFiles(false);
         }
     };
 
-    const handleSendMessage = () => {
-        const fileUrl = attachedFiles.length > 0 ? `temp-${Date.now()}` : undefined;
-        const fileType = attachedFiles.length > 0 ? 
-            (attachedFiles[0].type.startsWith('image/') ? 'image' : 'pdf') : undefined;
+    const handleSendMessage = async () => {
+        if (!inputValue.trim() && attachedFiles.length === 0) return;
         
-        handleSendMessageWithContent(inputValue, fileUrl, fileType);
+        const file = attachedFiles.length > 0 ? attachedFiles[0] : null;
+        const fileUrl = file ? URL.createObjectURL(file) : undefined;
+        const fileType = file ? (file.type.startsWith('image/') ? 'image' : 'pdf') : undefined;
+        
+        const currentMessage = inputValue;
+        const currentFiles = [...attachedFiles];
+        
         setInputValue('');
         setAttachedFiles([]);
+        setFilePreview(null);
+        
+        await handleSendMessageWithContent(currentMessage, fileUrl, fileType, currentFiles);
     };
 
     const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(event.target.files || []);
         if (files.length === 0) return;
         
-        const file = files[0]; // Only take first file
+        const file = files[0];
         const isValidType = file.type.startsWith('image/') || file.type === 'application/pdf';
-        const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB limit
+        const isValidSize = file.size <= 10 * 1024 * 1024;
         
         if (isValidType && isValidSize) {
-            setAttachedFiles([file]); // Replace with single file
+            setAttachedFiles([file]);
+            if (file.type.startsWith('image/')) {
+                setFilePreview(URL.createObjectURL(file));
+            } else {
+                setFilePreview(null);
+            }
         } else {
             alert('Invalid file type or size. Please upload images or PDFs up to 10MB.');
         }
@@ -294,6 +317,7 @@ export default function ChatSupportClient() {
 
     const removeFile = (index: number) => {
         setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+        setFilePreview(null);
     };
 
     const formatFileSize = (bytes: number) => {
@@ -317,9 +341,12 @@ export default function ChatSupportClient() {
                             <div
                                 key={option.id}
                                 onClick={() => {
-                                    setSelectedCategory(option.category);
-                                    if (isAdmin) fetchAdminSessions(option.category);
-                                    else startUserChat(option.category);
+                                    if (isAdmin) {
+                                        setSelectedCategory(option.category);
+                                        fetchAdminSessions(option.category);
+                                    } else {
+                                        setConfirmingCategory(option);
+                                    }
                                 }}
                                 className="w-[193px] h-[210px] bg-[#E1E1E1] rounded-[40px] flex flex-col items-center justify-center cursor-pointer hover:bg-zinc-200 transition-colors"
                             >
@@ -330,6 +357,40 @@ export default function ChatSupportClient() {
                             </div>
                         ))}
                     </div>
+
+                    {/* Confirmation Modal */}
+                    {confirmingCategory && (
+                        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                            <div className="bg-white rounded-[30px] p-8 max-w-[400px] w-full shadow-2xl animate-in zoom-in-95 duration-200">
+                                <div className="w-16 h-16 bg-[#5331EA10] rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Image src={confirmingCategory.icon} alt={confirmingCategory.title} width={32} height={32} />
+                                </div>
+                                <h3 className="text-[22px] font-bold text-center mb-2">Raise a ticket?</h3>
+                                <p className="text-zinc-500 text-center mb-8">
+                                    Do you want to raise a {confirmingCategory.title.toLowerCase()} ticket and speak with our team?
+                                </p>
+                                <div className="flex flex-col gap-3">
+                                    <button
+                                        onClick={() => {
+                                            setSelectedCategory(confirmingCategory.category);
+                                            startUserChat(confirmingCategory.category);
+                                            setConfirmingCategory(null);
+                                        }}
+                                        className="w-full h-[54px] bg-[#5331EA] text-white rounded-full font-bold hover:bg-[#4529c9] transition-colors shadow-md shadow-[#5331EA20]"
+                                    >
+                                        Yes, confirm
+                                    </button>
+                                    <button
+                                        onClick={() => setConfirmingCategory(null)}
+                                        className="w-full h-[54px] bg-white border border-[#D9D9D9] text-black rounded-full font-bold hover:bg-zinc-50 transition-colors"
+                                    >
+                                        No, go back
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="w-full max-w-[740px] bg-[#5331EA15] border border-[#5331EA] rounded-[10px] flex items-center px-4 py-3 gap-3">
                         <Info className="text-[#5331EA]" size={24} />
                         <p className="text-[15px] font-medium text-black">
@@ -422,25 +483,48 @@ export default function ChatSupportClient() {
                                             <span className="text-[12px] font-bold">{msg.sender === 'admin' ? 'Ticpin' : 'You'}</span>
                                             {msg.sender === 'admin' && <span className="text-[8px] opacity-60">Interactive Assistant</span>}
                                         </div>
-                                        <p className="text-sm">{msg.message}</p>
+                                        {msg.message && <p className="text-sm mb-2">{msg.message}</p>}
                                         
                                         {/* Display file attachment */}
                                         {msg.fileUrl && (
-                                            <div className="mt-3">
+                                            <div className="mt-1">
                                                 {msg.fileType === 'image' ? (
-                                                    <div className="bg-white/10 rounded-lg p-2">
+                                                    <div className="relative group cursor-pointer overflow-hidden rounded-xl border-2 border-white/30 shadow-md bg-zinc-900 flex items-center justify-center min-h-[180px] w-full max-w-[320px]"
+                                                         onClick={() => {
+                                                             const fullUrl = msg.fileUrl?.startsWith('blob:') ? msg.fileUrl : msg.fileUrl?.startsWith('http') ? msg.fileUrl : `/backend${msg.fileUrl}`;
+                                                             setLightboxImage(fullUrl);
+                                                         }}>
                                                         <img 
-                                                            src={msg.fileUrl} 
+                                                            src={msg.fileUrl?.startsWith('blob:') ? msg.fileUrl : msg.fileUrl?.startsWith('http') ? msg.fileUrl : `/backend${msg.fileUrl}`} 
                                                             alt="Shared image" 
-                                                            className="max-w-[200px] max-h-[200px] rounded cursor-pointer hover:opacity-80 transition-opacity"
-                                                            onClick={() => window.open(msg.fileUrl, '_blank')}
+                                                            className="max-w-full max-h-[250px] object-cover transition-all duration-500 group-hover:scale-105"
+                                                            onLoad={(e) => {
+                                                                const img = e.target as HTMLImageElement;
+                                                                img.style.opacity = '1';
+                                                            }}
+                                                            style={{ opacity: 0 }}
+                                                            onError={(e) => {
+                                                                const target = e.target as HTMLImageElement;
+                                                                target.style.display = 'none';
+                                                            }}
                                                         />
+                                                        {/* Preview Overlay */}
+                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                                            <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-full text-white text-[12px] font-medium flex items-center gap-2 border border-white/20">
+                                                                <ImageIcon size={14} /> View Full
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 ) : (
-                                                    <div className="flex items-center gap-2 bg-white/10 rounded-lg p-2 cursor-pointer hover:bg-white/20 transition-colors"
-                                                         onClick={() => window.open(msg.fileUrl, '_blank')}>
-                                                        <FileText size={16} />
-                                                        <span className="text-xs">View PDF</span>
+                                                    <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-3 cursor-pointer hover:bg-white/20 transition-all shadow-sm w-full max-w-[280px]"
+                                                         onClick={() => window.open(msg.fileUrl?.startsWith('blob:') ? msg.fileUrl : msg.fileUrl?.startsWith('http') ? msg.fileUrl : `/backend${msg.fileUrl}`, '_blank')}>
+                                                        <div className="w-9 h-9 bg-red-500/80 rounded-lg flex items-center justify-center flex-shrink-0 text-white shadow-inner">
+                                                            <FileText size={18} />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <span className="text-xs font-bold block truncate">PDF Document</span>
+                                                            <span className="text-[10px] opacity-70">Tap to open</span>
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
@@ -487,19 +571,29 @@ export default function ChatSupportClient() {
                         <div className="px-10 pb-4">
                             <div className="flex flex-wrap gap-2">
                                 {attachedFiles.map((file, index) => (
-                                    <div key={index} className="flex items-center gap-2 bg-[#5331EA]/10 border border-[#5331EA]/30 rounded-lg p-2 max-w-[200px]">
-                                        {file.type.startsWith('image/') ? (
-                                            <ImageIcon size={16} className="text-[#5331EA]" />
-                                        ) : (
-                                            <FileText size={16} className="text-[#5331EA]" />
-                                        )}
-                                        <span className="text-xs text-black truncate flex-1">{file.name}</span>
-                                        <button
-                                            onClick={() => removeFile(index)}
-                                            className="text-red-500 hover:text-red-700 transition-colors"
-                                        >
-                                            <X size={14} />
-                                        </button>
+                                    <div key={index} className="flex flex-col gap-2 bg-white border border-[#5331EA]/30 rounded-2xl p-3 shadow-lg animate-in slide-in-from-bottom-2">
+                                        <div className="flex items-center gap-3">
+                                            {file.type.startsWith('image/') ? (
+                                                <div className="w-12 h-12 rounded-lg overflow-hidden border border-zinc-100 flex-shrink-0">
+                                                    {filePreview && <img src={filePreview} alt="Preview" className="w-full h-full object-cover" />}
+                                                </div>
+                                            ) : (
+                                                <div className="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                    <FileText size={24} className="text-red-500" />
+                                                </div>
+                                            )}
+                                            <div className="flex-1 min-w-0 pr-8 relative">
+                                                <p className="text-[13px] font-bold text-black truncate">{file.name}</p>
+                                                <p className="text-[11px] text-zinc-500">{formatFileSize(file.size)}</p>
+                                                <button
+                                                    onClick={() => removeFile(index)}
+                                                    className="absolute top-0 right-0 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors shadow-sm"
+                                                    title="Remove file"
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -507,44 +601,127 @@ export default function ChatSupportClient() {
                     )}
 
                     <div className="p-8 pb-10 flex items-center gap-5 justify-center bg-zinc-50/50">
-                        <button
-                            onClick={() => fileInputRef.current?.click()}
-                            className="text-zinc-400 hover:text-black cursor-pointer transition-colors"
-                            title="Attach file (images or PDFs, max 10MB)"
-                        >
-                            <Paperclip size={24} />
-                        </button>
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*,.pdf"
-                            onChange={handleFileSelect}
-                            className="hidden"
-                        />
-                        <div className="flex-1 max-w-[1080px] h-[50px] bg-white border border-[#5331EA] rounded-full px-6 flex items-center shadow-sm">
-                            <input
-                                type="text"
-                                value={inputValue}
-                                onChange={(e) => setInputValue(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                                placeholder="Type your message here"
-                                className="w-full bg-transparent border-none outline-none text-[15px] text-black"
-                            />
-                        </div>
-                        <button
-                            onClick={handleSendMessage}
-                            disabled={(!inputValue.trim() && attachedFiles.length === 0) || uploadingFiles}
-                            className="w-[50px] h-[50px] bg-[#5331EA] text-white rounded-full flex items-center justify-center transition-all hover:bg-[#4227c0] active:scale-95 disabled:opacity-50"
-                            title={attachedFiles.length > 0 ? `Send ${attachedFiles[0].name}` : "Send message"}
-                        >
-                            {uploadingFiles ? (
-                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                            ) : (
-                                <Send size={24} />
-                            )}
-                        </button>
+                        {sessionStatus === 'pending' ? (
+                            <>
+                                <div className="text-center mb-4">
+                                    <span className="text-[15px] font-medium text-[#5331EA]">
+                                        {messages.length > 1 ? 'Ticket raised and sent for approval...' : 'Ticket raised. Waiting for admin approval...'}
+                                    </span>
+                                    <p className="text-[13px] text-[#686868] mt-2">Please describe your issue in detail below. Our team will respond within 2-3 hours.</p>
+                                </div>
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="text-zinc-400 hover:text-black cursor-pointer transition-colors mr-3"
+                                    title="Attach file (images or PDFs, max 10MB)"
+                                >
+                                    <Paperclip size={24} />
+                                </button>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*,.pdf"
+                                    onChange={handleFileSelect}
+                                    className="hidden"
+                                />
+                                <div className="flex-1 max-w-[1080px] h-[50px] bg-white border border-[#5331EA] rounded-full px-6 flex items-center shadow-sm">
+                                    <input
+                                        type="text"
+                                        value={inputValue}
+                                        onChange={(e) => setInputValue(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                                        placeholder="Describe your issue in detail..."
+                                        className="w-full bg-transparent border-none outline-none text-[15px] text-black"
+                                    />
+                                </div>
+                                <button
+                                    onClick={handleSendMessage}
+                                    disabled={(!inputValue.trim() && attachedFiles.length === 0) || uploadingFiles}
+                                    className="w-[50px] h-[50px] bg-[#5331EA] text-white rounded-full flex items-center justify-center transition-all hover:bg-[#4227c0] active:scale-95 disabled:opacity-50"
+                                    title={attachedFiles.length > 0 ? `Send ${attachedFiles[0].name}` : "Send your query"}
+                                >
+                                    {uploadingFiles ? (
+                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                        <Send size={24} />
+                                    )}
+                                </button>
+                            </>
+                        ) : sessionStatus === 'closed' ? (
+                            <div className="flex flex-col items-center gap-2">
+                                <span className="text-[15px] font-medium text-zinc-500">This conversation has ended</span>
+                                <button
+                                    onClick={() => {
+                                        setActiveSession(null);
+                                        setSelectedCategory(null);
+                                        setMessages([]);
+                                        setSessionStatus('pending');
+                                    }}
+                                    className="px-6 py-2 bg-[#5331EA] text-white rounded-full text-[14px] font-medium hover:bg-[#4529c9] transition-colors"
+                                >
+                                    Raise New Ticket
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="text-zinc-400 hover:text-black cursor-pointer transition-colors"
+                                    title="Attach file (images or PDFs, max 10MB)"
+                                >
+                                    <Paperclip size={24} />
+                                </button>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*,.pdf"
+                                    onChange={handleFileSelect}
+                                    className="hidden"
+                                />
+                                <div className="flex-1 max-w-[1080px] h-[50px] bg-white border border-[#5331EA] rounded-full px-6 flex items-center shadow-sm">
+                                    <input
+                                        type="text"
+                                        value={inputValue}
+                                        onChange={(e) => setInputValue(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                                        placeholder="Type your message here"
+                                        className="w-full bg-transparent border-none outline-none text-[15px] text-black"
+                                    />
+                                </div>
+                                <button
+                                    onClick={handleSendMessage}
+                                    disabled={(!inputValue.trim() && attachedFiles.length === 0) || uploadingFiles}
+                                    className="w-[50px] h-[50px] bg-[#5331EA] text-white rounded-full flex items-center justify-center transition-all hover:bg-[#4227c0] active:scale-95 disabled:opacity-50"
+                                    title={attachedFiles.length > 0 ? `Send ${attachedFiles[0].name}` : "Send message"}
+                                >
+                                    {uploadingFiles ? (
+                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                        <Send size={24} />
+                                    )}
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
+
+                {/* Lightbox Modal */}
+                {lightboxImage && (
+                    <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center animate-in fade-in duration-300"
+                         onClick={() => setLightboxImage(null)}>
+                        <button 
+                            className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+                            onClick={() => setLightboxImage(null)}
+                        >
+                            <X size={32} />
+                        </button>
+                        <img 
+                            src={lightboxImage || ''} 
+                            alt="Full size" 
+                            className="max-w-[95vw] max-h-[90vh] object-contain shadow-2xl animate-in zoom-in-95 duration-300"
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                    </div>
+                )}
 
                 <div className="mt-8 w-full max-w-[760px] bg-[#5331EA15] border border-[#5331EA] rounded-[10px] flex items-center px-4 py-2 gap-3">
                     <Info className="text-[#5331EA]" size={24} />

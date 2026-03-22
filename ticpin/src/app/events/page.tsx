@@ -31,12 +31,21 @@ async function getEvents(): Promise<RealEvent[]> {
         const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/events`, {
             cache: 'no-store'
         });
-        if (!response.ok) return [];
+        if (!response.ok) {
+            console.warn(`Backend responded with ${response.status} for events fetch`);
+            return [];
+        }
         const data = await response.json();
         const events = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
-        return events.filter((e: RealEvent) => e.status === 'approved');
+        
+        if (events.length === 0) {
+            console.log("No events returned from backend /api/events");
+        }
+        
+        // Return all events regardless of status - let EventsClient handle filtering
+        return events;
     } catch (err) {
-        console.error("Failed to fetch events:", err);
+        console.error("Failed to fetch events from backend:", err);
         return [];
     }
 }

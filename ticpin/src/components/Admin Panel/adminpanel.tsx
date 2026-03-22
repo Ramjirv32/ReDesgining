@@ -3,7 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { User } from 'lucide-react';
+import { User, ArrowLeft } from 'lucide-react';
 
 import Footer from '../layout/Footer';
 
@@ -73,10 +73,17 @@ export default function AdminPanel() {
             }}
         >
             <div className="flex-1 mx-auto w-full max-w-[1440px] px-6 md:px-[68px] py-12 md:py-20 space-y-12 md:space-y-20">
-                {/* Page Title */}
-                <div className="space-y-2">
-                    <h1 className="text-[32px] md:text-[40px] font-semibold leading-tight text-black">Admin Panel</h1>
-                    <div className="w-[80px] md:w-[101px] h-[1.5px] bg-[#686868]"></div>
+                {/* Header with Back Button */}
+                <div className="flex items-center justify-between">
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-4">
+                            <Link href="/" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                                <ArrowLeft size={24} className="text-black" />
+                            </Link>
+                            <h1 className="text-[32px] md:text-[40px] font-semibold leading-tight text-black">Admin Panel</h1>
+                        </div>
+                        <div className="w-[80px] md:w-[101px] h-[1.5px] bg-[#686868] ml-[72px]"></div>
+                    </div>
                 </div>
 
                 {/* Grid Container */}
@@ -88,7 +95,7 @@ export default function AdminPanel() {
                     <Card title="Chat Support" iconSrc="/admin panel/chat-icon.svg" href="/admin/chat-sessions" />
                     <Card title="Push Notification" iconSrc="/admin panel/notification-icon.svg" href="/admin/push-notification" />
                     <Card title="Offers / Coupons" iconSrc="/admin panel/pricetag-icon.svg" href="/admin/offers" />
-                    <Card title="Ticket" iconSrc="/admin panel/ticket-icon.svg" />
+                    <Card title="Ticket" iconSrc="/admin panel/ticket-icon.svg" href="/admin/chat-sessions" />
                     <Card title="Organizer Approval" iconSrc="/admin panel/user-plus-icon.svg" href="/admin/organizers" />
                 </div>
             </div>

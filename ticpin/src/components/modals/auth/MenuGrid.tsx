@@ -37,11 +37,7 @@ const MenuGrid: React.FC<MenuGridProps> = ({
                 icon: Settings,
                 action: () => { router.push('/admin'); onClose(); }
             },
-            { 
-                label: 'About us', 
-                icon: Info,
-                action: () => { router.push('/about'); onClose(); }
-            },
+         
             { 
                 label: 'Logout', 
                 icon: LogOut,
@@ -70,11 +66,7 @@ const MenuGrid: React.FC<MenuGridProps> = ({
                 icon: MessageCircle,
                 action: () => { router.push('/chat-support'); onClose(); }
             },
-            { 
-                label: 'About us', 
-                icon: Info,
-                action: () => { router.push('/about'); onClose(); }
-            },
+        
             { 
                 label: 'Edit profile', 
                 icon: Edit,
@@ -115,11 +107,7 @@ const MenuGrid: React.FC<MenuGridProps> = ({
                 icon: MessageCircle,
                 action: () => { router.push('/chat-support'); onClose(); }
             },
-            { 
-                label: 'About us', 
-                icon: Info,
-                action: () => { router.push('/about'); onClose(); }
-            },
+         
             { 
                 label: 'Edit profile', 
                 icon: Edit,

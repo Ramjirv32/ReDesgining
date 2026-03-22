@@ -44,7 +44,7 @@ func ListAllEvents(c *fiber.Ctx) error {
 	limit := c.QueryInt("limit", 20)
 	after := c.Query("after")
 
-	events, nextCursor, err := eventservice.GetAll("", "", limit, after)
+	events, nextCursor, err := eventservice.GetAllForAdmin("", limit, after)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -91,9 +91,19 @@ func UpdateEvent(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid body"})
 	}
 	update.UpdatedAt = time.Now()
+
 	col := config.GetDB().Collection("events")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
+	var existingEvent models.Event
+	err = col.FindOne(ctx, bson.M{"_id": objID}).Decode(&existingEvent)
+	if err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "event not found"})
+	}
+
+	update.OrganizerID = existingEvent.OrganizerID
+
 	_, err = col.UpdateOne(ctx, bson.M{"_id": objID}, bson.M{"$set": update})
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
@@ -153,9 +163,19 @@ func UpdateDining(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid body"})
 	}
 	update.UpdatedAt = time.Now()
+
 	col := config.GetDB().Collection("dinings")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
+	var existingDining models.Dining
+	err = col.FindOne(ctx, bson.M{"_id": objID}).Decode(&existingDining)
+	if err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "dining not found"})
+	}
+
+	update.OrganizerID = existingDining.OrganizerID
+
 	_, err = col.UpdateOne(ctx, bson.M{"_id": objID}, bson.M{"$set": update})
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
@@ -215,9 +235,19 @@ func UpdatePlay(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid body"})
 	}
 	update.UpdatedAt = time.Now()
+
 	col := config.GetDB().Collection("plays")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
+	var existingPlay models.Play
+	err = col.FindOne(ctx, bson.M{"_id": objID}).Decode(&existingPlay)
+	if err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "play not found"})
+	}
+
+	update.OrganizerID = existingPlay.OrganizerID
+
 	_, err = col.UpdateOne(ctx, bson.M{"_id": objID}, bson.M{"$set": update})
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})

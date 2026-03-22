@@ -25,6 +25,7 @@ function DetailViewPanel({ ev, onStatus, updating, onUpdate, onNext, currentInde
   const [editedEv, setEditedEv] = useState<AdminListing>({ ...ev });
   const [isSaving, setIsSaving] = useState(false);
   const [step, setStep] = useState(1);
+  const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
     setEditedEv({ ...ev });
@@ -45,6 +46,7 @@ function DetailViewPanel({ ev, onStatus, updating, onUpdate, onNext, currentInde
       current[keys[keys.length - 1]] = value;
       return newObj;
     });
+    setHasChanges(true);
   };
 
   const handleSave = async () => {
@@ -52,6 +54,7 @@ function DetailViewPanel({ ev, onStatus, updating, onUpdate, onNext, currentInde
     try {
       await onUpdate(id, editedEv);
       alert('Changes saved successfully');
+      setHasChanges(false);
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Failed to save changes');
     } finally {
@@ -140,13 +143,15 @@ function DetailViewPanel({ ev, onStatus, updating, onUpdate, onNext, currentInde
                   >
                     Delete
                   </button>
-                  <button
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="px-8 py-2 rounded-xl bg-black text-white font-bold hover:bg-zinc-800 transition-all disabled:opacity-50"
-                  >
-                    {isSaving ? 'Saving...' : 'Save Changes'}
-                  </button>
+                  {hasChanges && (
+                    <button
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      className="px-8 py-2 rounded-xl bg-black text-white font-bold hover:bg-zinc-800 transition-all disabled:opacity-50"
+                    >
+                      {isSaving ? 'Saving...' : 'Save Changes'}
+                    </button>
+                  )}
                   <button
                     onClick={() => onStatus(id, 'approved')}
                     disabled={ev.status === 'approved' || updating === id}
@@ -200,13 +205,15 @@ function DetailViewPanel({ ev, onStatus, updating, onUpdate, onNext, currentInde
                   >
                     Delete
                   </button>
-                  <button
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="px-8 py-2 rounded-xl bg-black text-white font-bold hover:bg-zinc-800 transition-all disabled:opacity-50"
-                  >
-                    {isSaving ? 'Saving...' : 'Save Changes'}
-                  </button>
+                  {hasChanges && (
+                    <button
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      className="px-8 py-2 rounded-xl bg-black text-white font-bold hover:bg-zinc-800 transition-all disabled:opacity-50"
+                    >
+                      {isSaving ? 'Saving...' : 'Save Changes'}
+                    </button>
+                  )}
                   <button
                     onClick={() => onStatus(id, 'approved')}
                     disabled={ev.status === 'approved' || updating === id}
@@ -265,7 +272,11 @@ function AdminDiningContent() {
   useEffect(() => { load(); }, [load]);
 
   const getId = (item: AdminListing) => item.id || item._id || '';
-  const filtered = (listings || []).filter(l => l.status === activeTab);
+  const filtered = (listings || []).filter(l => {
+    if (activeTab === 'pending') return l.status === 'pending' || !l.status || l.status === '';
+    if (activeTab === 'approved') return l.status === 'approved' || l.status === 'rejected';
+    return false;
+});
   const preview = detailId ? listings.find(l => getId(l) === detailId) : null;
 
   const handleStatus = async (id: string, status: ListingStatus) => {

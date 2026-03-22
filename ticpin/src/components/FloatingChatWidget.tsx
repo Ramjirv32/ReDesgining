@@ -18,6 +18,7 @@ interface FloatingChatWidgetProps {
 
 export default function FloatingChatWidget({ onOpenFullChat }: FloatingChatWidgetProps) {
     const [isOpen, setIsOpen] = useState(false);
+    const [isMaximized, setIsMaximized] = useState(false);
     const [message, setMessage] = useState('');
     const [messages, setMessages] = useState<Message[]>([]);
     const [isTyping, setIsTyping] = useState(false);
@@ -31,15 +32,11 @@ export default function FloatingChatWidget({ onOpenFullChat }: FloatingChatWidge
     useEffect(() => {
         const initializeSession = async () => {
             const savedSessionId = sessionStorage.getItem('ticpin_chat_session_id');
-            const savedHistory = sessionStorage.getItem('ticpin_chat_history');
 
-            if (savedHistory) {
-                setMessages(JSON.parse(savedHistory));
-            } else {
-                setMessages([
-                    { id: 1, text: "Hi! I'm your Ticpin Assistant. How can I help you today?", sender: 'support', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
-                ]);
-            }
+            // Fresh start every time - no sessionStorage history loading
+            setMessages([
+                { id: 1, text: "Hi! I'm your Ticpin Assistant. How can I help you today?", sender: 'support', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) }
+            ]);
 
             if (savedSessionId) {
                 setSessionId(savedSessionId);
@@ -70,11 +67,8 @@ export default function FloatingChatWidget({ onOpenFullChat }: FloatingChatWidge
         if (isOpen) initializeSession();
     }, [isOpen, effectiveSession]);
 
-    // Save history to session storage
+    // Update auto-scroll only - NO sessionStorage history saving
     useEffect(() => {
-        if (messages.length > 0) {
-            sessionStorage.setItem('ticpin_chat_history', JSON.stringify(messages));
-        }
         scrollToBottom();
     }, [messages]);
 
@@ -82,8 +76,8 @@ export default function FloatingChatWidget({ onOpenFullChat }: FloatingChatWidge
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
-    const handleOpenFullChat = () => {
-        window.location.href = '/chat-support';
+    const handleToggleMaximize = () => {
+        setIsMaximized(!isMaximized);
     };
 
     const stopChat = () => {
@@ -102,7 +96,7 @@ export default function FloatingChatWidget({ onOpenFullChat }: FloatingChatWidge
             id: Date.now(),
             text: msgToSend,
             sender: 'user',
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
         };
 
         setMessages(prev => [...prev, userMessage]);
@@ -142,7 +136,7 @@ export default function FloatingChatWidget({ onOpenFullChat }: FloatingChatWidge
                     id: assistantMessageId,
                     text: '',
                     sender: 'support',
-                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
                 }]);
 
                 while (true) {
@@ -166,6 +160,8 @@ export default function FloatingChatWidget({ onOpenFullChat }: FloatingChatWidge
                                     setMessages(prev => prev.map(msg => 
                                         msg.id === assistantMessageId ? { ...msg, text: fullResponse } : msg
                                     ));
+                                    // Small delay to make streaming more readable
+                                    await new Promise(resolve => setTimeout(resolve, 30));
                                 }
                             } catch (e) {}
                         }
@@ -208,7 +204,11 @@ export default function FloatingChatWidget({ onOpenFullChat }: FloatingChatWidge
     }
 
     return (
-        <div className="fixed bottom-6 right-6 z-50 w-[350px] h-[550px] bg-white rounded-[32px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] flex flex-col overflow-hidden border border-zinc-100 animate-in slide-in-from-bottom-10 fade-in duration-300">
+        <div 
+            className={`fixed bottom-6 right-6 z-50 bg-white rounded-[32px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] flex flex-col overflow-hidden border border-zinc-100 animate-in slide-in-from-bottom-10 fade-in duration-300 transition-all ${
+                isMaximized ? 'w-[480px] h-[85vh] md:w-[550px]' : 'w-[350px] h-[550px]'
+            }`}
+        >
             {/* Header */}
             <div className="bg-black text-white p-6 flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -224,7 +224,7 @@ export default function FloatingChatWidget({ onOpenFullChat }: FloatingChatWidge
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button onClick={handleOpenFullChat} className="p-2 hover:bg-white/10 rounded-xl transition-colors" title="Full screen">
+                    <button onClick={handleToggleMaximize} className={`p-2 hover:bg-white/10 rounded-xl transition-colors ${isMaximized ? 'text-green-400' : ''}`} title="Full screen">
                         <Maximize2 size={18} />
                     </button>
                     <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
@@ -249,7 +249,66 @@ export default function FloatingChatWidget({ onOpenFullChat }: FloatingChatWidge
                                         <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
                                         <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce"></div>
                                     </div>
-                                ) : msg.text}
+                                ) : (
+                                    <div className="whitespace-pre-wrap space-y-2">
+                                        {msg.text.split('\n').map((line, i) => {
+                                            const trimmed = line.trim();
+                                            if (!trimmed) return <div key={i} className="h-1" />;
+
+                                            // Detect Step headers (more flexible)
+                                            const isStep = (trimmed.match(/^[0-9]$|^[0-9]\.$|^Step [0-9]/i)) || 
+                                                           (trimmed.includes('[Step')) ||
+                                                           (trimmed.startsWith('📍')) ||
+                                                           (trimmed.startsWith('**') && trimmed.includes('Step'));
+
+                                            if (isStep && trimmed.length < 50) {
+                                                const cleanText = trimmed
+                                                    .replace(/\*\*/g, '')
+                                                    .replace(/[\[\]📍]/g, '')
+                                                    .replace(/^[0-9]\.?\s*/, '')
+                                                    .trim();
+                                                
+                                                const stepNumber = trimmed.match(/[0-9]+/)?.[0] || (i/2 + 1).toString();
+                                                
+                                                return (
+                                                    <div key={i} className="mt-5 mb-3 first:mt-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="flex-shrink-0 w-8 h-8 bg-[#5331EA] text-white rounded-lg flex items-center justify-center font-black text-[14px] shadow-sm">
+                                                                {stepNumber}
+                                                            </span>
+                                                            <span className="text-[#5331EA] font-extrabold text-[15px] uppercase tracking-tight">
+                                                                {cleanText.includes(':') ? cleanText.split(':')[1].trim() : cleanText || `Step ${stepNumber}`}
+                                                            </span>
+                                                        </div>
+                                                        <div className="h-[2px] w-12 bg-[#5331EA]/10 mt-1.5 rounded-full" />
+                                                    </div>
+                                                );
+                                            }
+
+                                            // Format lines with bold text
+                                            const parts = line.split(/(\*\*.*?\*\*)/g);
+                                            return (
+                                                <p key={i} className="flex flex-wrap items-center gap-x-1">
+                                                    {parts.map((part, j) => {
+                                                        if (part.startsWith('**') && part.endsWith('**')) {
+                                                            return <strong key={j} className="font-extrabold text-zinc-900">{part.slice(2, -2)}</strong>;
+                                                        }
+                                                        // Replace arrows for better visual
+                                                        if (part.includes('->')) {
+                                                            return part.split('->').map((item, k, arr) => (
+                                                                <React.Fragment key={k}>
+                                                                    {item.trim()}
+                                                                    {k < arr.length - 1 && <span className="text-[#5331EA] font-black mx-1">→</span>}
+                                                                </React.Fragment>
+                                                            ));
+                                                        }
+                                                        return part;
+                                                    })}
+                                                </p>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
                             <div className={`text-[10px] text-zinc-400 mt-1.5 font-bold uppercase tracking-wider ${msg.sender === 'user' ? 'text-right' : 'text-left'}`}>
                                 {msg.time}

@@ -26,21 +26,18 @@ func CheckEvents() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Check events collection
 	eventCount, err := eventsCol.CountDocuments(ctx, bson.M{})
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("Total events: %d\n", eventCount)
 
-	// Check event bookings collection
 	bookingCount, err := bookingsCol.CountDocuments(ctx, bson.M{})
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("Total event bookings: %d\n", bookingCount)
 
-	// Get sample events
 	cursor, err := eventsCol.Find(ctx, bson.M{}, options.Find().SetLimit(3))
 	if err != nil {
 		log.Fatal(err)
@@ -58,7 +55,6 @@ func CheckEvents() {
 		}
 	}
 
-	// Get sample bookings
 	cursor2, err := bookingsCol.Find(ctx, bson.M{}, options.Find().SetLimit(3))
 	if err != nil {
 		log.Fatal(err)
@@ -76,7 +72,6 @@ func CheckEvents() {
 		}
 	}
 
-	// Check capacity management
 	fmt.Println("\n=== Capacity Management Check ===")
 	pipeline := []bson.M{
 		{"$match": bson.M{"status": "booked"}},
@@ -105,7 +100,6 @@ func CheckEvents() {
 			result.ID["event_id"], result.ID["category"], result.TotalBooked)
 	}
 
-	// Check for overbooking
 	fmt.Println("\n=== Overbooking Check ===")
 	pipeline2 := []bson.M{
 		{"$match": bson.M{"status": "booked"}},

@@ -12,31 +12,26 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// CleanupExpiredOffers removes expired offers and coupons from database and Cloudinary
 func CleanupExpiredOffers() {
 	ctx := context.Background()
 
-	// Get collections
 	offersCol := config.GetDB().Collection("offers")
 	couponsCol := config.GetDB().Collection("coupons")
 
-	// Calculate cutoff date (valid_until + 1 day ago)
-	cutoffDate := time.Now().AddDate(0, 0, -1) // 1 day ago
+	cutoffDate := time.Now().AddDate(0, 0, -1)
 
 	log.Printf("Starting cleanup of offers/coupons expired before: %s", cutoffDate.Format("2006-01-02 15:04:05"))
 	log.Println("Cloudinary cleanup not implemented - images will remain in Cloudinary")
 
-	// Clean up expired offers
 	cleanupOffers(ctx, offersCol, cutoffDate)
 
-	// Clean up expired coupons
 	cleanupCoupons(ctx, couponsCol, cutoffDate)
 
 	log.Println("Cleanup completed")
 }
 
 func cleanupOffers(ctx context.Context, col *mongo.Collection, cutoffDate time.Time) {
-	// Find expired offers
+
 	filter := bson.M{
 		"valid_until": bson.M{"$lt": cutoffDate},
 		"is_active":   true,
@@ -58,7 +53,6 @@ func cleanupOffers(ctx context.Context, col *mongo.Collection, cutoffDate time.T
 			continue
 		}
 
-		// Delete from database
 		_, err = col.DeleteOne(ctx, bson.M{"_id": offer.ID})
 		if err != nil {
 			log.Printf("Error deleting offer %s: %v", offer.ID.Hex(), err)
@@ -73,7 +67,7 @@ func cleanupOffers(ctx context.Context, col *mongo.Collection, cutoffDate time.T
 }
 
 func cleanupCoupons(ctx context.Context, col *mongo.Collection, cutoffDate time.Time) {
-	// Find expired coupons
+
 	filter := bson.M{
 		"valid_until": bson.M{"$lt": cutoffDate},
 		"is_active":   true,
@@ -95,7 +89,6 @@ func cleanupCoupons(ctx context.Context, col *mongo.Collection, cutoffDate time.
 			continue
 		}
 
-		// Delete from database
 		_, err = col.DeleteOne(ctx, bson.M{"_id": coupon.ID})
 		if err != nil {
 			log.Printf("Error deleting coupon %s: %v", coupon.ID.Hex(), err)

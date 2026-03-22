@@ -8,35 +8,32 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// Rate limiting configuration
 var (
-	// Different rate limits for different endpoints
 	rateLimits = map[string]RateLimitConfig{
-		// General API: 100 requests per minute
+
 		"general": {
 			Max:        10000,
 			Expiration: 60 * time.Second,
 		},
-		// Authentication endpoints: 10 requests per minute
+
 		"auth": {
 			Max:        1000,
 			Expiration: 60 * time.Second,
 		},
-		// Booking endpoints: 20 requests per minute
+
 		"booking": {
 			Max:        2000,
 			Expiration: 60 * time.Second,
 		},
-		// Upload endpoints: 5 requests per minute
+
 		"upload": {
 			Max:        500,
 			Expiration: 60 * time.Second,
 		},
 	}
 
-	// Thread-safe storage for rate limiting using sync.Map
 	storage    = &syncMapStorage{}
-	maxEntries = int64(10000) // Maximum entries to prevent memory leaks
+	maxEntries = int64(10000)
 )
 
 type RateLimitConfig struct {
@@ -44,15 +41,14 @@ type RateLimitConfig struct {
 	Expiration time.Duration
 }
 
-// Thread-safe storage using sync.Map
 type syncMapStorage struct {
 	data  sync.Map
-	count int64 // Atomic counter for total entries
+	count int64
 }
 
 type rateLimitEntry struct {
 	count     int32
-	expiresAt int64 // Unix timestamp for atomic operations
+	expiresAt int64
 }
 
 func (m *syncMapStorage) Get(key string) int {
@@ -60,7 +56,7 @@ func (m *syncMapStorage) Get(key string) int {
 		entry := value.(*rateLimitEntry)
 		now := time.Now().Unix()
 		if now > atomic.LoadInt64(&entry.expiresAt) {
-			// Entry expired, remove it
+
 			m.data.Delete(key)
 			atomic.AddInt64(&m.count, -1)
 			return 0
@@ -77,7 +73,6 @@ func (m *syncMapStorage) Set(key string, value int, expiration time.Duration) {
 	}
 	m.data.Store(key, entry)
 
-	// Check if we need to clean up old entries
 	if atomic.AddInt64(&m.count, 1) > maxEntries {
 		go m.cleanup()
 	}
@@ -93,7 +88,6 @@ func (m *syncMapStorage) Increment(key string, expiration time.Duration) int {
 
 	entry := value.(*rateLimitEntry)
 
-	// Check if expired
 	if now > atomic.LoadInt64(&entry.expiresAt) {
 		atomic.StoreInt32(&entry.count, 1)
 		atomic.StoreInt64(&entry.expiresAt, now+int64(expiration.Seconds()))
@@ -109,7 +103,6 @@ func (m *syncMapStorage) Reset(key string) {
 	atomic.AddInt64(&m.count, -1)
 }
 
-// Cleanup expired entries
 func (m *syncMapStorage) cleanup() {
 	now := time.Now().Unix()
 	m.data.Range(func(key, value interface{}) bool {
@@ -122,7 +115,6 @@ func (m *syncMapStorage) cleanup() {
 	})
 }
 
-// Custom rate limiter middleware
 func RateLimit(category string) fiber.Handler {
 	config, exists := rateLimits[category]
 	if !exists {
@@ -132,7 +124,6 @@ func RateLimit(category string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		key := c.IP()
 
-		// Check current count
 		count := storage.Get(key)
 		if count >= config.Max {
 			return c.Status(429).JSON(fiber.Map{
@@ -140,14 +131,12 @@ func RateLimit(category string) fiber.Handler {
 			})
 		}
 
-		// Increment counter
 		storage.Increment(key, config.Expiration)
 
 		return c.Next()
 	}
 }
 
-// Cleanup expired entries periodically
 func StartRateLimitCleanup() {
 	go func() {
 		ticker := time.NewTicker(5 * time.Minute)
@@ -159,7 +148,6 @@ func StartRateLimitCleanup() {
 	}()
 }
 
-// Get rate limit stats (for monitoring)
 func GetRateLimitStats() map[string]interface{} {
 	stats := make(map[string]interface{})
 	stats["total_entries"] = atomic.LoadInt64(&storage.count)
@@ -178,11 +166,9 @@ func GetRateLimitStats() map[string]interface{} {
 	return stats
 }
 
-// Endpoint-specific rate limiting
 func RateLimitByPath(c *fiber.Ctx) error {
 	path := c.Path()
 
-	// Determine rate limit category based on path
 	var category string
 	switch {
 	case path == "/api/organizer/login" ||
@@ -201,7 +187,6 @@ func RateLimitByPath(c *fiber.Ctx) error {
 		category = "general"
 	}
 
-	// Apply rate limit
 	handler := RateLimit(category)
 	return handler(c)
 }

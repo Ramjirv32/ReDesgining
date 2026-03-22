@@ -18,7 +18,6 @@ func Create(email, password, name, phone string) (*models.Admin, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Check if admin already exists
 	var existing models.Admin
 	if err := collection.FindOne(ctx, bson.M{"email": email}).Decode(&existing); err == nil {
 		return nil, errors.New("admin already exists")

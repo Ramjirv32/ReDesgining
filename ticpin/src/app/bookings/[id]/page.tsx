@@ -434,7 +434,7 @@ export default function BookingDetailsPage() {
             <section className="space-y-3">
               {booking.status !== 'cancelled' && (
                 <button
-                  onClick={() => router.push(`/bookings/${booking.id}/cancel`)}
+                  onClick={() => router.push(`/bookings/${booking.id}/cancel?category=${booking.type}`)}
                   className="w-full h-[52px] bg-red-600 text-white rounded-[14px] font-bold flex items-center justify-center gap-2 hover:bg-red-700 transition-colors"
                 >
                   <XCircle className="w-5 h-5" />

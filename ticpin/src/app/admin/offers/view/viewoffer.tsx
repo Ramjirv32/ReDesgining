@@ -50,7 +50,7 @@ export default function ViewOfferForm({ onBack }: { onBack: () => void }) {
         try {
             return new Date(iso).toLocaleDateString('en-IN', {
                 day: '2-digit', month: 'long', year: 'numeric',
-                hour: '2-digit', minute: '2-digit'
+                hour: 'numeric', minute: '2-digit', hour12: true
             });
         } catch { return iso; }
     };

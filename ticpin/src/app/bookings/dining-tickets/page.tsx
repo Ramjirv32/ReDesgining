@@ -56,12 +56,12 @@ export default function DiningTicketsPage() {
     
     try {
       await bookingApi.cancelBooking(bookingId, 'dining');
-      // Refresh bookings after cancellation
-      setBookings(prev => prev.map(booking => 
-        booking.booking_id === bookingId 
-          ? { ...booking, status: 'cancelled' }
-          : booking
-      ));
+      // Refetch bookings after cancellation to get updated status
+      if (session?.id) {
+        const data = await bookingApi.getUserBookings({ userId: session.id });
+        const diningBookings = data.filter(booking => booking.category === 'dining');
+        setBookings(diningBookings);
+      }
     } catch (err) {
       alert('Failed to cancel reservation. Please try again.');
     }

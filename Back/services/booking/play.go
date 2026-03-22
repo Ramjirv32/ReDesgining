@@ -97,8 +97,6 @@ func generateSlots(open, close int) []string {
 	return slots
 }
 
-// findNextFromGrid finds the next free window of durationSlots starting from fromIdx,
-// using an already-computed grid — avoids re-fetching the play doc and rebuilding the grid.
 func findNextFromGrid(grid map[string][]bool, venueSlots []string, n, fromIdx, durationSlots int, courtName string) string {
 	courtGrid := grid[courtName]
 	for j := fromIdx; j+durationSlots <= n; j++ {
@@ -340,7 +338,6 @@ func CreatePlay(b *models.PlayBooking) error {
 		return errors.New("at least one court/ticket is required")
 	}
 
-	// Reject past dates — bookings must be for today or future.
 	todayStr := time.Now().Format("2006-01-02")
 	if b.Date < todayStr {
 		return fmt.Errorf("cannot book a slot in the past (date: %s)", b.Date)
@@ -350,7 +347,7 @@ func CreatePlay(b *models.PlayBooking) error {
 	if duration <= 0 {
 		duration = 1
 	}
-	// Cap at 16 units (8 hours) to prevent abuse.
+
 	const maxDuration = 16
 	if duration > maxDuration {
 		return fmt.Errorf("duration cannot exceed %d slots (%d hours)", maxDuration, maxDuration/2)
@@ -360,17 +357,12 @@ func CreatePlay(b *models.PlayBooking) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	// Fetch the play document (non-transactional)
 	var play models.Play
 	if err := config.PlaysCol.FindOne(ctx, bson.M{"_id": b.PlayID}).Decode(&play); err != nil {
 		return fmt.Errorf("play not found: %w", err)
 	}
 
 	b.OrganizerID = play.OrganizerID
-	if b.OrganizerID.IsZero() {
-		adminID, _ := primitive.ObjectIDFromHex("000000000000000000000001")
-		b.OrganizerID = adminID
-	}
 
 	open, close := venueHours(&play)
 	venueSlots := generateSlots(open, close)
@@ -411,16 +403,11 @@ func CreatePlay(b *models.PlayBooking) error {
 		}
 	}
 
-	// Assign the booking ID before inserting lock docs so the ID is embedded
-	// in each lock document — allows targeted cleanup if needed.
 	b.ID = primitive.NewObjectID()
-	b.BookingID = utils.HashObjectID(b.ID) // Generate hashed booking ID
+	b.BookingID = utils.HashObjectID(b.ID)
 	b.Status = "booked"
 	b.BookedAt = time.Now()
 
-	// Insert slot-lock documents using unique index to prevent concurrent double-bookings.
-	// The unique compound index on play_slot_locks atomically prevents
-	// concurrent double-bookings via duplicate key errors.
 	var lockDocs []interface{}
 	for _, ticket := range b.Tickets {
 		for i := 0; i < duration; i++ {
@@ -451,7 +438,7 @@ func CreatePlay(b *models.PlayBooking) error {
 
 	_, err = config.PlayBookingsCol.InsertOne(ctx, b)
 	if err != nil {
-		// Attempt to clean up lock docs if booking insert fails
+
 		if len(lockDocs) > 0 {
 			cleanCtx, cleanCancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cleanCancel()
@@ -460,4 +447,11 @@ func CreatePlay(b *models.PlayBooking) error {
 		return err
 	}
 	return nil
+}
+func DeletePlayLocks(bookingID primitive.ObjectID) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err := config.SlotLocksCol.DeleteMany(ctx, bson.M{"booking_id": bookingID})
+	return err
 }

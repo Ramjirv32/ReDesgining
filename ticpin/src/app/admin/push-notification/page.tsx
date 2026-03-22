@@ -268,11 +268,24 @@ export default function PushNotification() {
                                     <p className="text-zinc-600 mt-2 line-clamp-2 text-[18px]">{item.description}</p>
 
                                     <div className="mt-4 flex flex-wrap gap-3">
+                                        {item.sender && (
+                                            <div className="bg-green-100 text-green-700 px-4 py-1.5 rounded-full text-sm font-bold">
+                                                Sent by: {item.sender}
+                                            </div>
+                                        )}
                                         <div className="bg-[#ECE8FD] text-[#5331EA] px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-2 capitalize">
                                             <Users size={14} />
                                             Target: {targetLabel[item.target_type]}
                                         </div>
-                                        {item.recipient_ids && item.recipient_ids.length > 0 && (
+                                        {item.recipient_details && item.recipient_details.length > 0 && (
+                                            <div className="bg-zinc-100 text-zinc-600 px-4 py-1.5 rounded-full text-sm font-bold max-w-xs">
+                                                {item.target_type === 'selected_users' || item.target_type === 'all_users' 
+                                                    ? `${item.recipient_details.slice(0, 2).map((r: any) => r.phone || r.name || 'User').join(', ')}${item.recipient_details.length > 2 ? ` +${item.recipient_details.length - 2} more` : ''}`
+                                                    : `${item.recipient_details.slice(0, 2).map((r: any) => r.email || r.name || 'Organizer').join(', ')}${item.recipient_details.length > 2 ? ` +${item.recipient_details.length - 2} more` : ''}`
+                                                }
+                                            </div>
+                                        )}
+                                        {item.recipient_ids && item.recipient_ids.length > 0 && !item.recipient_details && (
                                             <div className="bg-zinc-100 text-zinc-600 px-4 py-1.5 rounded-full text-sm font-bold">
                                                 {item.recipient_ids.length} Recipients Selected
                                             </div>

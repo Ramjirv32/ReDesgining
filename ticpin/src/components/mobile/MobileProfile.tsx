@@ -124,7 +124,6 @@ export default function MobileProfile() {
             label: "Admin Panel", 
             onClick: () => router.push('/admin') 
         },
-        { icon: <img src="/mobile_icons/profile_page/info.svg" className="w-[20px] h-[20px]" alt="About" />, label: "About us", onClick: () => router.push('/about') },
         { icon: <img src="/mobile_icons/profile_page/logout.svg" className="w-[20px] h-[20px]" alt="Logout" />, label: "Logout", onClick: () => { logoutUser(); router.push('/'); } },
     ] : organizerSession ? [
         // 2) Organizer Menu
@@ -135,7 +134,6 @@ export default function MobileProfile() {
         },
         { icon: <img src="/mobile_icons/profile_page/support.svg" className="w-[20px] h-[20px]" alt="FAQ" />, label: "Frequently asked questions", onClick: () => router.push('/faq') },
         { icon: <img src="/mobile_icons/profile_page/chat.svg" className="w-[20px] h-[20px]" alt="Chat" />, label: "Chat with us", onClick: () => router.push('/chat-support') },
-        { icon: <img src="/mobile_icons/profile_page/info.svg" className="w-[20px] h-[20px]" alt="About" />, label: "About us", onClick: () => router.push('/about') },
         { icon: <img src="/mobile_icons/profile_page/profile.svg" className="w-[20px] h-[20px]" alt="Account" />, label: "Edit profile", onClick: () => router.push(organizerSession ? '/organizer/profile/edit' : '/profile/edit') },
 
         { icon: <img src="/mobile_icons/profile_page/logout.svg" className="w-[20px] h-[20px]" alt="Logout" />, label: "Logout", onClick: () => { logoutUser(); router.push('/'); } },
@@ -146,7 +144,6 @@ export default function MobileProfile() {
         { icon: <img src="/mobile_icons/Pickelball 1.svg" className="w-[20px] h-[20px]" alt="Play" />, label: "Play bookings", onClick: () => router.push('/profile/bookings/play') },
         { icon: <img src="/mobile_icons/profile_page/support.svg" className="w-[20px] h-[20px]" alt="FAQ" />, label: "Frequently asked questions", onClick: () => router.push('/faq') },
         { icon: <img src="/mobile_icons/profile_page/chat.svg" className="w-[20px] h-[20px]" alt="Chat" />, label: "Chat with us", onClick: () => router.push('/chat-support') },
-        { icon: <img src="/mobile_icons/profile_page/info.svg" className="w-[20px] h-[20px]" alt="About" />, label: "About us", onClick: () => router.push('/about') },
         { icon: <img src="/mobile_icons/profile_page/profile.svg" className="w-[20px] h-[20px]" alt="Account" />, label: "Edit profile", onClick: () => router.push(organizerSession ? '/organizer/profile/edit' : '/profile/edit') },
 
         { icon: <img src="/mobile_icons/profile_page/logout.svg" className="w-[20px] h-[20px]" alt="Logout" />, label: "Logout", onClick: () => { logoutUser(); router.push('/'); } },

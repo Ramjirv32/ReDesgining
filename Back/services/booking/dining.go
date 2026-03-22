@@ -31,15 +31,11 @@ func CreateDining(b *models.DiningBooking) error {
 	if errDining == nil {
 		b.OrganizerID = dining.OrganizerID
 	}
-	if b.OrganizerID.IsZero() {
-		adminID, _ := primitive.ObjectIDFromHex("000000000000000000000001")
-		b.OrganizerID = adminID
-	}
 
 	var existing models.DiningBooking
 	err := col.FindOne(ctx, bson.M{"dining_id": b.DiningID, "user_email": b.UserEmail, "date": b.Date, "time_slot": b.TimeSlot}).Decode(&existing)
 	if err == nil {
-		// Check if user is admin by looking up organizer
+
 		orgCol := config.GetDB().Collection("organizers")
 		var org models.Organizer
 		errOrg := orgCol.FindOne(ctx, bson.M{"email": b.UserEmail}).Decode(&org)
@@ -53,7 +49,7 @@ func CreateDining(b *models.DiningBooking) error {
 	}
 
 	b.ID = primitive.NewObjectID()
-	b.BookingID = utils.HashObjectID(b.ID) // Generate hashed booking ID
+	b.BookingID = utils.HashObjectID(b.ID)
 	b.Status = "booked"
 	b.BookedAt = time.Now()
 

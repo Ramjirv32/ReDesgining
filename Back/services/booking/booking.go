@@ -16,7 +16,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// Generate a user-friendly booking ID (8 characters)
 func generateBookingID() string {
 	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	const length = 8
@@ -45,25 +44,16 @@ func Create(b *models.Booking) error {
 
 	col := config.EventBookingsCol
 
-	// Find the event
 	var event models.Event
 	err := config.EventsCol.FindOne(ctx, bson.M{"_id": b.EventID}).Decode(&event)
 	if err != nil {
 		return errors.New("event not found")
 	}
 
-	// Safely handle OrganizerID
-	if !event.OrganizerID.IsZero() {
-		b.OrganizerID = event.OrganizerID
-	} else {
-		adminID, _ := primitive.ObjectIDFromHex("000000000000000000000001")
-		b.OrganizerID = adminID
-	}
+	b.OrganizerID = event.OrganizerID
 
-	// Generate ObjectID first
 	b.ID = primitive.NewObjectID()
 
-	// Generate hashed booking ID from the ObjectID
 	b.BookingID = utils.HashObjectID(b.ID)
 
 	if b.Status == "" {
@@ -71,7 +61,6 @@ func Create(b *models.Booking) error {
 	}
 	b.BookedAt = time.Now()
 
-	// Check capacity per ticket category
 	capacityMap := map[string]int{}
 	if event.TicketCategories != nil {
 		for _, cat := range event.TicketCategories {
@@ -84,7 +73,7 @@ func Create(b *models.Booking) error {
 	if len(capacityMap) > 0 && b.Tickets != nil {
 		for _, t := range b.Tickets {
 			if t.Category == "" {
-				continue // Skip invalid ticket categories
+				continue
 			}
 			cap, hasCap := capacityMap[t.Category]
 			if !hasCap {

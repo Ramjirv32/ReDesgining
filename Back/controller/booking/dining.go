@@ -18,6 +18,12 @@ func CreateDiningBooking(c *fiber.Ctx) error {
 	var req struct {
 		UserEmail      string  `json:"user_email" validate:"required,email"`
 		UserName       string  `json:"user_name" validate:"required,min=3,max=50"`
+		UserPhone      string  `json:"user_phone"`
+		Address        string  `json:"address"`
+		City           string  `json:"city"`
+		State          string  `json:"state"`
+		Pincode        string  `json:"pincode"`
+		Nationality    string  `json:"nationality"`
 		DiningID       string  `json:"dining_id" validate:"required"`
 		VenueName      string  `json:"venue_name" validate:"required,min=2,max=100"`
 		Date           string  `json:"date" validate:"required"`
@@ -40,7 +46,6 @@ func CreateDiningBooking(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid dining_id"})
 	}
 
-	// Duplicate booking check: prevent same user booking same venue/date/slot
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -67,7 +72,7 @@ func CreateDiningBooking(c *fiber.Ctx) error {
 	var couponIDToIncrement primitive.ObjectID
 	var couponMaxUses int
 	if req.CouponCode != "" {
-		result, err := couponsvc.Validate(req.CouponCode, req.DiningID, req.OrderAmount, req.UserID)
+		result, err := couponsvc.Validate(req.CouponCode, req.DiningID, req.OrderAmount, req.UserID, req.UserEmail)
 		if err == nil {
 			discountAmount = result.DiscountAmount
 			appliedCouponCode = result.Coupon.Code
@@ -88,7 +93,14 @@ func CreateDiningBooking(c *fiber.Ctx) error {
 
 	booking := &models.DiningBooking{
 		UserEmail:      req.UserEmail,
+		UserName:       req.UserName,
+		UserPhone:      req.UserPhone,
 		UserID:         req.UserID,
+		Address:        req.Address,
+		City:           req.City,
+		State:          req.State,
+		Pincode:        req.Pincode,
+		Nationality:    req.Nationality,
 		DiningID:       diningObjID,
 		VenueName:      req.VenueName,
 		Date:           req.Date,
@@ -109,14 +121,18 @@ func CreateDiningBooking(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
+	bookingID := booking.ID.Hex()
+
 	if !couponIDToIncrement.IsZero() {
-		_ = couponsvc.IncrementUsage(couponIDToIncrement, couponMaxUses)
+		_ = couponsvc.IncrementUsage(couponIDToIncrement, couponMaxUses, req.UserID, req.UserEmail, bookingID, grandTotal)
 	}
 
 	return c.Status(201).JSON(fiber.Map{
 		"message":         "dining booking confirmed",
-		"booking_id":      booking.ID.Hex(),
+		"booking_id":      booking.BookingID,
+		"id":              booking.ID.Hex(),
 		"grand_total":     grandTotal,
 		"discount_amount": discountAmount,
+		"status":          "booked",
 	})
 }

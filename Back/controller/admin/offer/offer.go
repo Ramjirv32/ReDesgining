@@ -140,7 +140,7 @@ func GetEventOffers(c *fiber.Ctx) error {
 
 func GetDiningOffers(c *fiber.Ctx) error {
 	diningID := c.Params("id")
-	// Robustly decode the ID to handle single or double encoding
+
 	for {
 		decoded, err := url.PathUnescape(diningID)
 		if err != nil || decoded == diningID {
@@ -148,7 +148,7 @@ func GetDiningOffers(c *fiber.Ctx) error {
 		}
 		diningID = decoded
 	}
-	// Resolve name → ObjectID (same pattern as GetPlayOffers)
+
 	dining, err := diningservice.GetByID(diningID, false)
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "dining not found"})
@@ -163,7 +163,7 @@ func GetDiningOffers(c *fiber.Ctx) error {
 
 func GetPlayOffers(c *fiber.Ctx) error {
 	playID := c.Params("id")
-	// Robustly decode the ID to handle single or double encoding
+
 	for {
 		decoded, err := url.PathUnescape(playID)
 		if err != nil || decoded == playID {
@@ -171,7 +171,7 @@ func GetPlayOffers(c *fiber.Ctx) error {
 		}
 		playID = decoded
 	}
-	// Resolve name to ID if needed
+
 	play, err := playservice.GetByID(playID, false)
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "play not found"})

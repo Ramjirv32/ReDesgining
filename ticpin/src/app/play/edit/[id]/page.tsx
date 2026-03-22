@@ -59,6 +59,8 @@ export default function EditPlayPage() {
     const [uploading, setUploading] = useState<Record<string, boolean>>({});
     const [submitLoading, setSubmitLoading] = useState(false);
     const [submitMsg, setSubmitMsg] = useState('');
+    const [hasChanges, setHasChanges] = useState(false);
+    const [originalData, setOriginalData] = useState<Record<string, any>>({});
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
     const [dropdownSearch, setDropdownSearch] = useState({ city: '' });
     const [selections, setSelections] = useState({ category: 'Select Sport', subCategory: 'Select Court Type', city: 'Select City' });
@@ -97,7 +99,10 @@ export default function EditPlayPage() {
             }
             setAuthChecked(true);
             try {
-                const d = await playApi.getById(id) as Record<string, unknown>;
+                const d = await playApi.getOrganizer(id) as Record<string, unknown>;
+                // Store original data for change detection
+                setOriginalData(d);
+                
                 setVenueName((d.name as string) ?? '');
                 if (editorRef.current) editorRef.current.innerHTML = (d.description as string) ?? '';
                 setHasContent(!!d.description);
@@ -179,6 +184,47 @@ export default function EditPlayPage() {
         };
         load();
     }, [id, router, hasCheckedSession]);
+
+    // Check if any changes have been made
+    const checkChanges = useCallback(() => {
+        if (!originalData || Object.keys(originalData).length === 0) return;
+        
+        const currentData = {
+            name: venueName,
+            description: editorRef.current?.innerHTML || '',
+            venue_address: venueAddress,
+            instagram_link: instagramLink,
+            google_map_link: googleMapLink,
+            time: openingTime,
+            opening_time: openingTimeOnly,
+            closing_time: closingTimeOnly,
+            portrait_image_url: portraitUrl,
+            landscape_image_url: landscapeUrl,
+            secondary_banner_url: secondaryBannerUrl,
+            card_video_url: videoUrl,
+            gallery_urls: galleryUrls,
+            event_instructions: playInstructions,
+            youtube_video_url: youtubeVideoUrl,
+            prohibited_items: prohibitedItems,
+            faqs: faqs,
+            category: selections.category === 'Select Sport' ? '' : selections.category,
+            sub_category: selections.subCategory === 'Select Court Type' ? '' : selections.subCategory,
+            city: selections.city === 'Select City' ? '' : selections.city,
+            points_of_contact: pocs,
+            sales_notifications: salesNotifs,
+            courts: courts.map(c => ({ ...c, price: Number(c.price) }))
+        };
+
+        const hasFieldChanges = JSON.stringify(originalData) !== JSON.stringify(currentData);
+        setHasChanges(hasFieldChanges);
+    }, [originalData, venueName, venueAddress, instagramLink, googleMapLink, openingTime, openingTimeOnly, closingTimeOnly, 
+        portraitUrl, landscapeUrl, secondaryBannerUrl, videoUrl, galleryUrls, playInstructions, youtubeVideoUrl, 
+        prohibitedItems, faqs, selections, pocs, salesNotifs, courts]);
+
+    // Update hasChanges whenever any field changes
+    useEffect(() => {
+        checkChanges();
+    }, [checkChanges]);
 
     if (!authChecked && hasCheckedSession) {
         return (
@@ -264,6 +310,7 @@ export default function EditPlayPage() {
                 sales_notifications: salesNotifs,
             });
             setSubmitMsg('✅ Venue updated successfully!');
+            setHasChanges(false);
             setTimeout(() => router.push('/organizer/dashboard?category=play'), 1800);
         } catch (err) {
             setSubmitMsg(err instanceof Error ? err.message : 'Update failed.');
@@ -914,9 +961,11 @@ export default function EditPlayPage() {
                     {/* Save */}
                     <div className="flex flex-col items-center mt-8 mb-20 gap-4">
                         {submitMsg && <p className={`text-[20px] font-medium ${submitMsg.includes('✅') ? 'text-green-600' : 'text-red-600'}`}>{submitMsg}</p>}
-                        <button onClick={handleSubmit} disabled={submitLoading} className="bg-black text-white rounded-[15px] w-full py-4 text-[25px] font-medium disabled:opacity-50">
-                            {submitLoading ? 'Saving...' : 'Save changes'}
-                        </button>
+                        {hasChanges && (
+                            <button onClick={handleSubmit} disabled={submitLoading} className="bg-black text-white rounded-[15px] w-full py-4 text-[25px] font-medium disabled:opacity-50">
+                                {submitLoading ? 'Saving...' : 'Save changes'}
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>

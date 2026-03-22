@@ -44,17 +44,14 @@ func ValidateOffer(offerID string, entityID string, orderAmount float64) (*Valid
 		return nil, errors.New("offer not found")
 	}
 
-	// Check if offer is active
 	if !offer.IsActive {
 		return nil, errors.New("offer is not active")
 	}
 
-	// Check if offer is still valid
 	if time.Now().After(offer.ValidUntil) {
 		return nil, errors.New("offer has expired")
 	}
 
-	// Check if offer applies to this entity
 	entityObjID, err := primitive.ObjectIDFromHex(entityID)
 	if err != nil {
 		return nil, errors.New("invalid entity ID")
@@ -74,7 +71,6 @@ func ValidateOffer(offerID string, entityID string, orderAmount float64) (*Valid
 		return nil, errors.New("offer does not apply to this entity")
 	}
 
-	// Calculate discount
 	var discountAmount float64
 	if offer.DiscountType == "percent" {
 		discountAmount = orderAmount * (offer.DiscountValue / 100)
@@ -82,7 +78,6 @@ func ValidateOffer(offerID string, entityID string, orderAmount float64) (*Valid
 		discountAmount = offer.DiscountValue
 	}
 
-	// Ensure discount doesn't exceed order amount
 	if discountAmount > orderAmount {
 		discountAmount = orderAmount
 	}
@@ -125,7 +120,6 @@ func GetForEntity(entityType string, entityID string) ([]models.EventOffer, erro
 		"entity_ids":  bson.M{"$elemMatch": bson.M{"$eq": objID}},
 	}
 
-	// Debug logging
 	fmt.Printf("DEBUG: GetForEntity filter - entityType: %s, entityID: %s\n", entityType, entityID)
 
 	cursor, err := col.Find(ctx, filter)
@@ -138,7 +132,6 @@ func GetForEntity(entityType string, entityID string) ([]models.EventOffer, erro
 		return nil, err
 	}
 
-	// Debug logging
 	fmt.Printf("DEBUG: Found %d offers for %s %s\n", len(offers), entityType, entityID)
 	for _, offer := range offers {
 		fmt.Printf("DEBUG: Offer - ID: %s, Title: %s, AppliesTo: %s\n", offer.ID.Hex(), offer.Title, offer.AppliesTo)

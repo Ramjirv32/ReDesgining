@@ -45,10 +45,15 @@ export default function Navbar() {
             syncAuth();
         };
 
-        // Auto-open location modal if not set
-        if (!currentLocation) {
+        // Auto-open location modal only on first visit (not on refresh)
+        // Check if modal has been shown before using localStorage
+        const hasSeenLocationModal = typeof window !== 'undefined' && localStorage.getItem('locationModalShown') === 'true';
+
+        if (!currentLocation && !hasSeenLocationModal) {
             const timer = setTimeout(() => {
                 setIsLocationOpen(true);
+                // Mark as shown so it won't show again on refresh
+                localStorage.setItem('locationModalShown', 'true');
             }, 1000); // Small delay for better UX
             return () => clearTimeout(timer);
         }

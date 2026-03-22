@@ -183,34 +183,41 @@ export default function ReviewBookingPage() {
 
     // Also pre-fill with session data if available and state is empty
     useEffect(() => {
-        const loadProfileData = async () => {
+        const loadUserData = async () => {
             if (session?.id) {
-                const profile = await profileApi.getProfile(session.id);
-                if (profile) {
+                try {
+                    // Fetch profile and booking history in parallel
+                    const [profile, history] = await Promise.all([
+                        profileApi.getProfile(session.id).catch(() => null),
+                        bookingApi.getUserBookings({ userId: session.id }).catch(() => [])
+                    ]);
+
+                    // Find latest successful booking
+                    const latestBooking = (Array.isArray(history) ? [...history] : [])
+                        ?.filter((b: any) => b.status === 'booked' || b.status === 'confirmed')
+                        ?.sort((a: any, b: any) => new Date(b.booked_at).getTime() - new Date(a.booked_at).getTime())[0];
+
                     setBilling(prev => ({
                         ...prev,
-                        name: prev.name && prev.name !== '' ? prev.name : (profile.name || ''),
-                        phone: prev.phone && prev.phone !== '' ? prev.phone : (profile.phone || ''),
-                        address: prev.address && prev.address !== '' ? prev.address : (profile.address || ''),
-                        city: prev.city && prev.city !== '' ? prev.city : (profile.district || ''),
-                        state: prev.state && prev.state !== '' ? prev.state : (profile.state || ''),
-                        nationality: prev.nationality && prev.nationality !== 'Indian' ? prev.nationality : (profile.country || 'Indian'),
+                        name: prev.name || latestBooking?.user_name || profile?.name || session?.name || '',
+                        phone: prev.phone || latestBooking?.user_phone || profile?.phone || session?.phone || '',
+                        address: prev.address || latestBooking?.address || profile?.address || '',
+                        city: prev.city || latestBooking?.city || profile?.district || '',
+                        state: prev.state || latestBooking?.state || profile?.state || '',
+                        pincode: prev.pincode || latestBooking?.pincode || '',
+                        nationality: prev.nationality !== 'Indian' ? prev.nationality : (latestBooking?.nationality || 'Indian'),
                     }));
-                    if (profile.email && !email) {
-                        setEmail(profile.email);
+
+                    if (!email) {
+                        setEmail(latestBooking?.user_email || profile?.email || session?.email || '');
                     }
-                } else {
-                    // Fallback to session data
-                    setBilling(prev => ({
-                        ...prev,
-                        name: prev.name && prev.name !== '' ? prev.name : (session.name || ''),
-                        phone: prev.phone && prev.phone !== '' ? prev.phone : (session.phone || ''),
-                    }));
+                } catch (err) {
+                    console.error('Failed to load user data', err);
                 }
             }
         };
-        loadProfileData();
-    }, [session]);
+        loadUserData();
+    }, [session, email]);
 
     // Persist changes
     useEffect(() => {
@@ -386,6 +393,12 @@ export default function ReviewBookingPage() {
                 result = await bookingApi.createDiningBooking({
                     user_email: emailData,
                     user_name: billing.name,
+                    user_phone: billing.phone,
+                    address: billing.address,
+                    city: billing.city,
+                    state: billing.state,
+                    pincode: billing.pincode,
+                    nationality: billing.nationality,
                     dining_id: cartData.eventId,
                     venue_name: cartData.eventName,
                     date: cartData.date || '',
@@ -403,6 +416,12 @@ export default function ReviewBookingPage() {
                 result = await bookingApi.createPlayBooking({
                     user_email: emailData,
                     user_name: billing.name,
+                    user_phone: billing.phone,
+                    address: billing.address,
+                    city: billing.city,
+                    state: billing.state,
+                    pincode: billing.pincode,
+                    nationality: billing.nationality,
                     play_id: cartData.eventId,
                     venue_name: cartData.eventName,
                     date: cartData.date || '',
@@ -425,6 +444,12 @@ export default function ReviewBookingPage() {
                 result = await bookingApi.createEventBooking({
                     user_email: emailData,
                     user_name: billing.name,
+                    user_phone: billing.phone,
+                    address: billing.address,
+                    city: billing.city,
+                    state: billing.state,
+                    pincode: billing.pincode,
+                    nationality: billing.nationality,
                     event_id: cartData.eventId,
                     event_name: cartData.eventName,
                     tickets: cartData.tickets.map(t => ({

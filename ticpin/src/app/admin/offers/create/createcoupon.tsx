@@ -122,6 +122,7 @@ export default function CreateCouponPage({ onBack, editData }: { onBack: () => v
     const [userIds, setUserIds] = useState<string[]>(
         (editData?.user_ids || []).map(u => typeof u === 'string' ? u : u.$oid)
     );
+    const [isPublic, setIsPublic] = useState(editData?.is_public ?? false);
     const [users, setUsers] = useState<UserRecord[]>([]);
     const [usersLoading, setUsersLoading] = useState(false);
     const [validFrom, setValidFrom] = useState(editData?.valid_from ? new Date(editData.valid_from).toISOString().slice(0, 16) : '');
@@ -162,7 +163,8 @@ export default function CreateCouponPage({ onBack, editData }: { onBack: () => v
                 valid_from: new Date(validFrom).toISOString(),
                 valid_until: new Date(validUntil).toISOString(),
                 max_uses: maxUses ? Number(maxUses) : 0,
-                user_ids: userIds.length > 0 ? userIds : undefined,
+                is_public: isPublic,
+                user_ids: !isPublic && userIds.length > 0 ? userIds : undefined,
                 is_active: isActive,
             };
 
@@ -183,7 +185,7 @@ export default function CreateCouponPage({ onBack, editData }: { onBack: () => v
     };
 
     return (
-        <div className="bg-white rounded-[32px] p-10 md:p-12 lg:p-14 min-h-[480px] flex items-center justify-center gap-12 relative overflow-hidden">
+        <div className="bg-white rounded-[32px] p-10 md:p-12 lg:p-14 min-h-[480px] flex items-center justify-center gap-12 relative">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-16 gap-y-8 w-full mt-[-40px]">
                 {/* Left Column */}
                 <div className="space-y-8">
@@ -220,6 +222,20 @@ export default function CreateCouponPage({ onBack, editData }: { onBack: () => v
                             <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
                         </div>
                     </div>
+                    <div className="space-y-1.5">
+                        <div className="flex items-center gap-3">
+                            <label className="text-gray-600 text-[16px] font-medium block" style={{ fontFamily: 'Anek Latin' }}>Max Uses</label>
+                            <span className="text-[#5331EA] text-[13px] font-medium" style={{ fontFamily: 'Anek Latin' }}>0 = unlimited</span>
+                        </div>
+                        <input
+                            type="number"
+                            placeholder="e.g. 100"
+                            value={maxUses}
+                            onChange={(e) => setMaxUses(e.target.value)}
+                            className="w-full h-[52px] border border-[#D9D9D9] rounded-2xl px-5 text-[#2a2a2a] placeholder:text-gray-300 text-[16px] font-medium focus:border-purple-300 outline-none transition-all"
+                            style={{ fontFamily: 'Anek Latin' }}
+                        />
+                    </div>
 
                     {/* Discount */}
                     <div className="space-y-1.5">
@@ -249,19 +265,30 @@ export default function CreateCouponPage({ onBack, editData }: { onBack: () => v
                     </div>
 
                     {/* Max Uses */}
-                    <div className="space-y-1.5">
-                        <div className="flex items-center gap-3">
-                            <label className="text-gray-600 text-[16px] font-medium block" style={{ fontFamily: 'Anek Latin' }}>Max Uses</label>
-                            <span className="text-[#5331EA] text-[13px] font-medium" style={{ fontFamily: 'Anek Latin' }}>0 = unlimited</span>
+
+                    {/* Feedback & Actions */}
+                    <div className="flex flex-col items-start gap-4 mt-12 w-full">
+                        {error && <p className="text-red-500 text-[13px] font-medium">{error}</p>}
+                        {success && <p className="text-green-600 text-[13px] font-bold">{success}</p>}
+
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={onBack}
+                                className="w-[100px] h-[52px] bg-white border border-black text-black rounded-[14px] text-[16px] font-bold hover:bg-gray-50 transition-colors"
+                                style={{ fontFamily: 'Anek Latin' }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className="w-[140px] h-[52px] bg-[#000000] text-white rounded-[14px] text-[16px] font-bold disabled:opacity-40 hover:bg-zinc-800 transition-colors"
+                                style={{ fontFamily: 'Anek Latin' }}
+                                onClick={handleSave}
+                                disabled={loading}
+                            >
+                                {loading ? '...' : editData ? 'Update' : 'Create'}
+                            </button>
                         </div>
-                        <input
-                            type="number"
-                            placeholder="e.g. 100"
-                            value={maxUses}
-                            onChange={(e) => setMaxUses(e.target.value)}
-                            className="w-full h-[52px] border border-[#D9D9D9] rounded-2xl px-5 text-[#2a2a2a] placeholder:text-gray-300 text-[16px] font-medium focus:border-purple-300 outline-none transition-all"
-                            style={{ fontFamily: 'Anek Latin' }}
-                        />
                     </div>
                 </div>
 
@@ -280,7 +307,44 @@ export default function CreateCouponPage({ onBack, editData }: { onBack: () => v
                         />
                     </div>
 
-                    {/* User Multi-Select */}
+                    <div className="space-y-1.5">
+                        <label className="text-gray-600 text-[16px] font-medium block" style={{ fontFamily: 'Anek Latin' }}>Coupon Type</label>
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setIsPublic(false)}
+                                className={`flex-1 h-[52px] rounded-2xl border-2 px-4 text-[15px] font-medium transition-all ${
+                                    !isPublic
+                                        ? 'border-[#5331EA] bg-[#F5F3FF] text-[#5331EA]'
+                                        : 'border-[#D9D9D9] text-gray-600 hover:border-[#5331EA]/50'
+                                }`}
+                                style={{ fontFamily: 'Anek Latin' }}
+                            >
+                                Specific Users
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setIsPublic(true)}
+                                className={`flex-1 h-[52px] rounded-2xl border-2 px-4 text-[15px] font-medium transition-all ${
+                                    isPublic
+                                        ? 'border-[#5331EA] bg-[#F5F3FF] text-[#5331EA]'
+                                        : 'border-[#D9D9D9] text-gray-600 hover:border-[#5331EA]/50'
+                                }`}
+                                style={{ fontFamily: 'Anek Latin' }}
+                            >
+                                Public (No Users)
+                            </button>
+                        </div>
+                        <p className="text-[12px] text-gray-500 mt-1" style={{ fontFamily: 'Anek Latin' }}>
+                            {isPublic
+                                ? "Anyone with the code can use this coupon. Admin can copy and share the code."
+                                : "Only selected users can use this coupon."
+                            }
+                        </p>
+                    </div>
+
+                    {/* User Multi-Select - Only show if not public */}
+                    {!isPublic && (
                     <div className="space-y-1.5">
                         <div className="flex items-center gap-3">
                             <label className="text-gray-600 text-[16px] font-medium block" style={{ fontFamily: 'Anek Latin' }}>Apply to Users</label>
@@ -299,6 +363,8 @@ export default function CreateCouponPage({ onBack, editData }: { onBack: () => v
                             emptyText="No users found"
                         />
                     </div>
+
+                    )}
 
                     {/* Valid From & Until */}
                     <div className="space-y-1.5">
@@ -337,31 +403,6 @@ export default function CreateCouponPage({ onBack, editData }: { onBack: () => v
                             <span className="text-[14px] font-bold uppercase tracking-tight">{isActive ? 'Active' : 'Inactive'}</span>
                         </div>
                     )}
-                </div>
-            </div>
-
-            {/* Feedback & Actions */}
-            <div className="absolute bottom-14 left-14 flex flex-col items-end gap-2 w-full pr-28">
-                {error && <p className="text-red-500 text-[13px] font-medium">{error}</p>}
-                {success && <p className="text-green-600 text-[13px] font-bold">{success}</p>}
-
-                <div className="flex gap-3">
-                    <button
-                        type="button"
-                        onClick={onBack}
-                        className="w-[80px] h-[48px] bg-white border border-black text-black rounded-[14px] text-[16px] font-bold"
-                        style={{ fontFamily: 'Anek Latin' }}
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        className="w-[120px] h-[48px] bg-[#000000] text-white rounded-[14px] text-[16px] font-bold disabled:opacity-40"
-                        style={{ fontFamily: 'Anek Latin' }}
-                        onClick={handleSave}
-                        disabled={loading}
-                    >
-                        {loading ? '...' : editData ? 'Update' : 'Create'}
-                    </button>
                 </div>
             </div>
         </div>

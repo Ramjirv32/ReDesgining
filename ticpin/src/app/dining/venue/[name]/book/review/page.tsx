@@ -81,7 +81,7 @@ export default function DiningReviewPage() {
 
     const billingRef = useRef<HTMLDivElement>(null);
 
-    // Load cart data from sessionStorage
+    // Load cart and billing data from sessionStorage
     useEffect(() => {
         const savedCart = sessionStorage.getItem('dining_cart');
         if (savedCart) {
@@ -99,25 +99,47 @@ export default function DiningReviewPage() {
         } else {
             router.push(`/dining/venue/${venueName}/book`);
         }
+
+        const savedBilling = sessionStorage.getItem('ticpin_billing_data');
+        if (savedBilling) {
+            try { setBilling(JSON.parse(savedBilling)); } catch { /* ignore */ }
+        }
+        
+        const savedStep = sessionStorage.getItem('ticpin_dining_step');
+        if (savedStep === 'billing') setStep('billing');
     }, [venueName, router]);
 
-    // Load user profile for billing info
+    // Load user profile and history for billing info
     useEffect(() => {
-        if (session?.id) {
-            profileApi.getProfile(session.id).then(profile => {
-                if (profile) {
+        const loadUserData = async () => {
+            if (session?.id) {
+                try {
+                    const [profile, history] = await Promise.all([
+                        profileApi.getProfile(session.id).catch(() => null),
+                        bookingApi.getUserBookings({ userId: session.id }).catch(() => [])
+                    ]);
+
+                    const latestBooking = (Array.isArray(history) ? [...history] : [])
+                        ?.filter((b: any) => b.status === 'booked' || b.status === 'confirmed')
+                        ?.sort((a: any, b: any) => new Date(b.booked_at).getTime() - new Date(a.booked_at).getTime())[0];
+
                     setBilling(prev => ({
                         ...prev,
-                        name: prev.name || profile.name || '',
-                        email: prev.email || profile.email || session.email || '',
-                        phone: prev.phone || profile.phone || session.phone || '',
-                        address: prev.address || profile.address || '',
-                        city: prev.city || profile.district || '',
-                        state: prev.state || profile.state || '',
+                        name: prev.name || latestBooking?.user_name || profile?.name || session?.name || '',
+                        email: prev.email || latestBooking?.user_email || profile?.email || session?.email || '',
+                        phone: prev.phone || latestBooking?.user_phone || profile?.phone || session?.phone || '',
+                        address: prev.address || latestBooking?.address || profile?.address || '',
+                        city: prev.city || latestBooking?.city || profile?.district || '',
+                        state: prev.state || latestBooking?.state || profile?.state || '',
+                        pincode: prev.pincode || latestBooking?.pincode || '',
+                        nationality: prev.nationality !== 'Indian' ? prev.nationality : (latestBooking?.nationality || 'Indian'),
                     }));
+                } catch (err) {
+                    console.error('Failed to load user data', err);
                 }
-            }).catch(console.error);
-        }
+            }
+        };
+        loadUserData();
     }, [session]);
 
     // Load offers
@@ -132,6 +154,17 @@ export default function DiningReviewPage() {
             }).catch(console.error);
         }
     }, [venueData, cart]);
+
+    // Persist changes
+    useEffect(() => {
+        if (billing.name || billing.phone || billing.address) {
+            sessionStorage.setItem('ticpin_billing_data', JSON.stringify(billing));
+        }
+    }, [billing]);
+
+    useEffect(() => {
+        sessionStorage.setItem('ticpin_dining_step', step);
+    }, [step]);
 
     const orderAmount = cart?.totalPrice ?? 0;
     const bookingFee = 0; // Dining usually has 0 booking fee for now
@@ -149,6 +182,8 @@ export default function DiningReviewPage() {
             billing.phone.trim().length >= 10 &&
             billing.email.trim().includes('@') &&
             billing.address.trim() !== '' &&
+            billing.city.trim() !== '' &&
+            billing.pincode.trim().length >= 6 &&
             acceptedTerms
         );
     }, [billing, acceptedTerms]);
@@ -233,6 +268,12 @@ export default function DiningReviewPage() {
             await bookingApi.createDiningBooking({
                 user_email: billing.email,
                 user_name: billing.name,
+                user_phone: billing.phone,
+                address: billing.address,
+                city: billing.city,
+                state: billing.state,
+                pincode: billing.pincode,
+                nationality: billing.nationality,
                 dining_id: cart!.eventId,
                 venue_name: cart!.eventName,
                 date: cart!.date,
@@ -488,6 +529,25 @@ export default function DiningReviewPage() {
                                     <div className="space-y-2">
                                         <label className="text-[13px] font-black text-[#686868] uppercase tracking-[0.15em] ml-1">Residential Address <span className="text-red-500">*</span></label>
                                         <input type="text" placeholder="STREET, AREA, HOUSE NO." value={billing.address} onChange={e => {setBilling({...billing, address: e.target.value}); setBookingError('');}} className="w-full h-[60px] border border-zinc-200 rounded-[16px] px-6 focus:outline-none focus:border-black text-[17px] font-black text-black tracking-wide bg-zinc-50/30 uppercase placeholder:text-zinc-200" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[13px] font-black text-[#686868] uppercase tracking-[0.15em] ml-1">City <span className="text-red-500">*</span></label>
+                                        <input type="text" placeholder="CITY" value={billing.city} onChange={e => {setBilling({...billing, city: e.target.value}); setBookingError('');}} className="w-full h-[60px] border border-zinc-200 rounded-[16px] px-6 focus:outline-none focus:border-black text-[17px] font-black text-black tracking-wide bg-zinc-50/30 uppercase" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[13px] font-black text-[#686868] uppercase tracking-[0.15em] ml-1">State</label>
+                                        <input type="text" placeholder="STATE" value={billing.state} onChange={e => {setBilling({...billing, state: e.target.value}); setBookingError('');}} className="w-full h-[60px] border border-zinc-200 rounded-[16px] px-6 focus:outline-none focus:border-black text-[17px] font-black text-black tracking-wide bg-zinc-50/30 uppercase" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[13px] font-black text-[#686868] uppercase tracking-[0.15em] ml-1">Pincode <span className="text-red-500">*</span></label>
+                                        <input type="text" placeholder="PINCODE" value={billing.pincode} onChange={e => {setBilling({...billing, pincode: e.target.value.replace(/\D/g, '')}); setBookingError('');}} maxLength={6} className="w-full h-[60px] border border-zinc-200 rounded-[16px] px-6 focus:outline-none focus:border-black text-[17px] font-black text-black tracking-wide bg-zinc-50/30" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[13px] font-black text-[#686868] uppercase tracking-[0.15em] ml-1">Nationality <span className="text-red-500">*</span></label>
+                                        <select value={billing.nationality} onChange={e => {setBilling({...billing, nationality: e.target.value}); setBookingError('');}} className="w-full h-[60px] border border-zinc-200 rounded-[16px] px-6 focus:outline-none focus:border-black text-[17px] font-black text-black bg-zinc-50/30 uppercase">
+                                            <option value="Indian">Indian</option>
+                                            <option value="Other">Other</option>
+                                        </select>
                                     </div>
                                 </div>
 

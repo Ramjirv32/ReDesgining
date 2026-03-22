@@ -83,7 +83,6 @@ func (c *TTLCache) Delete(key string) {
 	delete(c.items, key)
 }
 
-// DeletePattern removes all cache keys matching a pattern
 func (c *TTLCache) DeletePattern(pattern string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -95,7 +94,6 @@ func (c *TTLCache) DeletePattern(pattern string) {
 	}
 }
 
-// DeleteByPrefix removes all cache keys with a given prefix
 func (c *TTLCache) DeleteByPrefix(prefix string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -107,14 +105,12 @@ func (c *TTLCache) DeleteByPrefix(prefix string) {
 	}
 }
 
-// Clear empties the entire cache
 func (c *TTLCache) Clear() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.items = make(map[string]item)
 }
 
-// Stats returns cache statistics
 func (c *TTLCache) Stats() map[string]interface{} {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -135,13 +131,12 @@ func (c *TTLCache) Stats() map[string]interface{} {
 	}
 }
 
-// Helper function to generate cache keys with parameters
 func GenerateKey(prefix string, params ...interface{}) string {
 	key := prefix
 	for _, param := range params {
 		key += fmt.Sprintf(":%v", param)
 	}
-	// Hash long keys to keep them manageable
+
 	if len(key) > 100 {
 		hash := md5.Sum([]byte(key))
 		key = prefix + ":" + fmt.Sprintf("%x", hash)[:8]
@@ -149,16 +144,14 @@ func GenerateKey(prefix string, params ...interface{}) string {
 	return key
 }
 
-// Helper function to match cache key patterns
 func matchesPattern(key, pattern string) bool {
-	// Simple pattern matching - can be enhanced with regex if needed
+
 	if pattern == "*" {
 		return true
 	}
 	return len(key) >= len(pattern) && key[:len(pattern)] == pattern
 }
 
-// CacheManager provides high-level cache operations
 type CacheManager struct {
 	cache *TTLCache
 }
@@ -167,7 +160,6 @@ func NewCacheManager() *CacheManager {
 	return &CacheManager{cache: GlobalCache}
 }
 
-// Entity caching methods
 func (cm *CacheManager) SetEntity(entityType, id string, data interface{}, ttl time.Duration) {
 	key := fmt.Sprintf("%s:%s", entityType, id)
 	cm.cache.Set(key, data, ttl)
@@ -183,7 +175,6 @@ func (cm *CacheManager) DeleteEntity(entityType, id string) {
 	cm.cache.Delete(key)
 }
 
-// List caching methods
 func (cm *CacheManager) SetList(entityType string, params []interface{}, data interface{}, ttl time.Duration) {
 	key := GenerateKey("list:"+entityType, params...)
 	cm.cache.Set(key, data, ttl)
@@ -198,15 +189,13 @@ func (cm *CacheManager) DeleteList(entityType string) {
 	cm.cache.DeleteByPrefix("list:" + entityType)
 }
 
-// Invalidate all cache for an entity type
 func (cm *CacheManager) InvalidateEntityType(entityType string) {
 	cm.cache.DeleteByPrefix(entityType + ":")
 	cm.cache.DeleteByPrefix("list:" + entityType)
 }
 
-// Common TTL constants
 const (
-	TTLShort  = 5 * time.Minute  // For frequently changing data
-	TTLMedium = 15 * time.Minute // For moderately changing data
-	TTLLong   = 1 * time.Hour    // For relatively static data
+	TTLShort  = 5 * time.Minute
+	TTLMedium = 15 * time.Minute
+	TTLLong   = 1 * time.Hour
 )

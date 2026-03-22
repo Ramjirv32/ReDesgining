@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { ChevronLeft, AlertTriangle, Clock, Shield, CreditCard, CheckCircle, XCircle } from 'lucide-react';
 
 export default function CancelBookingPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const bookingId = params?.id as string;
+  const category = searchParams.get('category') || 'events';
   
   const [reason, setReason] = useState('');
   const [agreed, setAgreed] = useState(false);
@@ -25,7 +27,7 @@ export default function CancelBookingPage() {
       const session = sessionStr ? JSON.parse(sessionStr) : null;
       
       // Call the backend API
-      const response = await fetch(`/backend/api/bookings/${bookingId}/cancel?category=events${session?.id ? `&user_id=${session.id}` : ''}`, {
+      const response = await fetch(`/backend/api/bookings/${bookingId}/cancel?category=${category}${session?.id ? `&user_id=${session.id}` : ''}`, {
         method: 'PUT',
         credentials: 'include',
         headers: {

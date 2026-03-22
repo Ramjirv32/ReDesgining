@@ -22,26 +22,26 @@ import (
 )
 
 func SetupRoutes(app *fiber.App) {
-	// Protected group - requires at least general authentication
+
 	api := app.Group("/api/chat")
 
 	api.Get("/questions", getQuestions)
 	api.Get("/sessions", getSessions)
 	api.Get("/sessions/:sessionId/messages", getMessages)
 	api.Post("/sessions", createSession)
-	api.Post("/sessions/:sessionId/messages", sendMessage) // Handles both text and files
+	api.Post("/sessions/:sessionId/messages", sendMessage)
+	api.Post("/sessions/:sessionId/accept", acceptSession)
 	api.Post("/sessions/:sessionId/end", endSession)
 	api.Put("/sessions/:sessionId/read", markAsRead)
 }
 
 func uploadFile(file *multipart.FileHeader) (string, string, error) {
-	// Create uploads directory if it doesn't exist
+
 	uploadsDir := "./uploads/chat"
 	if err := os.MkdirAll(uploadsDir, 0755); err != nil {
 		return "", "", fmt.Errorf("failed to create uploads directory: %w", err)
 	}
 
-	// Validate file type
 	allowedTypes := map[string]bool{
 		"image/jpeg":      true,
 		"image/png":       true,
@@ -54,17 +54,14 @@ func uploadFile(file *multipart.FileHeader) (string, string, error) {
 		return "", "", fmt.Errorf("file type not allowed")
 	}
 
-	// Validate file size (10MB max)
 	if file.Size > 10*1024*1024 {
 		return "", "", fmt.Errorf("file size exceeds 10MB limit")
 	}
 
-	// Generate unique filename
 	ext := filepath.Ext(file.Filename)
 	filename := fmt.Sprintf("%d_%s%s", time.Now().Unix(), strings.TrimSuffix(file.Filename, ext), ext)
 	filePath := filepath.Join(uploadsDir, filename)
 
-	// Save file
 	src, err := file.Open()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to open file: %w", err)
@@ -81,7 +78,6 @@ func uploadFile(file *multipart.FileHeader) (string, string, error) {
 		return "", "", fmt.Errorf("failed to save file: %w", err)
 	}
 
-	// Return relative URL and file type
 	fileType := "image"
 	if file.Header.Get("Content-Type") == "application/pdf" {
 		fileType = "pdf"
@@ -113,7 +109,6 @@ func getQuestions(c *fiber.Ctx) error {
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch questions"})
 	}
 
-	// If no questions in DB, return dummy questions
 	if len(questions) == 0 {
 		questions = getDummyQuestions(category)
 	}
@@ -152,7 +147,6 @@ func getDummyQuestions(category string) []models.ChatQuestion {
 		}
 	}
 
-	// Return all categories if no specific category
 	var result []models.ChatQuestion
 	for _, qs := range allQuestions {
 		result = append(result, qs...)
@@ -164,6 +158,7 @@ func getSessions(c *fiber.Ctx) error {
 	userType := c.Query("userType", "")
 	userID := c.Query("userId", "")
 	category := c.Query("category", "")
+	dateFilter := c.Query("dateFilter", "")
 	limitStr := c.Query("limit", "10")
 	pageStr := c.Query("page", "1")
 	limit, _ := strconv.Atoi(limitStr)
@@ -180,13 +175,39 @@ func getSessions(c *fiber.Ctx) error {
 	filter := bson.M{}
 
 	if isAdmin {
-		// Admin can see all active sessions, only where message exists
-		filter["last_message"] = bson.M{"$ne": ""}
+
 		if category != "" {
 			filter["category"] = category
 		}
+		if userType != "" {
+			filter["user_type"] = userType
+		}
+
+		if dateFilter != "" && dateFilter != "all" {
+			now := time.Now()
+			var startDate time.Time
+
+			switch dateFilter {
+			case "yesterday":
+				startDate = now.AddDate(0, 0, -1)
+				startDate = time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, startDate.Location())
+				endDate := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 23, 59, 59, 0, startDate.Location())
+				filter["created_at"] = bson.M{"$gte": startDate, "$lte": endDate}
+			case "3days":
+				startDate = now.AddDate(0, 0, -3)
+				filter["created_at"] = bson.M{"$gte": startDate}
+			case "week":
+				startDate = now.AddDate(0, 0, -7)
+				filter["created_at"] = bson.M{"$gte": startDate}
+			case "2weeks":
+				startDate = now.AddDate(0, 0, -14)
+				filter["created_at"] = bson.M{"$gte": startDate}
+			}
+		}
+
+		filter["status"] = bson.M{"$in": []string{"pending", "active"}}
 	} else {
-		// Regular users only see their own sessions
+
 		if userType != "" {
 			filter["user_type"] = userType
 		}
@@ -215,7 +236,6 @@ func getSessions(c *fiber.Ctx) error {
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch sessions"})
 	}
 
-	// For admin, count unread messages for each session
 	if isAdmin {
 		type SessionWithUnread struct {
 			models.ChatSession
@@ -260,14 +280,12 @@ func getMessages(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Get the session to verify ownership
 	var session models.ChatSession
 	err := config.ChatSessionsCol.FindOne(ctx, bson.M{"session_id": sessionID}).Decode(&session)
 	if err != nil {
 		return c.Status(http.StatusNotFound).JSON(fiber.Map{"error": "Session not found"})
 	}
 
-	// If not admin, verify the user owns this session
 	if !isAdmin && userID != "" && session.UserID != userID {
 		return c.Status(http.StatusForbidden).JSON(fiber.Map{"error": "Not authorized to access this session"})
 	}
@@ -304,7 +322,6 @@ func createSession(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
 	}
 
-	// Enhanced security validation
 	if strings.TrimSpace(input.UserID) == "" {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "User ID is required"})
 	}
@@ -321,7 +338,6 @@ func createSession(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Category is required"})
 	}
 
-	// Validate user type
 	validUserTypes := map[string]bool{
 		"user":      true,
 		"organizer": true,
@@ -330,7 +346,6 @@ func createSession(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Invalid user type. Must be 'user' or 'organizer'"})
 	}
 
-	// Validate category
 	validCategories := map[string]bool{
 		"dining": true,
 		"event":  true,
@@ -340,14 +355,25 @@ func createSession(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Invalid category. Must be 'dining', 'event', or 'play'"})
 	}
 
-	// Sanitize inputs
 	input.UserID = strings.TrimSpace(input.UserID)
 	input.UserEmail = strings.TrimSpace(input.UserEmail)
 	input.UserName = strings.TrimSpace(input.UserName)
 	input.UserType = strings.TrimSpace(input.UserType)
 	input.Category = strings.TrimSpace(input.Category)
 
-	// Generate secure session ID
+	var existingSession models.ChatSession
+	existingFilter := bson.M{
+		"user_id":  input.UserID,
+		"category": input.Category,
+		"status":   bson.M{"$in": []string{"pending", "active"}},
+	}
+	findErr := config.ChatSessionsCol.FindOne(context.Background(), existingFilter).Decode(&existingSession)
+	if findErr == nil {
+
+		log.Info().Str("session_id", existingSession.SessionID).Str("user_id", input.UserID).Str("category", input.Category).Msg("Returning existing session")
+		return c.Status(http.StatusOK).JSON(existingSession)
+	}
+
 	sessionID := generateSessionID()
 	now := time.Now()
 
@@ -358,7 +384,7 @@ func createSession(c *fiber.Ctx) error {
 		UserName:  input.UserName,
 		UserType:  input.UserType,
 		Category:  input.Category,
-		Status:    "active",
+		Status:    "pending",
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -372,21 +398,20 @@ func createSession(c *fiber.Ctx) error {
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create session"})
 	}
 
-	// Add welcome message
-	welcomeMsg := models.ChatMessage{
+	ticketMsg := models.ChatMessage{
 		SessionID: sessionID,
 		UserID:    input.UserID,
 		UserEmail: input.UserEmail,
 		UserType:  input.UserType,
 		Category:  input.Category,
-		Message:   "Hello! Welcome to Ticpin support. How can I help you today?",
-		Sender:    "admin",
+		Message:   fmt.Sprintf("New ticket raised by %s (%s) for %s support", input.UserName, input.UserEmail, input.Category),
+		Sender:    "system",
 		IsRead:    true,
 		CreatedAt: now,
 	}
-	config.ChatMessagesCol.InsertOne(context.Background(), welcomeMsg)
+	config.ChatMessagesCol.InsertOne(context.Background(), ticketMsg)
 
-	log.Info().Str("session_id", sessionID).Str("user_id", input.UserID).Str("user_type", input.UserType).Str("category", input.Category).Msg("Chat session created")
+	log.Info().Str("session_id", sessionID).Str("user_id", input.UserID).Str("user_type", input.UserType).Str("category", input.Category).Msg("Chat ticket raised")
 
 	return c.Status(http.StatusCreated).JSON(session)
 }
@@ -397,19 +422,17 @@ func sendMessage(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Session ID required"})
 	}
 
-	// Check if this is a multipart form (file upload)
 	contentType := c.Get("Content-Type")
 	if strings.HasPrefix(contentType, "multipart/form-data") {
 		return sendMessageWithFiles(c, sessionID)
 	}
 
-	// Handle regular JSON message
 	var input struct {
 		UserID    string `json:"userId"`
 		UserEmail string `json:"userEmail"`
 		UserType  string `json:"userType"`
 		Message   string `json:"message"`
-		Sender    string `json:"sender"` // "user" or "admin"
+		Sender    string `json:"sender"`
 		FileUrl   string `json:"fileUrl,omitempty"`
 		FileType  string `json:"fileType,omitempty"`
 	}
@@ -418,7 +441,6 @@ func sendMessage(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
 	}
 
-	// Enhanced validation
 	if strings.TrimSpace(input.UserID) == "" {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "User ID is required"})
 	}
@@ -432,7 +454,6 @@ func sendMessage(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "User type is required"})
 	}
 
-	// Validate sender
 	validSenders := map[string]bool{
 		"user":  true,
 		"admin": true,
@@ -441,7 +462,6 @@ func sendMessage(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Invalid sender. Must be 'user' or 'admin'"})
 	}
 
-	// Sanitize inputs
 	input.UserID = strings.TrimSpace(input.UserID)
 	input.UserEmail = strings.TrimSpace(input.UserEmail)
 	input.Message = strings.TrimSpace(input.Message)
@@ -450,7 +470,6 @@ func sendMessage(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Create message
 	message := models.ChatMessage{
 		SessionID: sessionID,
 		UserID:    input.UserID,
@@ -476,21 +495,19 @@ func sendMessage(c *fiber.Ctx) error {
 }
 
 func sendMessageWithFiles(c *fiber.Ctx, sessionID string) error {
-	// Parse multipart form
+
 	form, err := c.MultipartForm()
 	if err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Failed to parse form data"})
 	}
 	defer form.RemoveAll()
 
-	// Extract form fields
 	userID := form.Value["userId"][0]
 	userEmail := form.Value["userEmail"][0]
 	userType := form.Value["userType"][0]
 	message := form.Value["message"][0]
 	sender := form.Value["sender"][0]
 
-	// Validation
 	if strings.TrimSpace(userID) == "" {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "User ID is required"})
 	}
@@ -501,7 +518,6 @@ func sendMessageWithFiles(c *fiber.Ctx, sessionID string) error {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "User type is required"})
 	}
 
-	// Validate sender
 	validSenders := map[string]bool{
 		"user":  true,
 		"admin": true,
@@ -510,15 +526,13 @@ func sendMessageWithFiles(c *fiber.Ctx, sessionID string) error {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Invalid sender. Must be 'user' or 'admin'"})
 	}
 
-	// Sanitize inputs
 	userID = strings.TrimSpace(userID)
 	userEmail = strings.TrimSpace(userEmail)
 	message = strings.TrimSpace(message)
 	userType = strings.TrimSpace(userType)
 
-	// Handle file uploads
 	var fileUrl, fileType string
-	files := form.File["file0"] // Get first file
+	files := form.File["file0"]
 	if len(files) > 0 {
 		fileUrl, fileType, err = uploadFile(files[0])
 		if err != nil {
@@ -530,7 +544,6 @@ func sendMessageWithFiles(c *fiber.Ctx, sessionID string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Create message with file attachment
 	chatMessage := models.ChatMessage{
 		SessionID: sessionID,
 		UserID:    userID,
@@ -561,29 +574,27 @@ func endSession(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Session ID required"})
 	}
 
-	// Enhanced validation
 	if strings.TrimSpace(sessionID) == "" {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Session ID is required"})
 	}
 
-	// Get session to verify it exists and is active
 	var session models.ChatSession
 	err := config.ChatSessionsCol.FindOne(context.Background(), bson.M{"session_id": sessionID}).Decode(&session)
 	if err != nil {
 		return c.Status(http.StatusNotFound).JSON(fiber.Map{"error": "Session not found"})
 	}
 
-	// Check if session is already ended
-	if session.Status == "ended" {
-		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Session is already ended"})
+	if session.Status == "closed" {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Session is already closed"})
 	}
 
-	// Update session status to "ended" with proper metadata
+	now := time.Now()
+
 	updateData := bson.M{
 		"$set": bson.M{
-			"status":   "ended",
-			"ended_at": time.Now(),
-			"ended_by": "admin",
+			"status":     "closed",
+			"closed_at":  now,
+			"updated_at": now,
 		},
 	}
 
@@ -593,30 +604,81 @@ func endSession(c *fiber.Ctx) error {
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to end session"})
 	}
 
-	// Add system message about session termination
 	systemMsg := models.ChatMessage{
 		SessionID: sessionID,
 		UserID:    session.UserID,
 		UserEmail: session.UserEmail,
 		UserType:  session.UserType,
 		Category:  session.Category,
-		Message:   "This chat session has been ended by the administrator. Please start a new session if you need further assistance.",
+		Message:   "This chat has been ended by the administrator. You can view this conversation in history. Please raise a new ticket if you need further assistance.",
 		Sender:    "system",
 		IsRead:    true,
-		CreatedAt: time.Now(),
+		CreatedAt: now,
 	}
 	config.ChatMessagesCol.InsertOne(context.Background(), systemMsg)
 
-	log.Info().Str("session_id", sessionID).Msg("Session ended by admin")
+	log.Info().Str("session_id", sessionID).Msg("Session closed by admin")
 
 	return c.JSON(fiber.Map{
 		"success": true,
-		"message": "Session ended successfully",
+		"message": "Session closed successfully",
+	})
+}
+
+func acceptSession(c *fiber.Ctx) error {
+	sessionID := c.Params("sessionId")
+	if sessionID == "" {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Session ID required"})
+	}
+
+	var session models.ChatSession
+	err := config.ChatSessionsCol.FindOne(context.Background(), bson.M{"session_id": sessionID}).Decode(&session)
+	if err != nil {
+		return c.Status(http.StatusNotFound).JSON(fiber.Map{"error": "Session not found"})
+	}
+
+	if session.Status != "pending" {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Session is not pending approval"})
+	}
+
+	now := time.Now()
+
+	updateData := bson.M{
+		"$set": bson.M{
+			"status":     "active",
+			"updated_at": now,
+		},
+	}
+
+	_, err = config.ChatSessionsCol.UpdateOne(context.Background(), bson.M{"session_id": sessionID}, updateData)
+	if err != nil {
+		log.Error().Err(err).Str("session_id", sessionID).Msg("Failed to accept session")
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to accept session"})
+	}
+
+	welcomeMsg := models.ChatMessage{
+		SessionID: sessionID,
+		UserID:    session.UserID,
+		UserEmail: session.UserEmail,
+		UserType:  session.UserType,
+		Category:  session.Category,
+		Message:   "Hello! Welcome to Ticpin support. Your ticket has been accepted. How can I help you today?",
+		Sender:    "admin",
+		IsRead:    false,
+		CreatedAt: now,
+	}
+	config.ChatMessagesCol.InsertOne(context.Background(), welcomeMsg)
+
+	log.Info().Str("session_id", sessionID).Msg("Session accepted by admin")
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": "Session accepted successfully",
 	})
 }
 
 func getDummyAnswer(category, message string) string {
-	// Provide fallback answers for common questions when not in DB
+
 	switch strings.ToLower(message) {
 	case "hello", "hi", "help":
 		return "Hello! How can I help you today?"
@@ -671,7 +733,7 @@ func generateSessionID() string {
 }
 
 func randomString(n int) string {
-	const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" // Exclude confusing chars
+	const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 	res := make([]byte, n)
 	for i := 0; i < n; i++ {
 		res[i] = letters[time.Now().UnixNano()%int64(len(letters))]

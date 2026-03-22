@@ -57,8 +57,9 @@ export default function DiningBookingDetailPage() {
     
     try {
       await bookingApi.cancelBooking(bookingId, 'dining');
-      // Refresh booking details
-      setBooking((prev: any) => ({ ...prev, status: 'cancelled' }));
+      // Refetch booking details to get updated status
+      const updatedBooking = await bookingApi.getBookingDetails(bookingId, session?.id);
+      setBooking(updatedBooking);
     } catch (err) {
       alert('Failed to cancel reservation. Please try again.');
     }

@@ -6,6 +6,14 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+type CouponUsage struct {
+	UserID    string    `bson:"user_id" json:"user_id"`
+	UserEmail string    `bson:"user_email" json:"user_email"`
+	UsedAt    time.Time `bson:"used_at" json:"used_at"`
+	BookingID string    `bson:"booking_id" json:"booking_id"`
+	Amount    float64   `bson:"amount" json:"amount"`
+}
+
 type Coupon struct {
 	ID            primitive.ObjectID   `bson:"_id,omitempty" json:"id"`
 	Code          string               `bson:"code" json:"code" validate:"required"`
@@ -14,6 +22,8 @@ type Coupon struct {
 	DiscountType  string               `bson:"discount_type" json:"discount_type" validate:"required,oneof=percent flat"`
 	DiscountValue float64              `bson:"discount_value" json:"discount_value" validate:"required,gt=0"`
 	UserIDs       []primitive.ObjectID `bson:"user_ids,omitempty" json:"user_ids,omitempty"`
+	IsPublic      bool                 `bson:"is_public" json:"is_public"`
+	UsedByUsers   []CouponUsage        `bson:"used_by_users,omitempty" json:"used_by_users,omitempty"`
 	ValidFrom     time.Time            `bson:"valid_from" json:"valid_from"`
 	ValidUntil    time.Time            `bson:"valid_until" json:"valid_until"`
 	MaxUses       int                  `bson:"max_uses" json:"max_uses"`

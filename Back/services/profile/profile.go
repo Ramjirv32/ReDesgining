@@ -14,7 +14,7 @@ import (
 )
 
 func Create(p *models.Profile) error {
-	// Check email uniqueness - must NOT exist in users or organizers collection
+
 	if p.Email != "" {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -57,7 +57,6 @@ func GetByUserID(userID string) (*models.Profile, error) {
 		}
 	}
 
-	// Fallback: Check if userID is actually a phone number (normalized)
 	phonesToTry := []string{userID}
 	if len(userID) == 10 {
 		phonesToTry = append(phonesToTry, "+91"+userID)

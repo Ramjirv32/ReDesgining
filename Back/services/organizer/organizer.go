@@ -23,7 +23,7 @@ func LoginOrCreate(email, password string) (*models.Organizer, bool, error) {
 	var org models.Organizer
 	err := collection.FindOne(ctx, bson.M{"email": email}).Decode(&org)
 	if err != nil {
-		// Check if email exists in users collection - prevent user email from being used for organizer
+
 		var existingUser bson.M
 		err := config.UsersCol.FindOne(ctx, bson.M{"email": email}).Decode(&existingUser)
 		if err == nil {
@@ -180,7 +180,7 @@ func Login(email, password string) (*models.Organizer, error) {
 			ID:             primitive.NewObjectID(),
 			Email:          email,
 			Password:       string(hashed),
-			Role:           "admin", // Admin users get admin role
+			Role:           "admin",
 			IsVerified:     true,
 			CategoryStatus: map[string]string{},
 			CreatedAt:      time.Now(),
@@ -207,13 +207,11 @@ func Create(email, password string) (*models.Organizer, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Check if email already exists in organizers
 	var existing models.Organizer
 	if err := collection.FindOne(ctx, bson.M{"email": email}).Decode(&existing); err == nil {
 		return nil, errors.New("email_exists")
 	}
 
-	// Check if email exists in users collection - prevent user email from being used for organizer
 	var existingUser bson.M
 	err := config.UsersCol.FindOne(ctx, bson.M{"email": email}).Decode(&existingUser)
 	if err == nil {
@@ -246,7 +244,6 @@ func UpdateCategoryStatus(organizerID, category, status string) error {
 		return err
 	}
 
-	// Update organizers collection
 	collection := config.GetDB().Collection("organizers")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -258,12 +255,10 @@ func UpdateCategoryStatus(organizerID, category, status string) error {
 		return err
 	}
 
-	// Also update organizer_setups collection with roles
 	setupCollection := config.GetDB().Collection("organizer_setups")
 	setupCtx, setupCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer setupCancel()
 
-	// Update the roles field based on status
 	roleStatus := "not_applied"
 	profileCompleted := false
 
@@ -443,7 +438,6 @@ func GoogleAuth(email string) (*models.Organizer, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Check if email exists in users collection - prevent user email from being used for organizer
 	var existingUser bson.M
 	err := config.UsersCol.FindOne(ctx, bson.M{"email": email}).Decode(&existingUser)
 	if err == nil {

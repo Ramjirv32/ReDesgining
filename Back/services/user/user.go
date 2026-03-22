@@ -60,7 +60,6 @@ func GetByID(id string) (*models.User, error) {
 		}
 	}
 
-	// Fallback to phone search if ID is not a valid hex or not found by _id
 	if err := collection.FindOne(ctx, bson.M{"phone": id}).Decode(&u); err == nil {
 		return &u, nil
 	}

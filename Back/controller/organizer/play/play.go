@@ -76,9 +76,6 @@ func VerifyOTP(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	// Removed auto-approval logic. Status should only be 'approved' after admin review.
-	// Status starts as empty/none, becomes 'pending' after setup, then 'approved' after admin approval.
-
 	isAdmin := organizersvc.IsAdmin(*org)
 	role := "organizer"
 	if isAdmin {

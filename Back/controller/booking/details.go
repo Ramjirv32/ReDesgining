@@ -24,37 +24,20 @@ func GetBookingDetails(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Try different collections based on booking type - search by booking_id instead of _id
 	var booking interface{}
 	var bookingType string
 
-	// Check main bookings collection first (for event bookings)
-	fmt.Printf("DEBUG: Checking main bookings collection for booking_id: %s\n", bookingID)
-	mainBooking := &models.Booking{}
-	err := config.BookingsCol.FindOne(ctx, bson.M{"booking_id": bookingID}).Decode(mainBooking)
+	fmt.Printf("DEBUG: Checking event_bookings collection for booking_id: %s\n", bookingID)
+	eventBooking := &models.Booking{}
+	err := config.EventBookingsCol.FindOne(ctx, bson.M{"booking_id": bookingID}).Decode(eventBooking)
 	if err == nil {
-		fmt.Printf("DEBUG: Found in main bookings collection\n")
-		booking = mainBooking
+		fmt.Printf("DEBUG: Found in event_bookings collection\n")
+		booking = eventBooking
 		bookingType = "event"
 	} else {
-		fmt.Printf("DEBUG: Not found in main bookings: %v\n", err)
+		fmt.Printf("DEBUG: Not found in event_bookings: %v\n", err)
 	}
 
-	// If not found, check event_bookings collection
-	if booking == nil {
-		fmt.Printf("DEBUG: Checking event_bookings collection for booking_id: %s\n", bookingID)
-		eventBooking := &models.Booking{}
-		err = config.EventBookingsCol.FindOne(ctx, bson.M{"booking_id": bookingID}).Decode(eventBooking)
-		if err == nil {
-			fmt.Printf("DEBUG: Found in event_bookings collection\n")
-			booking = eventBooking
-			bookingType = "event"
-		} else {
-			fmt.Printf("DEBUG: Not found in event_bookings: %v\n", err)
-		}
-	}
-
-	// If not found, check play bookings
 	if booking == nil {
 		playBooking := &models.PlayBooking{}
 		err = config.PlayBookingsCol.FindOne(ctx, bson.M{"booking_id": bookingID}).Decode(playBooking)
@@ -64,7 +47,6 @@ func GetBookingDetails(c *fiber.Ctx) error {
 		}
 	}
 
-	// If not found, check dining bookings
 	if booking == nil {
 		diningBooking := &models.DiningBooking{}
 		err = config.DiningBookingsCol.FindOne(ctx, bson.M{"booking_id": bookingID}).Decode(diningBooking)
@@ -79,7 +61,6 @@ func GetBookingDetails(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "booking not found"})
 	}
 
-	// Check user access (if user_id provided)
 	if userID != "" {
 		var hasAccess bool
 		switch b := booking.(type) {
@@ -96,11 +77,10 @@ func GetBookingDetails(c *fiber.Ctx) error {
 		}
 	}
 
-	// Build response
 	response := fiber.Map{
-		"id":        bookingID, // Use booking_id instead of _id
+		"id":        bookingID,
 		"type":      bookingType,
-		"status":    "booked", // Default, will be overridden below
+		"status":    "booked",
 		"booked_at": time.Now(),
 	}
 
@@ -114,9 +94,9 @@ func GetBookingDetails(c *fiber.Ctx) error {
 		response["event_image_url"] = event.PortraitImageURL
 		response["venue_name"] = event.VenueName
 		response["venue_address"] = event.VenueAddress
-		response["date"] = event.Date  // Use event date
-		response["time"] = event.Time  // Use event time
-		response["user_name"] = "User" // Would need to get from user profile
+		response["date"] = event.Date
+		response["time"] = event.Time
+		response["user_name"] = "User"
 		response["user_email"] = b.UserEmail
 		response["user_phone"] = b.UserPhone
 		response["tickets"] = b.Tickets
@@ -126,7 +106,7 @@ func GetBookingDetails(c *fiber.Ctx) error {
 		response["grand_total"] = b.GrandTotal
 		response["payment_method"] = b.PaymentGateway
 		response["booked_at"] = b.BookedAt
-		response["status"] = b.Status // Include actual status from booking
+		response["status"] = b.Status
 
 	case "play":
 		b := booking.(*models.PlayBooking)
@@ -139,9 +119,9 @@ func GetBookingDetails(c *fiber.Ctx) error {
 		response["venue_address"] = b.VenueName
 		response["date"] = b.Date
 		response["time"] = b.Slot
-		response["user_name"] = "User" // Would need to get from user profile
+		response["user_name"] = "User"
 		response["user_email"] = b.UserEmail
-		response["user_phone"] = "" // Would need to get from user profile
+		response["user_phone"] = ""
 		response["tickets"] = b.Tickets
 		response["order_amount"] = b.OrderAmount
 		response["booking_fee"] = b.BookingFee
@@ -149,7 +129,7 @@ func GetBookingDetails(c *fiber.Ctx) error {
 		response["grand_total"] = b.GrandTotal
 		response["payment_method"] = b.PaymentGateway
 		response["booked_at"] = b.BookedAt
-		response["status"] = b.Status // Include actual status from booking
+		response["status"] = b.Status
 
 	case "dining":
 		b := booking.(*models.DiningBooking)
@@ -162,9 +142,9 @@ func GetBookingDetails(c *fiber.Ctx) error {
 		response["venue_address"] = dining.VenueAddress
 		response["date"] = b.Date
 		response["time"] = b.TimeSlot
-		response["user_name"] = "User" // Would need to get from user profile
+		response["user_name"] = "User"
 		response["user_email"] = b.UserEmail
-		response["user_phone"] = "" // Would need to get from user profile
+		response["user_phone"] = ""
 		response["tickets"] = []map[string]interface{}{
 			{"category": "Table", "quantity": b.Guests, "price": b.OrderAmount},
 		}
@@ -174,7 +154,7 @@ func GetBookingDetails(c *fiber.Ctx) error {
 		response["grand_total"] = b.GrandTotal
 		response["payment_method"] = b.PaymentGateway
 		response["booked_at"] = b.BookedAt
-		response["status"] = b.Status // Include actual status from booking
+		response["status"] = b.Status
 	}
 
 	fmt.Printf("DEBUG: Returning booking details response\n")

@@ -53,16 +53,16 @@ func GetProfile(c *fiber.Ctx) error {
 	var profile models.OrganizerProfile
 	err = config.GetDB().Collection("organizer_profiles").FindOne(context.Background(), bson.M{"organizerId": objID}).Decode(&profile)
 	if err != nil {
-		// If profile not found, try to get PAN name from organizer setup
+
 		var setup models.OrganizerSetup
 		setupErr := config.GetDB().Collection("organizer_setups").FindOne(context.Background(), bson.M{"organizerId": objID}).Decode(&setup)
 		if setupErr == nil && setup.PANName != "" {
-			// Return a default profile with PAN name
+
 			defaultProfile := models.OrganizerProfile{
 				ID:          primitive.NewObjectID(),
 				OrganizerID: objID,
 				Name:        setup.PANName,
-				Email:       "", // Will be filled from session
+				Email:       "",
 				CreatedAt:   time.Now(),
 				UpdatedAt:   time.Now(),
 			}

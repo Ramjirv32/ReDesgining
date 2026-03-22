@@ -42,12 +42,12 @@ func Create(d *models.Dining) error {
 }
 
 func GetAll(category string, limit int, after string) ([]models.Dining, string, error) {
-	// Try cache first
+
 	cacheManager := cache.NewCacheManager()
 	params := []interface{}{category, limit, after}
 	if cached, found := cacheManager.GetList("dining", params); found {
 		if cachedList, ok := cached.([]models.Dining); ok {
-			// Calculate next cursor from cached data
+
 			nextCursor := ""
 			if len(cachedList) > 0 && len(cachedList) >= limit {
 				nextCursor = cachedList[len(cachedList)-1].ID.Hex()
@@ -97,7 +97,6 @@ func GetAll(category string, limit int, after string) ([]models.Dining, string, 
 		nextCursor = dinings[len(dinings)-1].ID.Hex()
 	}
 
-	// Cache the result
 	cacheManager.SetList("dining", params, dinings, cache.TTLMedium)
 
 	return dinings, nextCursor, nil
@@ -108,7 +107,6 @@ func GetAllForAdmin(category string, limit int, after string) ([]models.Dining, 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Admin should see all dining venues regardless of status
 	filter := bson.M{}
 	if category != "" {
 		filter["category"] = category
@@ -157,7 +155,7 @@ func GetByID(id string, bypassCache bool) (*models.Dining, error) {
 
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		// If input is not a valid ObjectID, try fetching by name.
+
 		d, errNamed := GetByName(id)
 		if errNamed == nil {
 			cache.GlobalCache.Set(cacheKey, d, 5*time.Minute)
@@ -233,11 +231,29 @@ func Update(id string, organizerID string, update *models.Dining) error {
 	if update.Category != "" {
 		updateDoc["category"] = update.Category
 	}
+	if update.SubCategory != "" {
+		updateDoc["sub_category"] = update.SubCategory
+	}
+	if update.City != "" {
+		updateDoc["city"] = update.City
+	}
+	if update.Time != "" {
+		updateDoc["time"] = update.Time
+	}
 	if update.VenueName != "" {
 		updateDoc["venue_name"] = update.VenueName
 	}
 	if update.VenueAddress != "" {
 		updateDoc["venue_address"] = update.VenueAddress
+	}
+	if update.GoogleMapLink != "" {
+		updateDoc["google_map_link"] = update.GoogleMapLink
+	}
+	if update.InstagramLink != "" {
+		updateDoc["instagram_link"] = update.InstagramLink
+	}
+	if update.GoogleBusinessLink != "" {
+		updateDoc["google_business_link"] = update.GoogleBusinessLink
 	}
 	if update.PortraitImageURL != "" {
 		updateDoc["portrait_image_url"] = update.PortraitImageURL
@@ -245,14 +261,60 @@ func Update(id string, organizerID string, update *models.Dining) error {
 	if update.LandscapeImageURL != "" {
 		updateDoc["landscape_image_url"] = update.LandscapeImageURL
 	}
+	if update.CardVideoURL != "" {
+		updateDoc["card_video_url"] = update.CardVideoURL
+	}
+	if len(update.GalleryURLs) > 0 {
+		updateDoc["gallery_urls"] = update.GalleryURLs
+	}
+	if len(update.MenuURLs) > 0 {
+		updateDoc["menu_urls"] = update.MenuURLs
+	}
+	if update.Guide.MinAge > 0 {
+		updateDoc["guide.min_age"] = update.Guide.MinAge
+	}
+	if len(update.Guide.Facilities) > 0 {
+		updateDoc["guide.facilities"] = update.Guide.Facilities
+	}
+	updateDoc["guide.is_pet_friendly"] = update.Guide.IsPetFriendly
+	if update.EventInstructions != "" {
+		updateDoc["event_instructions"] = update.EventInstructions
+	}
+	if update.YoutubeVideoURL != "" {
+		updateDoc["youtube_video_url"] = update.YoutubeVideoURL
+	}
+	if len(update.ProhibitedItems) > 0 {
+		updateDoc["prohibited_items"] = update.ProhibitedItems
+	}
+	if len(update.FAQs) > 0 {
+		updateDoc["faqs"] = update.FAQs
+	}
+	if update.Payment.OrganizerName != "" {
+		updateDoc["payment.organizer_name"] = update.Payment.OrganizerName
+	}
+	if update.Payment.GSTIN != "" {
+		updateDoc["payment.gstin"] = update.Payment.GSTIN
+	}
+	if update.Payment.AccountNumber != "" {
+		updateDoc["payment.account_number"] = update.Payment.AccountNumber
+	}
+	if update.Payment.IFSC != "" {
+		updateDoc["payment.ifsc"] = update.Payment.IFSC
+	}
+	if update.Payment.AccountType != "" {
+		updateDoc["payment.account_type"] = update.Payment.AccountType
+	}
+	if len(update.PointsOfContact) > 0 {
+		updateDoc["points_of_contact"] = update.PointsOfContact
+	}
+	if len(update.SalesNotifications) > 0 {
+		updateDoc["sales_notifications"] = update.SalesNotifications
+	}
 	if update.PriceStartsFrom > 0 {
 		updateDoc["price_starts_from"] = update.PriceStartsFrom
 	}
 	if update.Description != "" {
 		updateDoc["description"] = update.Description
-	}
-	if update.EventInstructions != "" {
-		updateDoc["event_instructions"] = update.EventInstructions
 	}
 
 	updateDoc["updatedAt"] = time.Now()
@@ -263,10 +325,10 @@ func Update(id string, organizerID string, update *models.Dining) error {
 		bson.M{"$set": updateDoc},
 	)
 	if err == nil {
-		// Enhanced cache invalidation
+
 		cacheManager := cache.NewCacheManager()
 		cacheManager.DeleteEntity("dining", id)
-		cacheManager.DeleteList("dining") // Invalidate all list caches
+		cacheManager.DeleteList("dining")
 	}
 	return err
 }
@@ -291,10 +353,9 @@ func Delete(id string, organizerID string) error {
 		return errors.New("dining not found or not owned by this organizer")
 	}
 
-	// Enhanced cache invalidation
 	cacheManager := cache.NewCacheManager()
 	cacheManager.DeleteEntity("dining", id)
-	cacheManager.DeleteList("dining") // Invalidate all list caches
+	cacheManager.DeleteList("dining")
 
 	return nil
 }

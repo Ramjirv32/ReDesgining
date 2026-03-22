@@ -11,14 +11,12 @@ import (
 )
 
 func CleanupChatSessions() {
-	// Connect to database
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Clean up old chat sessions (older than 7 days)
 	cutoffTime := time.Now().Add(-7 * 24 * time.Hour)
 
-	// Delete old messages
 	msgResult, err := config.ChatMessagesCol.DeleteMany(ctx, bson.M{
 		"created_at": bson.M{"$lt": cutoffTime},
 	})
@@ -28,7 +26,6 @@ func CleanupChatSessions() {
 		log.Printf("Deleted %d old messages", msgResult.DeletedCount)
 	}
 
-	// Delete old sessions
 	sessionResult, err := config.ChatSessionsCol.DeleteMany(ctx, bson.M{
 		"created_at": bson.M{"$lt": cutoffTime},
 	})
@@ -38,7 +35,6 @@ func CleanupChatSessions() {
 		log.Printf("Deleted %d old sessions", sessionResult.DeletedCount)
 	}
 
-	// Update any sessions with invalid status to "ended"
 	updateResult, err := config.ChatSessionsCol.UpdateMany(ctx, bson.M{
 		"status": bson.M{"$nin": []string{"active", "ended"}},
 	}, bson.M{

@@ -24,7 +24,7 @@ func GetAllDinings(c *fiber.Ctx) error {
 
 func GetDiningByID(c *fiber.Ctx) error {
 	id := c.Params("id")
-	// Robustly decode the ID to handle single or double encoding
+
 	for {
 		decoded, err := url.PathUnescape(id)
 		if err != nil || decoded == id {

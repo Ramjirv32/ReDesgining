@@ -56,12 +56,12 @@ export default function PlayTicketsPage() {
     
     try {
       await bookingApi.cancelBooking(bookingId, 'play');
-      // Refresh bookings after cancellation
-      setBookings(prev => prev.map(booking => 
-        booking.booking_id === bookingId 
-          ? { ...booking, status: 'cancelled' }
-          : booking
-      ));
+      // Refetch bookings after cancellation to get updated status
+      if (session?.id) {
+        const data = await bookingApi.getUserBookings({ userId: session.id });
+        const playBookings = data.filter(booking => booking.category === 'play');
+        setBookings(playBookings);
+      }
     } catch (err) {
       alert('Failed to cancel booking. Please try again.');
     }

@@ -28,7 +28,7 @@ function DashboardContent() {
         setHasMounted(true);
         const s = getOrganizerSession();
         if (!s) {
-            // No session - set loading to false to trigger redirect
+         
             setLoading(false);
             return;
         }

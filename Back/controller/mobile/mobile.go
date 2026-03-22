@@ -11,19 +11,17 @@ import (
 )
 
 func GetMobileHomeData(c *fiber.Ctx) error {
-	// Fetch events
+
 	events, _, err := eventservice.GetAll("", "", 10, "")
 	if err != nil {
 		events = nil
 	}
 
-	// Fetch dinings
 	dinings, _, err := diningservice.GetAll("", 10, "")
 	if err != nil {
 		dinings = nil
 	}
 
-	// Fetch plays
 	plays, _, err := playservice.GetAll("", "approved", 10, "")
 	if err != nil {
 		plays = nil

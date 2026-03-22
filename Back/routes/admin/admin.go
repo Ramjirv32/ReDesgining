@@ -49,6 +49,7 @@ func AdminRoutes(app *fiber.App) {
 	admin.Delete("/coupons/:id", admincoupon.DeleteCoupon)
 	admin.Get("/users", admincoupon.ListUsers)
 	admin.Get("/users/:id", adminusers.GetUser)
+	admin.Get("/users/:id/details", adminusers.GetUserDetails)
 	admin.Get("/users/:id/stats", adminusers.GetUserStats)
 	admin.Get("/users/:id/bookings", adminusers.GetUserBookings)
 	admin.Put("/users/:id", adminusers.UpdateUser)

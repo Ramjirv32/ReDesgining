@@ -36,18 +36,7 @@ export const CATEGORY_DATA: Record<string, string[]> = {
     "Travel": ["Sightseeing", "Camping", "Wildlife", "Day Trips", "Weekend Getaways", "Stargazing", "Cruises", "Landmarks", "Safaris", "Tours"]
 };
 
-export const CATEGORIES = [
-    "Music",
-    "Comedy",
-    "Shows",
-    "Sports",
-    "Food & Drinks",
-    "Night Life",
-    "Fests & Fairs",
-    "Screenings",
-    "Fitness",
-    "Open Mic"
-];
+export const CATEGORIES = Object.keys(CATEGORY_DATA);
 
 export const CITIES = [
     "Abohar", "Abu Road", "Achalpur", "Adilabad", "Adoni", "Agartala", "Agra", "Ahilyanagar", "Ahmedabad", "Airoli",

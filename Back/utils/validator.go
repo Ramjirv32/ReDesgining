@@ -12,7 +12,7 @@ import (
 var validate = validator.New()
 
 func init() {
-	// Register custom validators
+
 	validate.RegisterValidation("phone", validatePhone)
 	validate.RegisterValidation("pan", validatePAN)
 	validate.RegisterValidation("gst", validateGST)
@@ -42,36 +42,34 @@ func ParseAndValidate(c *fiber.Ctx, out interface{}) error {
 	return nil
 }
 
-// Custom validators
 func validatePhone(fl validator.FieldLevel) bool {
 	phone := fl.Field().String()
-	// Indian phone number format: 10 digits starting with 6-9
+
 	matched, _ := regexp.MatchString(`^[6-9]\d{9}$`, phone)
 	return matched
 }
 
 func validatePAN(fl validator.FieldLevel) bool {
 	pan := strings.ToUpper(fl.Field().String())
-	// PAN format: 5 letters, 4 digits, 1 letter
+
 	matched, _ := regexp.MatchString(`^[A-Z]{5}[0-9]{4}[A-Z]{1}$`, pan)
 	return matched
 }
 
 func validateGST(fl validator.FieldLevel) bool {
 	gst := strings.ToUpper(fl.Field().String())
-	// GST format: 2 digits (state code) + 10 characters (PAN) + 3 digits/letters
+
 	matched, _ := regexp.MatchString(`^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[0-9A-Z]{3}$`, gst)
 	return matched
 }
 
 func validateIFSC(fl validator.FieldLevel) bool {
 	ifsc := strings.ToUpper(fl.Field().String())
-	// IFSC format: 4 letters (bank code) + 0 + 6 letters/digits (branch code)
+
 	matched, _ := regexp.MatchString(`^[A-Z]{4}0[A-Z0-9]{6}$`, ifsc)
 	return matched
 }
 
-// formatErrorMessage formats a single validation error
 func formatErrorMessage(e validator.FieldError) string {
 	field := e.Field()
 	tag := e.Tag()
@@ -98,7 +96,6 @@ func formatErrorMessage(e validator.FieldError) string {
 	}
 }
 
-// Common validation structs
 type LoginRequest struct {
 	Email string `json:"email" validate:"required,email"`
 	OTP   string `json:"otp" validate:"required,len=6"`
@@ -159,11 +156,10 @@ type DiningRequest struct {
 	PriceRange  string `json:"priceRange" validate:"required,oneof=budget moderate premium luxury"`
 }
 
-// SanitizeInput removes potentially harmful characters
 func SanitizeInput(input string) string {
-	// Remove HTML tags and special characters
+
 	input = regexp.MustCompile(`<[^>]*>`).ReplaceAllString(input, "")
-	// Trim whitespace
+
 	input = strings.TrimSpace(input)
 	return input
 }

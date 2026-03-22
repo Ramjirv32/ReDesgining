@@ -9,6 +9,12 @@ export interface BookingTicketItem {
 export interface CreateBookingPayload {
     user_email: string;
     user_name: string;
+    user_phone: string;
+    address: string;
+    city: string;
+    state: string;
+    pincode: string;
+    nationality: string;
     event_id: string;
     event_name: string;
     tickets: BookingTicketItem[];
@@ -24,6 +30,12 @@ export interface CreateBookingPayload {
 export interface CreateDiningPayload {
     user_email: string;
     user_name: string;
+    user_phone: string;
+    address: string;
+    city: string;
+    state: string;
+    pincode: string;
+    nationality: string;
     dining_id: string;
     venue_name: string;
     date: string;
@@ -41,6 +53,12 @@ export interface CreateDiningPayload {
 export interface CreatePlayPayload {
     user_email: string;
     user_name: string;
+    user_phone: string;
+    address: string;
+    city: string;
+    state: string;
+    pincode: string;
+    nationality: string;
     play_id: string;
     venue_name: string;
     date: string;

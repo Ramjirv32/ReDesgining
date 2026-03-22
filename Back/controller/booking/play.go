@@ -13,11 +13,16 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-
 func CreatePlayBooking(c *fiber.Ctx) error {
 	var req struct {
 		UserEmail      string                 `json:"user_email" validate:"required,email"`
 		UserName       string                 `json:"user_name" validate:"required,min=3,max=50"`
+		UserPhone      string                 `json:"user_phone"`
+		Address        string                 `json:"address"`
+		City           string                 `json:"city"`
+		State          string                 `json:"state"`
+		Pincode        string                 `json:"pincode"`
+		Nationality    string                 `json:"nationality"`
 		PlayID         string                 `json:"play_id" validate:"required"`
 		VenueName      string                 `json:"venue_name" validate:"required,min=2,max=100"`
 		Date           string                 `json:"date" validate:"required"`
@@ -58,7 +63,7 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 	var couponIDToIncrement primitive.ObjectID
 	var couponMaxUses int
 	if req.CouponCode != "" {
-		result, err := couponsvc.Validate(req.CouponCode, req.PlayID, req.OrderAmount, req.UserID)
+		result, err := couponsvc.Validate(req.CouponCode, req.PlayID, req.OrderAmount, req.UserID, req.UserEmail)
 		if err == nil {
 			discountAmount = result.DiscountAmount
 			appliedCouponCode = result.Coupon.Code
@@ -84,7 +89,14 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 
 	booking := &models.PlayBooking{
 		UserEmail:      req.UserEmail,
+		UserName:       req.UserName,
+		UserPhone:      req.UserPhone,
 		UserID:         req.UserID,
+		Address:        req.Address,
+		City:           req.City,
+		State:          req.State,
+		Pincode:        req.Pincode,
+		Nationality:    req.Nationality,
 		PlayID:         playObjID,
 		VenueName:      req.VenueName,
 		Date:           req.Date,
@@ -106,21 +118,25 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
+	bookingID := booking.ID.Hex()
+
 	if !couponIDToIncrement.IsZero() {
-		_ = couponsvc.IncrementUsage(couponIDToIncrement, couponMaxUses)
+		_ = couponsvc.IncrementUsage(couponIDToIncrement, couponMaxUses, req.UserID, req.UserEmail, bookingID, grandTotal)
 	}
 
 	return c.Status(201).JSON(fiber.Map{
 		"message":         "play booking confirmed",
-		"booking_id":      booking.ID.Hex(),
+		"booking_id":      booking.BookingID,
+		"id":              booking.ID.Hex(),
 		"grand_total":     grandTotal,
 		"discount_amount": discountAmount,
+		"status":          "booked",
 	})
 }
 
 func GetPlaySlotAvailability(c *fiber.Ctx) error {
 	playID := c.Params("id")
-	// Robustly decode the ID to handle single or double encoding (e.g. %20 or %2520)
+
 	for {
 		decoded, err := url.PathUnescape(playID)
 		if err != nil || decoded == playID {
