@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { ChevronDown, ChevronUp, PlusCircle, Upload, Search, ArrowLeft } from 'lucide-react';
 import { CATEGORIES, CITIES, CATEGORY_DATA } from '@/app/play/create/data';

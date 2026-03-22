@@ -854,7 +854,14 @@ function AdminPlayDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                                             <div className="flex items-center justify-between w-full">
                                                 <span className="text-[20px] text-black">{poc.name} — {poc.email} — {poc.mobile}</span>
                                                 <div className="flex items-center gap-6 ml-4">
-                                                    <button onClick={() => { setEditPocIndex(i); setEditPocData(poc); }} className="text-blue-500 font-medium text-[16px] hover:underline">Edit</button>
+                                                    <button onClick={() => {
+                                                        setEditPocIndex(i);
+                                                        setEditPocData({
+                                                            name: poc.name,
+                                                            email: poc.email,
+                                                            mobile: poc.mobile || poc.phone || ''
+                                                        });
+                                                    }} className="text-blue-500 font-medium text-[16px] hover:underline">Edit</button>
                                                     <button onClick={() => setPocs(pocs.filter((_, idx) => idx !== i))} className="text-red-500 font-medium text-[16px] hover:underline">Remove</button>
                                                 </div>
                                             </div>
@@ -951,8 +958,9 @@ function AdminPlayContent() {
     const getId = (item: AdminListing) => item._id || item.id || '';
 
     const filtered = (listings || []).filter(l => {
-        if (activeTab === 'pending') return l.status === 'pending' || !l.status || l.status === '';
-        if (activeTab === 'approved') return l.status === 'approved' || l.status === 'rejected';
+        const s = l.status || '';
+        if (activeTab === 'pending') return s === 'pending' || s === 'draft' || s === '';
+        if (activeTab === 'approved') return s === 'approved' || s === 'rejected';
         return false;
     });
 

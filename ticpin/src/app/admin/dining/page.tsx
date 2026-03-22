@@ -273,10 +273,11 @@ function AdminDiningContent() {
 
   const getId = (item: AdminListing) => item.id || item._id || '';
   const filtered = (listings || []).filter(l => {
-    if (activeTab === 'pending') return l.status === 'pending' || !l.status || l.status === '';
-    if (activeTab === 'approved') return l.status === 'approved' || l.status === 'rejected';
+    const s = l.status || '';
+    if (activeTab === 'pending') return s === 'pending' || s === 'draft' || s === '';
+    if (activeTab === 'approved') return s === 'approved' || s === 'rejected';
     return false;
-});
+  });
   const preview = detailId ? listings.find(l => getId(l) === detailId) : null;
 
   const handleStatus = async (id: string, status: ListingStatus) => {
