@@ -97,8 +97,37 @@ export default function ChatSupportClient() {
     const [confirmingCategory, setConfirmingCategory] = useState<SupportOption | null>(null);
     const [filePreview, setFilePreview] = useState<string | null>(null);
     const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+    const [userExistingSessions, setUserExistingSessions] = useState<Map<string, ChatSession>>(new Map());
     
     const isAdmin = userSession?.phone === '6383667872' || (organizerSession?.isAdmin === true);
+
+    // Fetch all existing sessions for the user on mount
+    useEffect(() => {
+        if (effectiveSession?.id && !isAdmin) {
+            const categories = ['dining', 'event', 'play'];
+            const sessionMap = new Map<string, ChatSession>();
+            
+            Promise.all(
+                categories.map(category => 
+                    fetch(`/backend/api/chat/sessions?userId=${effectiveSession.id}&category=${category}`, { credentials: 'include' })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.sessions && data.sessions.length > 0) {
+                                const existingSession = data.sessions.find((s: ChatSession) => 
+                                    s.status === 'pending' || s.status === 'active'
+                                );
+                                if (existingSession) {
+                                    sessionMap.set(category, existingSession);
+                                }
+                            }
+                        })
+                        .catch(err => console.error(`Failed to check existing sessions for ${category}:`, err))
+                )
+            ).then(() => {
+                setUserExistingSessions(sessionMap);
+            });
+        }
+    }, [effectiveSession?.id, isAdmin]);
 
     useEffect(() => {
         if (selectedCategory) {
@@ -148,6 +177,16 @@ export default function ChatSupportClient() {
             return;
         }
         
+        // Double check if user already has an active session in this category
+        const existingSession = userExistingSessions.get(category);
+        if (existingSession) {
+            // Redirect to existing session instead of creating new one
+            setActiveSession(existingSession);
+            setSessionStatus(existingSession.status || 'pending');
+            fetchMessages(existingSession.sessionId);
+            return;
+        }
+        
         console.log('Starting chat with category:', category);
         setLoading(true);
         try {
@@ -167,6 +206,10 @@ export default function ChatSupportClient() {
                 const data = await res.json();
                 setActiveSession(data);
                 setSessionStatus(data.status || 'pending');
+                
+                // Update the userExistingSessions map to include the new session
+                setUserExistingSessions(prev => new Map(prev).set(category, data));
+                
                 if (data.status === 'active') {
                     // Only simulate typing for active sessions
                     setIsTyping(true);
@@ -204,6 +247,15 @@ export default function ChatSupportClient() {
                         // Session ended - disable input and show terminated message
                         setMessages(data);
                         setSessionStatus('closed');
+                        
+                        // Remove from existing sessions map since it's now closed
+                        if (activeSession && selectedCategory) {
+                            setUserExistingSessions(prev => {
+                                const newMap = new Map(prev);
+                                newMap.delete(selectedCategory);
+                                return newMap;
+                            });
+                        }
                         return;
                     }
                 }
@@ -345,15 +397,33 @@ export default function ChatSupportClient() {
                                         setSelectedCategory(option.category);
                                         fetchAdminSessions(option.category);
                                     } else {
-                                        setConfirmingCategory(option);
+                                        // Check if user already has an active session in this category
+                                        const existingSession = userExistingSessions.get(option.category);
+                                        if (existingSession) {
+                                            // Redirect to existing session instead of creating new one
+                                            setSelectedCategory(option.category);
+                                            setActiveSession(existingSession);
+                                            setSessionStatus(existingSession.status || 'pending');
+                                            fetchMessages(existingSession.sessionId);
+                                        } else {
+                                            setConfirmingCategory(option);
+                                        }
                                     }
                                 }}
-                                className="w-[193px] h-[210px] bg-[#E1E1E1] rounded-[40px] flex flex-col items-center justify-center cursor-pointer hover:bg-zinc-200 transition-colors"
+                                className={`w-[193px] h-[210px] rounded-[40px] flex flex-col items-center justify-center transition-colors ${
+                                    isAdmin ? 'bg-[#E1E1E1] cursor-pointer hover:bg-zinc-200' : 
+                                    userExistingSessions.has(option.category) ? 'bg-[#5331EA20] cursor-not-allowed opacity-60' : 'bg-[#E1E1E1] cursor-pointer hover:bg-zinc-200'
+                                }`}
                             >
                                 <div className="mb-4">
                                     <Image src={option.icon} alt={option.title} width={option.width} height={option.height} className="object-contain" />
                                 </div>
                                 <span className="text-[25px] font-medium text-black text-center px-4 leading-tight">{option.title}</span>
+                                {!isAdmin && userExistingSessions.has(option.category) && (
+                                    <div className="mt-2 px-3 py-1 bg-[#5331EA] text-white text-[10px] rounded-full font-medium">
+                                        Active Ticket
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
@@ -391,10 +461,20 @@ export default function ChatSupportClient() {
                         </div>
                     )}
 
+                    {/* Info message about existing tickets */}
+                    {!isAdmin && userExistingSessions.size > 0 && (
+                        <div className="w-full max-w-[740px] bg-blue-50 border border-blue-200 rounded-[10px] flex items-center px-4 py-3 mb-4">
+                            <Info className="text-blue-600" size={20} />
+                            <p className="text-[14px] font-medium text-blue-800 ml-3">
+                                You already have active tickets. Click on a category with an "Active Ticket" badge to continue your conversation.
+                            </p>
+                        </div>
+                    )}
+
                     <div className="w-full max-w-[740px] bg-[#5331EA15] border border-[#5331EA] rounded-[10px] flex items-center px-4 py-3 gap-3">
                         <Info className="text-[#5331EA]" size={24} />
                         <p className="text-[15px] font-medium text-black">
-                            Can’t find an option that properly describes your issue? Email <a href="mailto:support@ticpin.in" className="hover:underline">support@ticpin.in</a> and we’ll assist you.
+                            Can't find an option that properly describes your issue? Email <a href="mailto:support@ticpin.in" className="hover:underline">support@ticpin.in</a> and we'll assist you.
                         </p>
                     </div>
                 </main>

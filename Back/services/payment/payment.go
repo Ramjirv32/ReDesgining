@@ -53,6 +53,7 @@ type OrderRequest struct {
 	CustomerEmail string
 	CustomerPhone string
 	ReturnURL     string
+	Notes         map[string]string
 }
 
 type OrderResponse struct {
@@ -133,6 +134,9 @@ func CreateOrderRazorpay(req OrderRequest) (*OrderResponse, error) {
 		"amount":   amountPaise,
 		"currency": req.Currency,
 		"receipt":  req.OrderID,
+	}
+	if req.Notes != nil {
+		payload["notes"] = req.Notes
 	}
 
 	jsonPayload, _ := json.Marshal(payload)

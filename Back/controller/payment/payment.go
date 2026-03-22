@@ -10,11 +10,13 @@ import (
 
 func CreateOrderHandler(c *fiber.Ctx) error {
 	var req struct {
-		Amount        float64 `json:"amount"`
-		CustomerID    string  `json:"customer_id"`
-		CustomerEmail string  `json:"customer_email"`
-		CustomerPhone string  `json:"customer_phone"`
-		ReturnURL     string  `json:"return_url"`
+		Amount        float64           `json:"amount"`
+		CustomerID    string            `json:"customer_id"`
+		CustomerEmail string            `json:"customer_email"`
+		CustomerPhone string            `json:"customer_phone"`
+		ReturnURL     string            `json:"return_url"`
+		Type          string            `json:"type"` // "event", "play", "dining"
+		Notes         map[string]string `json:"notes"`
 	}
 
 	if err := c.BodyParser(&req); err != nil {
@@ -31,6 +33,14 @@ func CreateOrderHandler(c *fiber.Ctx) error {
 
 	orderID := fmt.Sprintf("TICPIN_%d", time.Now().UnixMilli())
 
+	notes := req.Notes
+	if notes == nil {
+		notes = make(map[string]string)
+	}
+	if req.Type != "" {
+		notes["booking_type"] = req.Type
+	}
+
 	result, err := payment.CreateOrder(payment.OrderRequest{
 		OrderID:       orderID,
 		OrderAmount:   req.Amount,
@@ -39,6 +49,7 @@ func CreateOrderHandler(c *fiber.Ctx) error {
 		CustomerEmail: req.CustomerEmail,
 		CustomerPhone: req.CustomerPhone,
 		ReturnURL:     req.ReturnURL,
+		Notes:         notes,
 	})
 
 	if err != nil {

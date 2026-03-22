@@ -1,15 +1,19 @@
 package bookingctrl
 
 import (
+	"context"
+	"fmt"
+	"net/url"
+	"ticpin-backend/config"
 	"ticpin-backend/models"
 	bookingsvc "ticpin-backend/services/booking"
 	couponsvc "ticpin-backend/services/coupon"
 	playservice "ticpin-backend/services/play"
 	"ticpin-backend/utils"
-
-	"net/url"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -40,6 +44,26 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 
 	if err := utils.ParseAndValidate(c, &req); err != nil {
 		return err
+	}
+
+	fmt.Printf("DEBUG: CreatePlayBooking - PlayID: %s, User: %s, PaymentID: %s\n", 
+		req.PlayID, req.UserEmail, req.PaymentID)
+
+	// Check if booking with this payment_id already exists
+	if req.PaymentID != "" {
+		var existing models.PlayBooking
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := config.PlayBookingsCol.FindOne(ctx, bson.M{"payment_id": req.PaymentID}).Decode(&existing); err == nil {
+			return c.Status(200).JSON(fiber.Map{
+				"message":         "play booking already confirmed",
+				"booking_id":      existing.BookingID,
+				"id":              existing.ID.Hex(),
+				"grand_total":     existing.GrandTotal,
+				"discount_amount": existing.DiscountAmount,
+				"status":          existing.Status,
+			})
+		}
 	}
 
 	if req.PlayID == "" {

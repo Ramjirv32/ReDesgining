@@ -80,6 +80,7 @@ export interface PaymentOrderRequest {
     customer_email?: string;
     customer_phone: string;
     return_url?: string;
+    type?: string; // "event", "play", "dining"
 }
 
 export interface PaymentOrderResponse {

@@ -45,6 +45,25 @@ func CreateEventBooking(c *fiber.Ctx) error {
 	fmt.Printf("DEBUG: CreateEventBooking - EventID: %s, OrderAmount: %.2f, PaymentGateway: %s\n",
 		req.EventID, req.OrderAmount, req.PaymentGateway)
 
+	// Check if booking with this payment_id already exists
+	if req.PaymentID != "" {
+		var existing models.Booking
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := config.EventBookingsCol.FindOne(ctx, bson.M{"payment_id": req.PaymentID}).Decode(&existing); err == nil {
+			fmt.Printf("DEBUG: CreateEventBooking - Already exists for PaymentID: %s, ID: %s, Status: %s\n",
+				req.PaymentID, existing.BookingID, existing.Status)
+			return c.Status(200).JSON(fiber.Map{
+				"message":         "booking already confirmed",
+				"booking_id":      existing.BookingID,
+				"id":              existing.ID.Hex(),
+				"grand_total":     existing.GrandTotal,
+				"discount_amount": existing.DiscountAmount,
+				"status":          existing.Status,
+			})
+		}
+	}
+
 	if req.UserEmail == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "user_email is required"})
 	}

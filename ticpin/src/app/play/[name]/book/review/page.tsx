@@ -14,12 +14,12 @@ import Link from 'next/link';
 import { CITIES } from '@/app/events/create/data';
 
 const STATES = [
-    "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", 
-    "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", 
-    "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", 
-    "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", 
-    "Uttar Pradesh", "Uttarakhand", "West Bengal", "Andaman and Nicobar Islands", 
-    "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Jammu and Kashmir", 
+    "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa",
+    "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala",
+    "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland",
+    "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura",
+    "Uttar Pradesh", "Uttarakhand", "West Bengal", "Andaman and Nicobar Islands",
+    "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Jammu and Kashmir",
     "Ladakh", "Lakshadweep", "Puducherry"
 ];
 
@@ -310,7 +310,7 @@ export default function PlayReviewPage() {
             setBookingError('Please accept the terms and conditions to proceed.');
             return;
         }
-        
+
         if (!session && !organizerSession) {
             setShowAuthModal(true);
             return;
@@ -354,6 +354,7 @@ export default function PlayReviewPage() {
                 customer_email: email || `user_${billing.phone}@ticpin.in`,
                 customer_id: session?.id || `phone_${billing.phone}`,
                 return_url: `${window.location.origin}${window.location.pathname}`,
+                type: 'play',
             });
 
             sessionStorage.setItem('ticpin_pending_play', JSON.stringify({
@@ -387,6 +388,12 @@ export default function PlayReviewPage() {
                     order_id: orderRes.order_id,
                     name: 'Ticpin',
                     description: `${cart.eventName} — ${cart.slot}`,
+                    method: {
+                        upi: true,
+                        card: true,
+                        netbanking: true,
+                        wallet: true
+                    },
                     prefill: { name: billing.name, email, contact: billing.phone },
                     theme: { color: '#000000' },
                     handler: async (response: { razorpay_payment_id: string }) => {
@@ -439,7 +446,7 @@ export default function PlayReviewPage() {
                         #{bookingId.slice(-10).toUpperCase()}
                     </p>
                     <p className="text-sm text-zinc-500 mb-8 leading-relaxed">
-                        Confirmation has been sent to your email <br/><span className="font-semibold text-black">{email}</span>
+                        Confirmation has been sent to your email <br /><span className="font-semibold text-black">{email}</span>
                     </p>
                     {cart && (
                         <div className="bg-zinc-50 rounded-xl p-6 text-left space-y-2 mb-8 border border-zinc-200">
@@ -473,7 +480,7 @@ export default function PlayReviewPage() {
                 <div className="cursor-pointer" onClick={() => (step === 'review' ? router.push('/') : setStep('review'))}>
                     <Image src="/ticpin-logo-black.png" alt="TICPIN" width={110} height={24} className="h-6 w-auto object-contain" />
                 </div>
-                
+
                 <h1 className="hidden md:block absolute left-1/2 -translate-x-1/2 font-bold text-[17px]">
                     {step === 'billing' ? 'Billing Details' : 'Review your booking'}
                 </h1>
@@ -506,8 +513,8 @@ export default function PlayReviewPage() {
                                     </div>
                                 </div>
                                 <div className="flex flex-col items-end gap-3">
-                                    <button 
-                                        onClick={() => { sessionStorage.removeItem('ticpin_cart'); router.back(); }} 
+                                    <button
+                                        onClick={() => { sessionStorage.removeItem('ticpin_cart'); router.back(); }}
                                         className="text-zinc-400 hover:text-red-500 transition-colors"
                                     >
                                         <Trash2 size={18} />
@@ -526,7 +533,7 @@ export default function PlayReviewPage() {
                         <SectionHeader title="OFFERS" />
                         <div className="border border-zinc-200 rounded-[12px] overflow-hidden mb-4">
                             {/* Play Offers Toggle */}
-                            <button 
+                            <button
                                 onClick={() => setExpandedSection(s => s === 'offers' ? 'none' : 'offers')}
                                 className="w-full flex items-center justify-between p-4 hover:bg-zinc-50 transition-colors"
                             >
@@ -541,7 +548,7 @@ export default function PlayReviewPage() {
                                     <ChevronRight size={18} className={`text-zinc-400 transition-transform ${expandedSection === 'offers' ? 'rotate-90' : ''}`} />
                                 </div>
                             </button>
-                            
+
                             {expandedSection === 'offers' && (
                                 <div className="p-4 bg-zinc-50 border-t border-zinc-100 space-y-3">
                                     {offers.length > 0 ? offers.map(o => (
@@ -562,7 +569,7 @@ export default function PlayReviewPage() {
                             <div className="h-[1px] bg-zinc-200"></div>
 
                             {/* Coupon Codes Toggle */}
-                            <button 
+                            <button
                                 onClick={() => setExpandedSection(s => s === 'coupons' ? 'none' : 'coupons')}
                                 className="w-full flex items-center justify-between p-4 hover:bg-zinc-50 transition-colors"
                             >
@@ -579,15 +586,15 @@ export default function PlayReviewPage() {
                             {expandedSection === 'coupons' && (
                                 <div className="p-4 bg-zinc-50 border-t border-zinc-100 space-y-4">
                                     <div className="flex gap-2">
-                                        <input 
-                                            type="text" 
-                                            placeholder="Enter coupon code" 
+                                        <input
+                                            type="text"
+                                            placeholder="Enter coupon code"
                                             value={couponInput}
                                             onChange={e => { setCouponInput(e.target.value.toUpperCase()); setCouponError(''); }}
                                             onKeyDown={e => e.key === 'Enter' && validateCoupon()}
                                             className="flex-1 h-11 border border-zinc-200 rounded-lg px-4 focus:outline-none focus:border-black text-[14px] bg-white"
                                         />
-                                        <button 
+                                        <button
                                             onClick={() => validateCoupon()}
                                             disabled={couponLoading || !couponInput}
                                             className="px-6 h-11 bg-black text-white rounded-lg text-[13px] font-semibold disabled:opacity-40"
@@ -627,7 +634,7 @@ export default function PlayReviewPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <div 
+                                <div
                                     className="flex justify-between items-center cursor-pointer text-[15px] text-zinc-600 hover:text-black transition-colors"
                                     onClick={() => setShowGstDetails(!showGstDetails)}
                                 >
@@ -687,7 +694,7 @@ export default function PlayReviewPage() {
                                 </span>
                             </label>
 
-                            <button 
+                            <button
                                 onClick={handleContinue}
                                 className="bg-black text-white px-8 py-3.5 rounded-lg text-[14px] font-bold tracking-wide hover:bg-zinc-800 transition-colors w-full sm:w-auto text-center"
                             >
@@ -710,22 +717,22 @@ export default function PlayReviewPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-1.5">
                                 <label className="text-[13px] font-semibold text-zinc-600">Full Name <span className="text-red-500">*</span></label>
-                                <input type="text" value={billing.name} onChange={e => {setBilling({...billing, name: e.target.value}); setBookingError('');}} className="w-full h-12 border border-zinc-200 rounded-lg px-4 focus:outline-none focus:border-black text-[15px]" />
+                                <input type="text" value={billing.name} onChange={e => { setBilling({ ...billing, name: e.target.value }); setBookingError(''); }} className="w-full h-12 border border-zinc-200 rounded-lg px-4 focus:outline-none focus:border-black text-[15px]" />
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-[13px] font-semibold text-zinc-600">Email Address <span className="text-red-500">*</span></label>
-                                <input type="email" value={email} onChange={e => {setEmail(e.target.value); setBookingError('');}} className="w-full h-12 border border-zinc-200 rounded-lg px-4 focus:outline-none focus:border-black text-[15px]" />
+                                <input type="email" value={email} onChange={e => { setEmail(e.target.value); setBookingError(''); }} className="w-full h-12 border border-zinc-200 rounded-lg px-4 focus:outline-none focus:border-black text-[15px]" />
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-[13px] font-semibold text-zinc-600">Mobile Number <span className="text-red-500">*</span></label>
                                 <div className="relative">
                                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-[15px]">+91</span>
-                                    <input type="tel" maxLength={10} value={billing.phone} onChange={e => {setBilling({...billing, phone: e.target.value.replace(/\D/g, '')}); setBookingError('');}} className="w-full h-12 border border-zinc-200 rounded-lg pl-12 pr-4 focus:outline-none focus:border-black text-[15px]" />
+                                    <input type="tel" maxLength={10} value={billing.phone} onChange={e => { setBilling({ ...billing, phone: e.target.value.replace(/\D/g, '') }); setBookingError(''); }} className="w-full h-12 border border-zinc-200 rounded-lg pl-12 pr-4 focus:outline-none focus:border-black text-[15px]" />
                                 </div>
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-[13px] font-semibold text-zinc-600">Nationality <span className="text-red-500">*</span></label>
-                                <select value={billing.nationality} onChange={e => {setBilling({...billing, nationality: e.target.value}); setBookingError('');}} className="w-full h-12 border border-zinc-200 rounded-lg px-4 focus:outline-none focus:border-black text-[15px] appearance-none bg-white">
+                                <select value={billing.nationality} onChange={e => { setBilling({ ...billing, nationality: e.target.value }); setBookingError(''); }} className="w-full h-12 border border-zinc-200 rounded-lg px-4 focus:outline-none focus:border-black text-[15px] appearance-none bg-white">
                                     <option value="Indian">Indian</option>
                                     <option value="International">International</option>
                                 </select>
@@ -734,13 +741,13 @@ export default function PlayReviewPage() {
 
                         <div className="space-y-1.5 mt-6">
                             <label className="text-[13px] font-semibold text-zinc-600">Address <span className="text-red-500">*</span></label>
-                            <input type="text" value={billing.address} onChange={e => {setBilling({...billing, address: e.target.value}); setBookingError('');}} className="w-full h-12 border border-zinc-200 rounded-lg px-4 focus:outline-none focus:border-black text-[15px]" />
+                            <input type="text" value={billing.address} onChange={e => { setBilling({ ...billing, address: e.target.value }); setBookingError(''); }} className="w-full h-12 border border-zinc-200 rounded-lg px-4 focus:outline-none focus:border-black text-[15px]" />
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
                             <div className="space-y-1.5">
                                 <label className="text-[13px] font-semibold text-zinc-600">City <span className="text-red-500">*</span></label>
-                                <select value={billing.city} onChange={e => {setBilling({...billing, city: e.target.value}); setBookingError('');}} className="w-full h-12 border border-zinc-200 rounded-lg px-4 focus:outline-none focus:border-black text-[15px] appearance-none bg-white">
+                                <select value={billing.city} onChange={e => { setBilling({ ...billing, city: e.target.value }); setBookingError(''); }} className="w-full h-12 border border-zinc-200 rounded-lg px-4 focus:outline-none focus:border-black text-[15px] appearance-none bg-white">
                                     <option value="">Select City</option>
                                     {CITIES.map(city => (
                                         <option key={city} value={city}>{city}</option>
@@ -749,7 +756,7 @@ export default function PlayReviewPage() {
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-[13px] font-semibold text-zinc-600">State <span className="text-red-500">*</span></label>
-                                <select value={billing.state} onChange={e => {setBilling({...billing, state: e.target.value}); setBookingError('');}} className="w-full h-12 border border-zinc-200 rounded-lg px-4 focus:outline-none focus:border-black text-[15px] appearance-none bg-white">
+                                <select value={billing.state} onChange={e => { setBilling({ ...billing, state: e.target.value }); setBookingError(''); }} className="w-full h-12 border border-zinc-200 rounded-lg px-4 focus:outline-none focus:border-black text-[15px] appearance-none bg-white">
                                     <option value="">Select State</option>
                                     {STATES.map(state => (
                                         <option key={state} value={state}>{state}</option>
@@ -758,7 +765,7 @@ export default function PlayReviewPage() {
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-[13px] font-semibold text-zinc-600">PIN Code <span className="text-red-500">*</span></label>
-                                <input type="tel" maxLength={6} value={billing.pincode} onChange={e => {setBilling({...billing, pincode: e.target.value.replace(/\D/g,'')}); setBookingError('');}} className="w-full h-12 border border-zinc-200 rounded-lg px-4 focus:outline-none focus:border-black text-[15px]" />
+                                <input type="tel" maxLength={6} value={billing.pincode} onChange={e => { setBilling({ ...billing, pincode: e.target.value.replace(/\D/g, '') }); setBookingError(''); }} className="w-full h-12 border border-zinc-200 rounded-lg px-4 focus:outline-none focus:border-black text-[15px]" />
                             </div>
                         </div>
 
@@ -773,7 +780,7 @@ export default function PlayReviewPage() {
                             <button onClick={() => setStep('review')} className="text-zinc-500 font-semibold text-[14px] hover:text-black">
                                 &larr; Back to review
                             </button>
-                            <button 
+                            <button
                                 onClick={handlePayNow}
                                 disabled={bookingLoading}
                                 className="w-full sm:w-auto bg-black text-white px-10 py-3.5 rounded-lg text-[15px] font-bold tracking-wide hover:bg-zinc-800 transition-colors disabled:opacity-50"
@@ -786,9 +793,9 @@ export default function PlayReviewPage() {
             </main>
 
             <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
-            <OrganizerLogoutModal 
-                isOpen={showLogoutModal} 
-                onClose={() => setShowLogoutModal(false)} 
+            <OrganizerLogoutModal
+                isOpen={showLogoutModal}
+                onClose={() => setShowLogoutModal(false)}
                 onConfirm={handleOrganizerLogout}
                 organizerName={organizerSession?.email}
             />

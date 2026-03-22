@@ -520,6 +520,7 @@ export default function ReviewBookingPage() {
                 customer_email: email || `user_${billing.phone}@ticpin.in`,
                 customer_id: session?.id || `phone_${billing.phone}`,
                 return_url: `${window.location.origin}${window.location.pathname}`,
+                type: cart.type || 'event',
             });
 
             // Step 2: Store pending booking data so we can complete after redirect (Cashfree)
@@ -557,6 +558,12 @@ export default function ReviewBookingPage() {
                     order_id: orderRes.order_id,
                     name: 'Ticpin',
                     description: cart.eventName,
+                    method: {
+                        upi: true,
+                        card: true,
+                        netbanking: true,
+                        wallet: true
+                    },
                     prefill: {
                         name: billing.name,
                         email,

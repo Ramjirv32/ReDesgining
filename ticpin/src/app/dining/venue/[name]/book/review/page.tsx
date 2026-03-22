@@ -64,9 +64,9 @@ export default function DiningReviewPage() {
     const organizerSession = useOrganizerSession();
 
     const [cart, setCart] = useState<CartData | null>(null);
-    const [venueData, setVenueData] = useState<{id: string; name: string; portrait_image_url: string; landscape_image_url: string; city?: string} | null>(null);
-    const [billing, setBilling] = useState<BillingInfo>({ 
-        name: '', email: '', phone: '', address: '', nationality: 'Indian', city: '', state: '', pincode: '' 
+    const [venueData, setVenueData] = useState<{ id: string; name: string; portrait_image_url: string; landscape_image_url: string; city?: string } | null>(null);
+    const [billing, setBilling] = useState<BillingInfo>({
+        name: '', email: '', phone: '', address: '', nationality: 'Indian', city: '', state: '', pincode: ''
     });
     const [step, setStep] = useState<'review' | 'billing' | 'success'>('review');
     const [bookingLoading, setBookingLoading] = useState(false);
@@ -74,7 +74,7 @@ export default function DiningReviewPage() {
     const [selectedOffer, setSelectedOffer] = useState<OfferItem | null>(null);
     const [showGstDetails, setShowGstDetails] = useState(false);
     const [acceptedTerms, setAcceptedTerms] = useState(false);
-    
+
     // Modals
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -104,7 +104,7 @@ export default function DiningReviewPage() {
         if (savedBilling) {
             try { setBilling(JSON.parse(savedBilling)); } catch { /* ignore */ }
         }
-        
+
         const savedStep = sessionStorage.getItem('ticpin_dining_step');
         if (savedStep === 'billing') setStep('billing');
     }, [venueName, router]);
@@ -170,7 +170,7 @@ export default function DiningReviewPage() {
     const bookingFee = 0; // Dining usually has 0 booking fee for now
     const totalDiscount = useMemo(() => {
         if (!selectedOffer || !orderAmount) return 0;
-        return selectedOffer.discount_type === 'percent' 
+        return selectedOffer.discount_type === 'percent'
             ? Math.round(orderAmount * selectedOffer.discount_value / 100)
             : Math.min(selectedOffer.discount_value, orderAmount);
     }, [selectedOffer, orderAmount]);
@@ -230,6 +230,7 @@ export default function DiningReviewPage() {
                 amount: grandTotal,
                 customer_email: billing.email,
                 customer_phone: billing.phone,
+                type: 'dining',
             });
 
             const options = {
@@ -239,6 +240,12 @@ export default function DiningReviewPage() {
                 name: cart!.eventName,
                 description: `Dining reservation for ${cart!.guests} guests`,
                 order_id: res.order_id,
+                method: {
+                    upi: true,
+                    card: true,
+                    netbanking: true,
+                    wallet: true
+                },
                 handler: async (response: any) => {
                     await completeDiningBooking(response.razorpay_payment_id, 'razorpay');
                 },
@@ -308,7 +315,7 @@ export default function DiningReviewPage() {
                     </div>
                     <h1 className="text-[32px] font-bold text-black mb-2 uppercase tracking-tight">Booking Confirmed!</h1>
                     <p className="text-[15px] text-[#686868] mb-8 leading-relaxed">
-                        Reservation confirmed at <br/><span className="font-bold text-black">{cart?.eventName}</span>
+                        Reservation confirmed at <br /><span className="font-bold text-black">{cart?.eventName}</span>
                     </p>
                     <div className="bg-zinc-50 rounded-[20px] p-6 text-left space-y-2 mb-8 border border-zinc-100">
                         <p className="font-black text-black text-[20px] uppercase">{cart?.eventName}</p>
@@ -347,10 +354,10 @@ export default function DiningReviewPage() {
 
             <main className="max-w-[1200px] mx-auto px-4 py-8 md:py-12">
                 <div className="flex flex-col lg:flex-row gap-8 items-start">
-                    
+
                     {/* LEFT COLUMN */}
                     <div className="flex-1 w-full space-y-6">
-                        
+
                         {/* 1. ORDER SUMMARY */}
                         <div className="bg-white rounded-[24px] border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
                             <div className="p-6 md:p-8">
@@ -452,8 +459,8 @@ export default function DiningReviewPage() {
                                                     <label className="text-[13px] font-black text-[#686868] uppercase tracking-[0.15em] ml-1">Confirmation Mobile</label>
                                                     <div className="relative">
                                                         <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[15px] font-black text-black">+91</div>
-                                                        <input 
-                                                            type="tel" 
+                                                        <input
+                                                            type="tel"
                                                             placeholder="MOBILE NUMBER"
                                                             value={billing.phone}
                                                             onChange={e => { setBilling(b => ({ ...b, phone: e.target.value.replace(/\D/g, '') })); setBookingError(''); }}
@@ -462,7 +469,7 @@ export default function DiningReviewPage() {
                                                         />
                                                     </div>
                                                 </div>
-                                                
+
                                                 {bookingError && (
                                                     <div className="flex items-center gap-2 p-3 bg-red-50 rounded-[12px] text-red-500">
                                                         <TriangleAlert size={16} />
@@ -470,7 +477,7 @@ export default function DiningReviewPage() {
                                                     </div>
                                                 )}
 
-                                                <button 
+                                                <button
                                                     onClick={handleContinue}
                                                     className="w-full h-[55px] bg-black text-white rounded-[16px] font-bold text-[24px] uppercase tracking-wider shadow-lg hover:shadow-black/10 active:scale-[0.98] transition-all"
                                                     style={{ fontFamily: 'Anek Tamil Condensed' }}
@@ -497,7 +504,7 @@ export default function DiningReviewPage() {
                 {/* BILLING FORM - STEP 2 */}
                 {step === 'billing' && (
                     <div ref={billingRef} className="mt-12 w-full max-w-[800px] animate-in slide-in-from-bottom-6 duration-500">
-                         <div className="bg-white rounded-[32px] border border-white shadow-[0_12px_40px_rgb(0,0,0,0.06)] overflow-hidden">
+                        <div className="bg-white rounded-[32px] border border-white shadow-[0_12px_40px_rgb(0,0,0,0.06)] overflow-hidden">
                             <div className="p-8 md:p-12">
                                 <div className="flex justify-between items-center mb-10">
                                     <div className="space-y-1">
@@ -516,11 +523,11 @@ export default function DiningReviewPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     <div className="space-y-2">
                                         <label className="text-[13px] font-black text-[#686868] uppercase tracking-[0.15em] ml-1">Full Name <span className="text-red-500">*</span></label>
-                                        <input type="text" value={billing.name} onChange={e => {setBilling({...billing, name: e.target.value}); setBookingError('');}} className="w-full h-[60px] border border-zinc-200 rounded-[16px] px-6 focus:outline-none focus:border-black text-[17px] font-black text-black tracking-wide bg-zinc-50/30" />
+                                        <input type="text" value={billing.name} onChange={e => { setBilling({ ...billing, name: e.target.value }); setBookingError(''); }} className="w-full h-[60px] border border-zinc-200 rounded-[16px] px-6 focus:outline-none focus:border-black text-[17px] font-black text-black tracking-wide bg-zinc-50/30" />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[13px] font-black text-[#686868] uppercase tracking-[0.15em] ml-1">Personal Email <span className="text-red-500">*</span></label>
-                                        <input type="email" value={billing.email} onChange={e => {setBilling({...billing, email: e.target.value}); setBookingError('');}} className="w-full h-[60px] border border-zinc-200 rounded-[16px] px-6 focus:outline-none focus:border-black text-[17px] font-black text-black tracking-wide bg-zinc-50/30" />
+                                        <input type="email" value={billing.email} onChange={e => { setBilling({ ...billing, email: e.target.value }); setBookingError(''); }} className="w-full h-[60px] border border-zinc-200 rounded-[16px] px-6 focus:outline-none focus:border-black text-[17px] font-black text-black tracking-wide bg-zinc-50/30" />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[13px] font-black text-[#686868] uppercase tracking-[0.15em] ml-1">Contact Phone</label>
@@ -528,23 +535,23 @@ export default function DiningReviewPage() {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[13px] font-black text-[#686868] uppercase tracking-[0.15em] ml-1">Residential Address <span className="text-red-500">*</span></label>
-                                        <input type="text" placeholder="STREET, AREA, HOUSE NO." value={billing.address} onChange={e => {setBilling({...billing, address: e.target.value}); setBookingError('');}} className="w-full h-[60px] border border-zinc-200 rounded-[16px] px-6 focus:outline-none focus:border-black text-[17px] font-black text-black tracking-wide bg-zinc-50/30 uppercase placeholder:text-zinc-200" />
+                                        <input type="text" placeholder="STREET, AREA, HOUSE NO." value={billing.address} onChange={e => { setBilling({ ...billing, address: e.target.value }); setBookingError(''); }} className="w-full h-[60px] border border-zinc-200 rounded-[16px] px-6 focus:outline-none focus:border-black text-[17px] font-black text-black tracking-wide bg-zinc-50/30 uppercase placeholder:text-zinc-200" />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[13px] font-black text-[#686868] uppercase tracking-[0.15em] ml-1">City <span className="text-red-500">*</span></label>
-                                        <input type="text" placeholder="CITY" value={billing.city} onChange={e => {setBilling({...billing, city: e.target.value}); setBookingError('');}} className="w-full h-[60px] border border-zinc-200 rounded-[16px] px-6 focus:outline-none focus:border-black text-[17px] font-black text-black tracking-wide bg-zinc-50/30 uppercase" />
+                                        <input type="text" placeholder="CITY" value={billing.city} onChange={e => { setBilling({ ...billing, city: e.target.value }); setBookingError(''); }} className="w-full h-[60px] border border-zinc-200 rounded-[16px] px-6 focus:outline-none focus:border-black text-[17px] font-black text-black tracking-wide bg-zinc-50/30 uppercase" />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[13px] font-black text-[#686868] uppercase tracking-[0.15em] ml-1">State</label>
-                                        <input type="text" placeholder="STATE" value={billing.state} onChange={e => {setBilling({...billing, state: e.target.value}); setBookingError('');}} className="w-full h-[60px] border border-zinc-200 rounded-[16px] px-6 focus:outline-none focus:border-black text-[17px] font-black text-black tracking-wide bg-zinc-50/30 uppercase" />
+                                        <input type="text" placeholder="STATE" value={billing.state} onChange={e => { setBilling({ ...billing, state: e.target.value }); setBookingError(''); }} className="w-full h-[60px] border border-zinc-200 rounded-[16px] px-6 focus:outline-none focus:border-black text-[17px] font-black text-black tracking-wide bg-zinc-50/30 uppercase" />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[13px] font-black text-[#686868] uppercase tracking-[0.15em] ml-1">Pincode <span className="text-red-500">*</span></label>
-                                        <input type="text" placeholder="PINCODE" value={billing.pincode} onChange={e => {setBilling({...billing, pincode: e.target.value.replace(/\D/g, '')}); setBookingError('');}} maxLength={6} className="w-full h-[60px] border border-zinc-200 rounded-[16px] px-6 focus:outline-none focus:border-black text-[17px] font-black text-black tracking-wide bg-zinc-50/30" />
+                                        <input type="text" placeholder="PINCODE" value={billing.pincode} onChange={e => { setBilling({ ...billing, pincode: e.target.value.replace(/\D/g, '') }); setBookingError(''); }} maxLength={6} className="w-full h-[60px] border border-zinc-200 rounded-[16px] px-6 focus:outline-none focus:border-black text-[17px] font-black text-black tracking-wide bg-zinc-50/30" />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[13px] font-black text-[#686868] uppercase tracking-[0.15em] ml-1">Nationality <span className="text-red-500">*</span></label>
-                                        <select value={billing.nationality} onChange={e => {setBilling({...billing, nationality: e.target.value}); setBookingError('');}} className="w-full h-[60px] border border-zinc-200 rounded-[16px] px-6 focus:outline-none focus:border-black text-[17px] font-black text-black bg-zinc-50/30 uppercase">
+                                        <select value={billing.nationality} onChange={e => { setBilling({ ...billing, nationality: e.target.value }); setBookingError(''); }} className="w-full h-[60px] border border-zinc-200 rounded-[16px] px-6 focus:outline-none focus:border-black text-[17px] font-black text-black bg-zinc-50/30 uppercase">
                                             <option value="Indian">Indian</option>
                                             <option value="Other">Other</option>
                                         </select>
@@ -552,7 +559,7 @@ export default function DiningReviewPage() {
                                 </div>
 
                                 <div className="mt-12 p-6 bg-zinc-50 rounded-[20px] border border-zinc-100 flex items-start gap-4">
-                                     <div 
+                                    <div
                                         onClick={() => setAcceptedTerms(!acceptedTerms)}
                                         className={`mt-1 flex-shrink-0 w-6 h-6 rounded-[6px] border-2 flex items-center justify-center cursor-pointer transition-all ${acceptedTerms ? 'bg-black border-black shadow-[0_4px_10px_rgba(0,0,0,0.1)]' : 'border-zinc-300'}`}
                                     >
@@ -570,7 +577,7 @@ export default function DiningReviewPage() {
                                     </div>
                                 )}
 
-                                <button 
+                                <button
                                     onClick={handlePayNow}
                                     disabled={bookingLoading}
                                     className="w-full h-[70px] bg-black text-white rounded-[20px] mt-8 font-black text-[28px] uppercase tracking-widest shadow-[0_15px_40px_rgba(0,0,0,0.15)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.2)] hover:translate-y-[-2px] active:translate-y-[1px] active:shadow-none transition-all disabled:opacity-40 disabled:pointer-events-none"
@@ -585,9 +592,9 @@ export default function DiningReviewPage() {
             </main>
 
             <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
-            <OrganizerLogoutModal 
-                isOpen={showLogoutModal} 
-                onClose={() => setShowLogoutModal(false)} 
+            <OrganizerLogoutModal
+                isOpen={showLogoutModal}
+                onClose={() => setShowLogoutModal(false)}
                 onConfirm={handleOrganizerLogout}
                 organizerName={organizerSession?.email}
             />
