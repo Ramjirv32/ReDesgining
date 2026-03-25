@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { toast } from '@/components/ui/Toast';
 import Image from 'next/image';
 import { adminApi, NotificationRecord, UserRecord, OrganizerListItem, uploadMedia } from '@/lib/api/admin';
 import { ChevronDown, X, Trash2, Clock, Users, UserPlus, Check } from 'lucide-react';
@@ -67,7 +68,7 @@ export default function PushNotification() {
 
     const handleSend = async () => {
         if (!title.trim() || !description.trim()) {
-            alert('Please enter title and description');
+            toast.error('Please enter title and description');
             return;
         }
 
@@ -87,7 +88,7 @@ export default function PushNotification() {
             };
 
             await adminApi.sendNotification(payload);
-            alert('Notification sent and saved');
+            toast.success('Notification sent and saved');
 
             // Reset form
             setTitle('');
@@ -96,7 +97,7 @@ export default function PushNotification() {
             setSelectedIds([]);
             loadHistory();
         } catch (e) {
-            alert(e instanceof Error ? e.message : 'Failed to send notification');
+            toast.error(e instanceof Error ? e.message : 'Failed to send notification');
         } finally {
             setLoading(false);
         }

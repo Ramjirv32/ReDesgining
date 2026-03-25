@@ -6,6 +6,8 @@ import { adminApi, OfferRecord } from '@/lib/api/admin';
 import CreateOfferForm from '../create/createoffer';
 import { useState, useEffect } from 'react';
 
+import { toast } from '@/components/ui/Toast';
+
 export default function ViewOfferForm({ onBack }: { onBack: () => void }) {
     const [offers, setOffers] = useState<OfferRecord[]>([]);
     const [loading, setLoading] = useState(true);
@@ -31,8 +33,9 @@ export default function ViewOfferForm({ onBack }: { onBack: () => void }) {
         try {
             await adminApi.deleteOffer(id);
             setOffers(prev => prev.filter(o => o.id !== id));
+            toast.success('Offer deleted successfully');
         } catch (err) {
-            alert('Failed to delete offer');
+            toast.error('Failed to delete offer');
         }
     };
 

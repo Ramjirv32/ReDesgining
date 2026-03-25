@@ -132,6 +132,40 @@ func CancelBooking(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "booking already cancelled"})
 	}
 
+	// Check if booking is expired (past date)
+	var bookingDateStr string
+	switch b := bookingFound.(type) {
+	case *models.Booking:
+		var event models.Event
+		if err := config.EventsCol.FindOne(ctx, bson.M{"_id": b.EventID}).Decode(&event); err == nil {
+			bookingDateStr = event.Date.Format("02 January, 2006")
+		}
+	case *models.PlayBooking:
+		bookingDateStr = b.Date
+	case *models.DiningBooking:
+		bookingDateStr = b.Date
+	}
+	if bookingDateStr != "" {
+		// Try multiple layouts
+		layouts := []string{"02 January, 2006", "2006-01-02", "January 02, 2006"}
+		var bTime time.Time
+		var err error
+		for _, layout := range layouts {
+			bTime, err = time.Parse(layout, bookingDateStr)
+			if err == nil {
+				break
+			}
+		}
+
+		if err == nil {
+			todayUTC := time.Now().Truncate(24 * time.Hour)
+			bTimeUTC := bTime.Truncate(24 * time.Hour)
+			if bTimeUTC.Before(todayUTC) {
+				return c.Status(400).JSON(fiber.Map{"error": "cannot cancel an expired booking"})
+			}
+		}
+	}
+
 	update := bson.M{
 		"$set": bson.M{
 			"status":       "cancelled",

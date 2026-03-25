@@ -161,6 +161,21 @@ func CreateIndexes() {
 		Options: options.Index().SetUnique(true),
 	})
 
+	// Add dining slot lock indexes
+	SlotLocksCol.Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys: bson.D{
+			{Key: "dining_id", Value: 1},
+			{Key: "date", Value: 1},
+			{Key: "time_slot", Value: 1},
+		},
+		Options: options.Index().SetUnique(true),
+	})
+
+	SlotLocksCol.Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys:    bson.D{{Key: "booking_id", Value: 1}},
+		Options: options.Index().SetUnique(true),
+	})
+
 	EventBookingsCol.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{Keys: bson.D{
 			{Key: "event_id", Value: 1},
@@ -168,6 +183,16 @@ func CreateIndexes() {
 		}},
 		{Keys: bson.D{{Key: "user_email", Value: 1}}},
 		{Keys: bson.D{{Key: "booked_at", Value: -1}}},
+		// Add capacity checking indexes
+		{Keys: bson.D{
+			{Key: "event_id", Value: 1},
+			{Key: "status", Value: 1},
+		}},
+		{Keys: bson.D{
+			{Key: "event_id", Value: 1},
+			{Key: "status", Value: 1},
+			{Key: "tickets.category", Value: 1},
+		}},
 	})
 
 	DiningBookingsCol.Indexes().CreateMany(ctx, []mongo.IndexModel{

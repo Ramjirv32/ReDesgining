@@ -9,8 +9,11 @@ import { profileApi } from '@/lib/api/profile';
 import Link from 'next/link';
 import { useUserSession } from '@/lib/auth/user';
 import { useOrganizerSession, clearOrganizerSession } from '@/lib/auth/organizer';
+import { getBookingStatus } from '@/lib/utils/booking-status';
 import AuthModal from '@/components/modals/AuthModal';
 import OrganizerLogoutModal from '@/components/modals/OrganizerLogoutModal';
+import { toast } from '@/components/ui/Toast';
+
 
 interface CartData {
     eventId: string;
@@ -19,7 +22,6 @@ interface CartData {
     tickets: { name: string; price: number; quantity: number }[];
     totalPrice: number;
     type?: 'event' | 'dining' | 'play';
-    // Specific fields for dining/play
     date?: string;
     timeSlot?: string;
     guests?: number;
@@ -27,6 +29,8 @@ interface CartData {
     duration?: number;
     offerId?: string | null;
     offerType?: string | null;
+    use_pass?: boolean;
+    pass_id?: string;
 }
 
 /** Dynamically load a third-party payment SDK script (idempotent). */
@@ -101,6 +105,7 @@ export default function ReviewBookingPage() {
     const [bookingId, setBookingId] = useState('');
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
+    const [pass, setPass] = useState<any>(null);
 
     useEffect(() => {
         const saved = sessionStorage.getItem('ticpin_cart');
@@ -129,15 +134,12 @@ export default function ReviewBookingPage() {
         const savedStep = sessionStorage.getItem('ticpin_booking_step');
         if (savedStep === 'billing') {
             setStep('billing');
-            // Give it a tiny delay to ensure cart is loaded before scrolling
             setTimeout(() => {
                 billingRef.current?.scrollIntoView({ behavior: 'instant' });
             }, 100);
         }
 
         // ── Cashfree redirect return ───────────────────────────────────
-        // Cashfree redirects back to this page with ?order_id=TICPIN_xxx&order_token=xxx
-        // Detect that and auto-complete the booking using stored pending data.
         const urlParams = new URLSearchParams(window.location.search);
         const cfOrderId = urlParams.get('order_id');
         if (cfOrderId && cfOrderId.startsWith('TICPIN_')) {
@@ -147,17 +149,12 @@ export default function ReviewBookingPage() {
                     const p = JSON.parse(pending);
                     if (p.cart) {
                         setCart(p.cart);
-                        
-                        // Set eventData for events
                         if (p.cart.type === 'event' && p.cart.eventId) {
                             setEventData({ id: p.cart.eventId, name: p.cart.eventName });
                         }
-                        
                         setStep('billing');
                         setBookingLoading(true);
-                        // Clear the URL params without reload
                         window.history.replaceState(null, '', window.location.pathname);
-                        // Small delay so React state settles before calling API
                         setTimeout(() => {
                             completeBookingWithData(
                                 p.orderID,
@@ -170,6 +167,7 @@ export default function ReviewBookingPage() {
                                 p.grandTotal,
                                 p.appliedCoupon || '',
                                 p.offerId,
+                                p.cart.use_pass
                             );
                         }, 200);
                     }
@@ -178,8 +176,13 @@ export default function ReviewBookingPage() {
                 }
             }
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+
+        if (session?.id) {
+            import('@/lib/api/pass').then(({ passApi }) => {
+                passApi.getActivePass(session.id!).then(setPass);
+            });
+        }
+    }, [router, session?.id]);
 
     // Also pre-fill with session data if available and state is empty
     useEffect(() => {
@@ -194,7 +197,7 @@ export default function ReviewBookingPage() {
 
                     // Find latest successful booking
                     const latestBooking = (Array.isArray(history) ? [...history] : [])
-                        ?.filter((b: any) => b.status === 'booked' || b.status === 'confirmed')
+                        ?.filter((b: any) => getBookingStatus(b) === 'booked' || getBookingStatus(b) === 'confirmed')
                         ?.sort((a: any, b: any) => new Date(b.booked_at).getTime() - new Date(a.booked_at).getTime())[0];
 
                     setBilling(prev => ({
@@ -265,7 +268,13 @@ export default function ReviewBookingPage() {
 
     const orderAmount = cart?.totalPrice ?? 0;
     const bookingFee = Math.round(orderAmount * 0.1);
-    const totalDiscount = offerDiscount + couponDiscount;
+    
+    const isPassApplied = cart?.use_pass ?? false;
+    const passDiscount = (isPassApplied && pass?.benefits.events_discount_active) 
+        ? Math.round(orderAmount * 0.1) 
+        : 0;
+        
+    const totalDiscount = offerDiscount + couponDiscount + passDiscount;
     const grandTotal = Math.max(0, orderAmount + bookingFee - totalDiscount);
 
     const removeTicket = (i: number) => {
@@ -297,7 +306,7 @@ export default function ReviewBookingPage() {
 
     const applyOffer = (offer: OfferItem, base?: number) => {
         if (grandTotal === 0 && offer.id !== appliedOffer?.id) {
-            alert("The total is already ₹0. No more offers can be applied.");
+            toast.warning("The total is already ₹0. No more offers can be applied.");
             return;
         }
         const amount = base ?? orderAmount;
@@ -316,7 +325,7 @@ export default function ReviewBookingPage() {
 
     const validateCoupon = async (code?: string, base?: number) => {
         if (grandTotal === 0 && !appliedCoupon) {
-            alert("The total is already ₹0. No coupon needed.");
+            toast.warning("The total is already ₹0. No coupon needed.");
             return;
         }
         const c = code ?? couponInput;
@@ -326,7 +335,7 @@ export default function ReviewBookingPage() {
         setCouponError('');
         setCouponSuccess('');
         try {
-            const result = await bookingApi.validateCoupon(c, eventData?.id || cart?.eventId || '', amount, session?.id);
+            const result = await bookingApi.validateCoupon(c.trim(), 'event', amount, session?.id);
             setCouponDiscount(Math.round(result.discount_amount));
             setAppliedCoupon(c.toUpperCase());
             setCouponSuccess(`✓ Coupon applied! You save ₹${Math.round(result.discount_amount)}`);
@@ -384,6 +393,7 @@ export default function ReviewBookingPage() {
         gTotal: number,
         coupon: string,
         offerId: string | undefined,
+        usePass?: boolean,
     ) => {
         setBookingLoading(true);
         setBookingError('');
@@ -411,6 +421,7 @@ export default function ReviewBookingPage() {
                     user_id: sessionId,
                     payment_id: paymentId,
                     payment_gateway: paymentGateway,
+                    use_ticpass: usePass,
                 });
             } else if (cartData.type === 'play') {
                 result = await bookingApi.createPlayBooking({
@@ -439,6 +450,7 @@ export default function ReviewBookingPage() {
                     user_id: sessionId,
                     payment_id: paymentId,
                     payment_gateway: paymentGateway,
+                    use_ticpass: usePass,
                 });
             } else {
                 result = await bookingApi.createEventBooking({
@@ -464,6 +476,7 @@ export default function ReviewBookingPage() {
                     user_id: sessionId,
                     payment_id: paymentId,
                     payment_gateway: paymentGateway,
+                    use_ticpass: usePass,
                 });
             }
             setBookingId(result.booking_id);
@@ -498,8 +511,8 @@ export default function ReviewBookingPage() {
         // Skip payment flow if grand total is 0
         if (grandTotal === 0) {
             await completeBookingWithData(
-                'FREE_BOOKING_' + Date.now(),
-                'FREE',
+                isPassApplied ? `PASS_${cart.pass_id}_${Date.now()}` : `FREE_BOOKING_${Date.now()}`,
+                isPassApplied ? 'TICPASS' : 'FREE',
                 cart,
                 email,
                 session?.id,
@@ -582,6 +595,7 @@ export default function ReviewBookingPage() {
                             grandTotal,
                             appliedCoupon,
                             appliedOffer?.id,
+                            isPassApplied,
                         );
                     },
                     modal: {

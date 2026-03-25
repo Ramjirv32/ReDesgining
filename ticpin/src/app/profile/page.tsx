@@ -8,8 +8,10 @@ import { profileApi, UserProfile } from '@/lib/api/profile';
 import { 
     Edit3, User, Mail, Phone, MapPin, Globe, 
     Calendar, UserCircle, Bell, Languages, Map,
-    CheckCircle2, ArrowLeft, Shield, Ticket, Star
+    CheckCircle2, ArrowLeft, Shield, Ticket, Star,
+    LayoutDashboard
 } from 'lucide-react';
+import { passApi, TicpinPass } from '@/lib/api/pass';
 
 function UserProfileContent() {
     const router = useRouter();
@@ -17,6 +19,7 @@ function UserProfileContent() {
 
     const [loading, setLoading] = useState(true);
     const [profile, setProfile] = useState<UserProfile | null>(null);
+    const [pass, setPass] = useState<TicpinPass | null>(null);
     const [hasCheckedSession, setHasCheckedSession] = useState(false);
 
     useEffect(() => {
@@ -37,14 +40,21 @@ function UserProfileContent() {
 
         const fetchProfile = async () => {
             try {
-                const data = await profileApi.getProfile(userSession.id);
+                const [data, passData] = await Promise.all([
+                    profileApi.getProfile(userSession.id),
+                    passApi.getActivePass(userSession.id)
+                ]);
+
                 if (data) {
                     setProfile(data);
                 } else {
-                    // Create minimal profile if not exists
                     const newP = { userId: userSession.id, phone: userSession.phone, name: userSession.name || 'Member' };
                     const created = await profileApi.createProfile(newP);
                     setProfile(created);
+                }
+
+                if (passData) {
+                    setPass(passData);
                 }
             } catch (err) {
                 console.error('Failed to fetch user profile:', err);
@@ -96,15 +106,27 @@ function UserProfileContent() {
                             </div>
                             
                             <div className="flex items-center justify-center md:justify-start gap-3 mt-4">
-                                <div className="px-4 py-1.5 bg-amber-50 text-amber-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-amber-100 flex items-center gap-2">
-                                    <Star size={12} fill="currentColor" /> Premium Member
-                                </div>
+                                {pass ? (
+                                    <Link 
+                                        href="/profile/pass"
+                                        className="px-4 py-1.5 bg-amber-50 text-amber-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-amber-100 flex items-center gap-2 hover:bg-amber-100 transition-colors"
+                                    >
+                                        <Star size={12} fill="currentColor" /> Premium Member
+                                    </Link>
+                                ) : (
+                                    <Link 
+                                        href="/pass"
+                                        className="px-4 py-1.5 bg-zinc-100 text-zinc-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-zinc-200 hover:bg-amber-50 hover:text-amber-600 transition-colors"
+                                    >
+                                        Activate Ticpin Pass
+                                    </Link>
+                                )}
                                 <div className="px-4 py-1.5 bg-zinc-100 text-zinc-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-zinc-200">
                                     Joined {profile.createdAt ? new Date(profile.createdAt).getFullYear() : new Date().getFullYear()}
                                 </div>
                             </div>
 
-                            <div className="pt-4">
+                            <div className="pt-4 flex flex-wrap gap-4 justify-center md:justify-start">
                                 <Link 
                                     href="/profile/edit"
                                     className="inline-flex items-center gap-3 bg-zinc-900 text-white px-8 h-12 rounded-2xl font-bold hover:bg-black transition-all hover:scale-105 active:scale-95"
@@ -112,6 +134,15 @@ function UserProfileContent() {
                                     <Edit3 size={18} />
                                     Edit Profile
                                 </Link>
+                                {pass && (
+                                    <Link 
+                                        href="/profile/pass"
+                                        className="inline-flex items-center gap-3 bg-amber-500 text-white px-8 h-12 rounded-2xl font-bold hover:bg-amber-600 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-amber-200"
+                                    >
+                                        <LayoutDashboard size={18} />
+                                        Pass Usage
+                                    </Link>
+                                )}
                             </div>
                         </div>
                     </div>

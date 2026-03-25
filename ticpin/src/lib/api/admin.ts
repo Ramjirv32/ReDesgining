@@ -260,6 +260,30 @@ export interface UserBooking {
     createdAt: string;
 }
 
+export interface BenefitCounter {
+    total: number;
+    used: number;
+    remaining: number;
+}
+
+export interface PassRecord {
+    id: string;
+    user_id: string;
+    user_name?: string;
+    user_phone?: string;
+    payment_id: string;
+    price: number;
+    status: string;
+    start_date: string;
+    end_date: string;
+    benefits: {
+        turf_bookings: BenefitCounter;
+        dining_vouchers: BenefitCounter & { value_each: number };
+        events_discount_active: boolean;
+    };
+    createdAt: string;
+}
+
 // ─── Admin API ────────────────────────────────────────────────────────────────
 
 export const adminApi = {
@@ -535,6 +559,41 @@ export const adminApi = {
 
     /** GET /api/admin/notifications */
     listNotifications: () => adminRequest<NotificationRecord[]>('/notifications'),
+
+    // ── Ticpin Pass ────────────────────────────────────────────────────────────
+
+    /** GET /api/admin/passes */
+    listPasses: (status?: string) => adminRequest<PassRecord[]>(`/passes${status ? `?status=${status}` : ''}`),
+
+    /** POST /api/admin/passes */
+    createAdminPass: (payload: { user_id: string; duration_months: number; price: number }) =>
+        adminRequest<PassRecord>('/passes', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        }),
+
+    /** PUT /api/admin/passes/:id */
+    updateAdminPass: (id: string, payload: any) =>
+        adminRequest<{ message: string }>(`/passes/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+        }),
+
+    /** DELETE /api/admin/passes/:id */
+    deleteAdminPass: (id: string) => adminRequest<{ message: string }>(`/passes/${id}`, { method: 'DELETE' }),
+
+    /** POST /api/admin/passes/:id/renew */
+    renewAdminPass: (id: string, duration_months: number) =>
+        adminRequest<{ message: string; new_expiry: string }>(`/passes/${id}/renew`, {
+            method: 'POST',
+            body: JSON.stringify({ duration_months }),
+        }),
+
+    /** GET /api/admin/passes/eligible-users */
+    listEligiblePassUsers: () => adminRequest<Array<{ id: string; name: string; phone: string }>>('/passes/eligible-users'),
+
+    /** GET /api/admin/passes/search-users?q= */
+    searchPassUsers: (q: string) => adminRequest<Array<{ id: string; name: string; phone: string }>>(`/passes/search-users?q=${q}`),
 };
 
 // ─── Media upload ─────────────────────────────────────────────────────────────

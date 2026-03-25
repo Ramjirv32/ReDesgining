@@ -8,6 +8,8 @@ import (
 	"ticpin-backend/models"
 	bookingsvc "ticpin-backend/services/booking"
 	couponsvc "ticpin-backend/services/coupon"
+	offersvc "ticpin-backend/services/offer"
+	passsvc "ticpin-backend/services/pass"
 	playservice "ticpin-backend/services/play"
 	"ticpin-backend/utils"
 	"time"
@@ -38,33 +40,126 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 		CouponCode     string                 `json:"coupon_code" validate:"omitempty,max=20"`
 		OfferID        string                 `json:"offer_id" validate:"omitempty"`
 		UserID         string                 `json:"user_id" validate:"omitempty"`
+		OrderID        string                 `json:"order_id"`
 		PaymentID      string                 `json:"payment_id" validate:"required"`
-		PaymentGateway string                 `json:"payment_gateway" validate:"required,min=2,max=50"`
+		PaymentGateway string                 `json:"payment_gateway" validate:"required"`
+		Status         string                 `json:"status"`
+		UseTicpass     bool                   `json:"use_ticpass"`
 	}
 
 	if err := utils.ParseAndValidate(c, &req); err != nil {
 		return err
 	}
 
-	fmt.Printf("DEBUG: CreatePlayBooking - PlayID: %s, User: %s, PaymentID: %s\n", 
+	fmt.Printf("DEBUG: CreatePlayBooking - PlayID: %s, User: %s, PaymentID: %s\n",
 		req.PlayID, req.UserEmail, req.PaymentID)
 
-	// Check if booking with this payment_id already exists
-	if req.PaymentID != "" {
+
+	if req.PaymentID != "" || req.OrderID != "" {
 		var existing models.PlayBooking
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if err := config.PlayBookingsCol.FindOne(ctx, bson.M{"payment_id": req.PaymentID}).Decode(&existing); err == nil {
-			return c.Status(200).JSON(fiber.Map{
-				"message":         "play booking already confirmed",
-				"booking_id":      existing.BookingID,
-				"id":              existing.ID.Hex(),
-				"grand_total":     existing.GrandTotal,
-				"discount_amount": existing.DiscountAmount,
-				"status":          existing.Status,
-			})
+
+		filter := bson.M{}
+		if req.PaymentID != "" && req.OrderID != "" {
+			filter["$or"] = []bson.M{
+				{"payment_id": req.PaymentID},
+				{"order_id": req.OrderID},
+			}
+		} else if req.PaymentID != "" {
+			filter["payment_id"] = req.PaymentID
+		} else {
+			filter["order_id"] = req.OrderID
+		}
+
+		if err := config.PlayBookingsCol.FindOne(ctx, filter).Decode(&existing); err == nil {
+			
+			if existing.Status == "booked" {
+				return c.Status(200).JSON(fiber.Map{
+					"message":         "play booking already confirmed",
+					"booking_id":      existing.BookingID,
+					"id":              existing.ID.Hex(),
+					"grand_total":     existing.GrandTotal,
+					"discount_amount": existing.DiscountAmount,
+					"status":          existing.Status,
+				})
+			}
+
+			// 2. If it exists as "pending" and we are now confirming it (status "booked" or empty)
+			if existing.Status == "pending" && (req.Status == "booked" || req.Status == "") {
+				update := bson.M{
+					"$set": bson.M{
+						"status":     "booked",
+						"payment_id": req.PaymentID, // Update to the real pay_... ID
+						"booked_at":  time.Now(),
+					},
+				}
+				_, _ = config.PlayBookingsCol.UpdateOne(ctx, bson.M{"_id": existing.ID}, update)
+				return c.Status(200).JSON(fiber.Map{
+					"message":         "play booking confirmed",
+					"booking_id":      existing.BookingID,
+					"id":              existing.ID.Hex(),
+					"grand_total":     existing.GrandTotal,
+					"discount_amount": existing.DiscountAmount,
+					"status":          "booked",
+				})
+			}
+
+			// 3. If it is already pending and we're staging it again (e.g. retry)
+			if existing.Status == "pending" && req.Status == "pending" {
+				return c.Status(200).JSON(fiber.Map{
+					"message":         "play booking pending",
+					"booking_id":      existing.BookingID,
+					"id":              existing.ID.Hex(),
+					"grand_total":     existing.GrandTotal,
+					"discount_amount": existing.DiscountAmount,
+					"status":          existing.Status,
+				})
+			}
+
+			// 4. If booking exists but user cancelled/failed payment, clean up locks
+			if existing.Status == "pending" && (req.Status == "cancelled" || req.Status == "failed") {
+				// Clean up slot locks for this cancelled booking
+				cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cleanupCancel()
+
+				playObjID, _ := primitive.ObjectIDFromHex(req.PlayID)
+				_, _ = config.SlotLocksCol.DeleteMany(cleanupCtx, bson.M{
+					"play_id":    playObjID,
+					"date":       existing.Date,
+					"slot":       existing.Slot,
+					"booking_id": existing.ID,
+				})
+
+				// Update booking status
+				update := bson.M{
+					"$set": bson.M{
+						"status": req.Status,
+					},
+				}
+				_, _ = config.PlayBookingsCol.UpdateOne(ctx, bson.M{"_id": existing.ID}, update)
+
+				return c.Status(200).JSON(fiber.Map{
+					"message": "play booking cancelled and slot released",
+					"status":  req.Status,
+				})
+			}
 		}
 	}
+
+	playObjID, err := primitive.ObjectIDFromHex(req.PlayID)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid play_id"})
+	}
+
+	// Clean up expired locks (older than 10 minutes) to prevent stale locks
+	cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cleanupCancel()
+
+	tenMinutesAgo := time.Now().Add(-10 * time.Minute)
+	_, _ = config.SlotLocksCol.DeleteMany(cleanupCtx, bson.M{
+		"created_at": bson.M{"$lt": tenMinutesAgo},
+	})
 
 	if req.PlayID == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "play_id is required"})
@@ -76,18 +171,47 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "at least one court/ticket is required"})
 	}
 
+	// 1. Fetch play area to verify prices
 	play, err := playservice.GetByID(req.PlayID, false)
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "play not found"})
 	}
-	playObjID := play.ID
+
+	// 2. Verify subtotal (OrderAmount) against database prices
+	var expectedSubtotal float64
+	for _, reqTicket := range req.Tickets {
+		found := false
+		for _, dbTicket := range play.Courts {
+			if dbTicket.Name == reqTicket.Category {
+				expectedSubtotal += dbTicket.Price * float64(reqTicket.Quantity)
+				found = true
+				break
+			}
+		}
+		if !found {
+			return c.Status(400).JSON(fiber.Map{"error": "invalid ticket category: " + reqTicket.Category})
+		}
+	}
+
+	// Compare with tolerance for floating point
+	if req.OrderAmount < expectedSubtotal-1 || req.OrderAmount > expectedSubtotal+1 {
+		fmt.Printf("SECURITY ALERT: Price mismatch for user %s. Expected: %f, Got: %f\n",
+			req.UserEmail, expectedSubtotal, req.OrderAmount)
+		return c.Status(400).JSON(fiber.Map{"error": "invalid order amount"})
+	}
+
+	// 3. Verify booking fee (10% standard)
+	expectedFee := float64(int(expectedSubtotal * 0.1))
+	if req.BookingFee < expectedFee-1 || req.BookingFee > expectedFee+1 {
+		req.BookingFee = expectedFee // Force correct fee
+	}
 
 	var discountAmount float64
 	var appliedCouponCode string
 	var couponIDToIncrement primitive.ObjectID
 	var couponMaxUses int
 	if req.CouponCode != "" {
-		result, err := couponsvc.Validate(req.CouponCode, req.PlayID, req.OrderAmount, req.UserID, req.UserEmail)
+		result, err := couponsvc.Validate(req.CouponCode, "play", req.OrderAmount, req.UserID, req.UserEmail)
 		if err == nil {
 			discountAmount = result.DiscountAmount
 			appliedCouponCode = result.Coupon.Code
@@ -98,10 +222,52 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 
 	var offerObjID primitive.ObjectID
 	if req.OfferID != "" {
-		offerObjID, _ = primitive.ObjectIDFromHex(req.OfferID)
+		offerResult, err := offersvc.ValidateOffer(req.OfferID, req.PlayID, req.OrderAmount)
+		if err == nil {
+			offerObjID = offerResult.Offer.ID
+			discountAmount += offerResult.DiscountAmount
+		}
 	}
 
-	grandTotal := req.OrderAmount + req.BookingFee - discountAmount
+	// Cap total discount to order subtotal
+	if discountAmount > req.OrderAmount {
+		discountAmount = req.OrderAmount
+	}
+
+	grandTotal := (req.OrderAmount + req.BookingFee) - discountAmount
+	if grandTotal < 0 {
+		grandTotal = 0
+	}
+
+	// Check if user wants to use Ticpass benefits
+	var ticpassApplied bool
+	if req.UseTicpass && req.UserID != "" {
+		pass, err := passsvc.GetActiveByUserID(req.UserID)
+		if err == nil && pass != nil {
+			if pass.Benefits.TurfBookings.Remaining > 0 {
+				// Free Turf Booking Benefit: 100% discount on order amount
+				discountAmount = req.OrderAmount
+				ticpassApplied = true
+				
+				// Decrement the benefit usage in DB
+				_, err = passsvc.UseTurfBooking(pass.ID.Hex())
+				if err != nil {
+					fmt.Printf("ERROR: Failed to decrement Ticpass turf benefit: %v\n", err)
+				} else {
+					fmt.Printf("DEBUG: Used 1 Ticpass turf benefit for user %s. Booking is now FREE.\n", req.UserID)
+				}
+			} else {
+				// Fallback to 10% discount if all free bookings are used (optional, but keep it for goodwill)
+				ticpassDiscount := req.OrderAmount * 0.10
+				discountAmount += ticpassDiscount
+				ticpassApplied = true
+				fmt.Printf("DEBUG: Applied 10%% Ticpass discount: %.2f for user %s (no free bookings left)\n", ticpassDiscount, req.UserID)
+			}
+		}
+	}
+
+	// Re-calculate grand total with Ticpass
+	grandTotal = (req.OrderAmount + req.BookingFee) - discountAmount
 	if grandTotal < 0 {
 		grandTotal = 0
 	}
@@ -133,9 +299,15 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 		CouponCode:     appliedCouponCode,
 		OfferID:        offerObjID,
 		GrandTotal:     grandTotal,
+		OrderID:        req.OrderID,
 		PaymentID:      req.PaymentID,
 		PaymentGateway: req.PaymentGateway,
-		Status:         "booked",
+		Status:         req.Status,
+		BookedAt:       time.Now(),
+		TicpassApplied: ticpassApplied,
+	}
+	if booking.Status == "" {
+		booking.Status = "booked"
 	}
 
 	if err := bookingsvc.CreatePlay(booking); err != nil {

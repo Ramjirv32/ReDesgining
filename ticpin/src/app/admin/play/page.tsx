@@ -9,6 +9,8 @@ import {
     ImageOff, Check, Plus, Minus, Youtube, Instagram, ArrowLeft,
     ChevronDown, ChevronUp, PlusCircle, Upload, MapPin
 } from 'lucide-react';
+import { toast } from '@/components/ui/Toast';
+
 
 // --- Constants from Organizer Data ---
 const CATEGORIES = ["Cricket", "Football", "Badminton", "Tennis", "Basketball", "Swimming", "Pickleball"];
@@ -201,7 +203,7 @@ function AdminPlayDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
             else if (key === 'secondary_banner') setSecondaryBannerUrl(url);
             else if (key === 'video') setVideoUrl(url);
             else if (key === 'court_image') setNewCourt(prev => ({ ...prev, image_url: url }));
-        } catch { alert('Upload failed. Try again.'); }
+        } catch { toast.error('Upload failed. Try again.'); }
         finally { setUploading(u => ({ ...u, [key]: false })); }
     };
 
@@ -211,7 +213,7 @@ function AdminPlayDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
     );
 
     const handleSave = async () => {
-        if (!venueName.trim()) { alert('Venue name is required.'); return; }
+        if (!venueName.trim()) { toast.warning('Venue name is required.'); return; }
         setSubmitLoading(true);
         setSubmitMsg('');
         try {
@@ -543,7 +545,7 @@ function AdminPlayDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                                             setCourts([...courts, { ...newCourt, price: Number(newCourt.price) }]);
                                             setNewCourt({ name: '', type: '', price: '', image_url: '' });
                                         } else if (!newCourt.image_url) {
-                                            alert('Please upload an image for the court.');
+                                            toast.warning('Please upload an image for the court.');
                                         }
                                     }}
                                     className="bg-black text-white rounded-[15px] h-[54px] px-8 flex items-center gap-2"
@@ -970,7 +972,7 @@ function AdminPlayContent() {
         try {
             await adminApi.updatePlayStatus(id, status);
             setListings(prev => prev.map(item => (getId(item) === id ? { ...item, status } : item)));
-        } catch (e) { alert('Update failed'); }
+        } catch (e) { toast.error('Update failed'); }
     };
 
     const handleUpdate = async (id: string, payload: Partial<AdminListing>) => {
@@ -983,7 +985,7 @@ function AdminPlayContent() {
             await adminApi.deletePlay(id);
             setListings(prev => prev.filter(item => getId(item) !== id));
             if (preview && getId(preview) === id) router.push('/admin/play');
-        } catch (e) { alert('Delete failed'); }
+        } catch (e) { toast.error('Delete failed'); }
     };
 
     if (preview) {

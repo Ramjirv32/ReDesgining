@@ -9,6 +9,8 @@ import {
   ImageOff, Check, Plus, Minus, Youtube, Instagram, ArrowLeft,
   ChevronDown, ChevronUp, PlusCircle, Upload, MapPin
 } from 'lucide-react';
+import { toast } from '@/components/ui/Toast';
+
 
 const CATEGORIES = ["Music", "Comedy", "Workshop", "Festival", "Meetup", "Exhibition"];
 const CITIES = ["Chennai", "Bangalore", "Mumbai", "Delhi", "Hyderabad", "Coimbatore", "Salem", "Tiruppur"];
@@ -213,7 +215,7 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
             else if (key === 'edit_artist_image') setEditArtistData(prev => ({ ...prev, image_url: url }));
             else if (key === 'ticket_image') setNewTicket(prev => ({ ...prev, image_url: url }));
             else if (key === 'edit_ticket_image') setEditTicketData(prev => ({ ...prev, image_url: url }));
-        } catch { alert('Upload failed. Try again.'); }
+        } catch { toast.error('Upload failed. Try again.'); }
         finally { setUploading(u => ({ ...u, [key]: false })); }
     };
 
@@ -223,7 +225,7 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
     );
 
     const handleSave = async () => {
-        if (!eventName.trim()) { alert('Event name is required.'); return; }
+        if (!eventName.trim()) { toast.error('Event name is required.'); return; }
         setSubmitLoading(true); 
         setSubmitMsg('');
         try {
@@ -1131,10 +1133,6 @@ function AdminEventsContent() {
     setLoading(true);
     try {
       const data = await adminApi.listEvents();
-      console.log('Admin events data:', data); // Debug log
-      console.log('Number of events:', data.length); // Debug log
-      console.log('Events with approved status:', data.filter(e => e.status === 'approved').length); // Debug log
-      console.log('Current active tab:', activeTab); // Debug log
       setEvents(data);
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [activeTab]);
@@ -1156,7 +1154,8 @@ function AdminEventsContent() {
     try {
       await adminApi.updateEventStatus(id, status);
       setEvents(prev => prev.map(item => (getId(item) === id ? { ...item, status } : item)));
-    } catch (e) { alert('Update failed'); }
+      toast.success(`Event ${status} successfully`);
+    } catch (e) { toast.error('Update failed'); }
   };
 
   const handleUpdate = async (id: string, payload: Partial<AdminListing>) => {
@@ -1169,7 +1168,8 @@ function AdminEventsContent() {
       await adminApi.deleteEvent(id);
       setEvents(prev => prev.filter(item => getId(item) !== id));
       if (preview && getId(preview) === id) router.push('/admin/events');
-    } catch (e) { alert('Delete failed'); }
+      toast.success('Event deleted successfully');
+    } catch (e) { toast.error('Delete failed'); }
   };
 
   if (preview) {

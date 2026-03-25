@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ChevronLeft, Trophy, Calendar, MapPin, Search, Filter, Timer, Activity } from 'lucide-react';
 import { useUserSession } from '@/lib/auth/user';
 import { bookingApi } from '@/lib/api/booking';
+import { getBookingStatus, getBookingStatusStyles } from '@/lib/utils/booking-status';
 
 export default function PlayBookingsPage() {
   const router = useRouter();
@@ -83,9 +84,9 @@ export default function PlayBookingsPage() {
                        </div>
                     </div>
                     <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest ${
-                      booking.status === 'confirmed' ? 'bg-green-100 text-green-700' : 'bg-zinc-100 text-zinc-500'
+                      getBookingStatusStyles(getBookingStatus(booking))
                     }`}>
-                      {booking.status}
+                      {getBookingStatus(booking)}
                     </span>
                  </div>
                  

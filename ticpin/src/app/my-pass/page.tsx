@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { MapPin, Utensils, Ticket, RefreshCw, CheckCircle2, XCircle, Clock, ArrowLeft, Loader2 } from 'lucide-react';
+import { toast } from '@/components/ui/Toast';
+
 import { useUserSession } from '@/lib/auth/user';
 import Footer from '@/components/layout/Footer';
 import { bookingApi } from '@/lib/api/booking';
@@ -121,7 +123,7 @@ export default function MyPassPage() {
             setRenewSuccess(true);
             setTimeout(() => setRenewSuccess(false), 3000);
         } catch {
-            alert('Renewal failed. Please try again.');
+            toast.error('Renewal failed. Please try again.');
         } finally {
             setRenewLoading(false);
         }
@@ -161,14 +163,14 @@ export default function MyPassPage() {
                     modal: {
                         ondismiss: () => {
                             setRenewLoading(false);
-                            alert('Payment was cancelled.');
+                            toast.warning('Payment was cancelled.');
                         },
                     },
                 }).open();
             }
         } catch {
             setRenewLoading(false);
-            alert('Payment initiation failed. Please try again.');
+            toast.error('Payment initiation failed. Please try again.');
         }
     };
 

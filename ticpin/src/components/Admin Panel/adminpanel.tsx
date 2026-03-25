@@ -97,6 +97,7 @@ export default function AdminPanel() {
                     <Card title="Offers / Coupons" iconSrc="/admin panel/pricetag-icon.svg" href="/admin/offers" />
                     <Card title="Ticket" iconSrc="/admin panel/ticket-icon.svg" href="/admin/chat-sessions" />
                     <Card title="Organizer Approval" iconSrc="/admin panel/user-plus-icon.svg" href="/admin/organizers" />
+                    <Card title="Ticpin Pass" iconSrc="/admin panel/ticket-icon.svg" href="/admin/pass" />
                 </div>
             </div>
 

@@ -147,3 +147,29 @@ export const playApi = {
       method: 'DELETE',
     }),
 };
+
+// ─── Payment ─────────────────────────────────────────────────────
+export interface CreateOrderRequest {
+  amount: number;
+  customer_id: string;
+  customer_email: string;
+  customer_phone: string;
+  return_url: string;
+  type: string;
+  notes?: Record<string, string>;
+}
+
+export interface CreateOrderResponse {
+  gateway: string;
+  order_id: string;
+  payment_session_id?: string;
+  razorpay_key?: string;
+}
+
+export const paymentApi = {
+  createOrder: (payload: CreateOrderRequest) =>
+    request<CreateOrderResponse>('/payment/create-order', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+};

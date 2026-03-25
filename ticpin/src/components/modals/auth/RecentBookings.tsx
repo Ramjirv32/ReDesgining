@@ -4,6 +4,7 @@ import React from 'react';
 import { Ticket, Utensils, Gamepad2, Loader2, Mail, ChevronRight, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useUserSession } from '@/lib/auth/user';
+import { getBookingStatus, getBookingStatusStyles } from '@/lib/utils/booking-status';
 
 interface RecentBookingsProps {
     bookings: any[];
@@ -112,15 +113,15 @@ const RecentBookings: React.FC<RecentBookingsProps> = ({
                                     </div>
                                     <div className="text-right">
                                         <p className="text-lg font-black text-zinc-900">₹{booking.grand_total || booking.order_amount}</p>
-                                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${booking.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                                            {booking.status === 'booked' || booking.status === 'confirmed' ? 'Confirmed' : booking.status}
+                                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${getBookingStatusStyles(getBookingStatus(booking))}`}>
+                                            {getBookingStatus(booking) === 'booked' || getBookingStatus(booking) === 'confirmed' ? 'Confirmed' : getBookingStatus(booking)}
                                         </span>
                                     </div>
                                 </div>
                                 <div className="pt-4 border-t border-zinc-50 flex justify-between items-center">
                                     <p className="text-[12px] text-zinc-400 font-medium tracking-tight">Booking ID: {booking.booking_id || booking.id?.slice(-8).toUpperCase()}</p>
                                     <div className="flex gap-4">
-                                        {booking.status !== 'cancelled' && (
+                                        {getBookingStatus(booking) !== 'cancelled' && getBookingStatus(booking) !== 'expired' && (
                                             <button
                                                 onClick={() => {
                                                     router.push(`/bookings/${booking.booking_id || booking.id}/cancel`);

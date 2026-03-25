@@ -53,7 +53,7 @@ function BankDetailsContent() {
                     }));
                 }
             })
-            .catch(() => { })
+            .catch((error) => { console.error('Bank setup loading error:', error); })
             .finally(() => setLoading(false));
     }, [router, hasCheckedSession]);
 

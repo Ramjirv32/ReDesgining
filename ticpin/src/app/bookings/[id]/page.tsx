@@ -19,8 +19,11 @@ import {
   CreditCard,
   XCircle
 } from 'lucide-react';
+import { toast } from '@/components/ui/Toast';
 import { useUserSession } from '@/lib/auth/user';
+
 import { bookingApi } from '@/lib/api/booking';
+import { getBookingStatus, getBookingStatusStyles } from '@/lib/utils/booking-status';
 
 export default function BookingDetailsPage() {
   const router = useRouter();
@@ -106,7 +109,7 @@ export default function BookingDetailsPage() {
     if (booking?.id) {
       const shareUrl = `${window.location.origin}/bookings/${booking.id}`;
       navigator.clipboard.writeText(shareUrl);
-      alert('Booking link copied to clipboard!');
+      toast.info('Booking link copied to clipboard!');
     }
   };
 
@@ -128,7 +131,7 @@ export default function BookingDetailsPage() {
     );
   }
 
-  if (booking?.status === 'cancelled') {
+  if (getBookingStatus(booking) === 'CANCELLED') {
     return (
       <div className="min-h-screen bg-[#F1F1F1]" style={{ fontFamily: 'var(--font-anek-latin), sans-serif' }}>
         <div className="max-w-4xl mx-auto px-4 py-8">
@@ -267,11 +270,9 @@ export default function BookingDetailsPage() {
                   {/* Status Badge */}
                   <div className="absolute top-4 right-4">
                     <div className={`px-3 py-1 rounded-full text-xs font-bold ${
-                      booking.status === 'booked' 
-                        ? 'bg-green-500 text-white' 
-                        : 'bg-zinc-500 text-white'
+                      getBookingStatusStyles(getBookingStatus(booking))
                     }`}>
-                      {booking.status?.toUpperCase() || 'BOOKED'}
+                      {getBookingStatus(booking)?.toUpperCase() || 'BOOKED'}
                     </div>
                   </div>
                 </div>
@@ -432,7 +433,7 @@ export default function BookingDetailsPage() {
 
             {/* Actions - Full Width */}
             <section className="space-y-3">
-              {booking.status !== 'cancelled' && (
+              {getBookingStatus(booking) !== 'CANCELLED' && getBookingStatus(booking) !== 'EXPIRED' && (
                 <button
                   onClick={() => router.push(`/bookings/${booking.id}/cancel?category=${booking.type}`)}
                   className="w-full h-[52px] bg-red-600 text-white rounded-[14px] font-bold flex items-center justify-center gap-2 hover:bg-red-700 transition-colors"

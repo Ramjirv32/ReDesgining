@@ -76,7 +76,7 @@ function AccountSetupContent() {
                         }));
                     }
                 })
-                .catch(() => { })
+                .catch((error) => { console.error('Setup loading error:', error); })
                 .finally(() => setPageLoading(false));
         } else { setPageLoading(false); }
     }, [hasCheckedSession, router]);

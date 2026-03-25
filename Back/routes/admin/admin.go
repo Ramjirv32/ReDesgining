@@ -7,6 +7,7 @@ import (
 	adminnotification "ticpin-backend/controller/admin/notification"
 	adminoffer "ticpin-backend/controller/admin/offer"
 	adminorgs "ticpin-backend/controller/admin/organizers"
+	adminpass "ticpin-backend/controller/admin/pass"
 	adminstats "ticpin-backend/controller/admin/stats"
 	adminusers "ticpin-backend/controller/admin/users"
 	orgmedia "ticpin-backend/controller/organizer/media"
@@ -62,6 +63,15 @@ func AdminRoutes(app *fiber.App) {
 
 	admin.Post("/notifications", adminnotification.SendNotification)
 	admin.Get("/notifications", adminnotification.ListNotifications)
+
+	// Ticpin Pass Management
+	admin.Get("/passes", adminpass.ListAllPasses)
+	admin.Post("/passes", adminpass.CreateAdminPass)
+	admin.Put("/passes/:id", adminpass.UpdateAdminPass)
+	admin.Delete("/passes/:id", adminpass.DeleteAdminPass)
+	admin.Post("/passes/:id/renew", adminpass.RenewAdminPass)
+	admin.Get("/passes/eligible-users", adminpass.ListUsersForPass)
+	admin.Get("/passes/search-users", adminpass.GetUserBySearch)
 
 	admin.Post("/upload-media", orgmedia.UploadMedia)
 }

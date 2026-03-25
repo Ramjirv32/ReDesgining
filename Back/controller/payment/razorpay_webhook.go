@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 	"ticpin-backend/config"
+	"ticpin-backend/models"
+	passservice "ticpin-backend/services/pass"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -46,7 +48,10 @@ func RazorpayWebhook(c *fiber.Ctx) error {
 
 	fmt.Printf("DEBUG: Received Razorpay Webhook Event: %s\n", event.Event)
 
-	if event.Event == "order.paid" || event.Event == "payment.captured" {
+	// Handle different Razorpay events
+	switch event.Event {
+	case "order.paid", "payment.captured":
+		// Handle successful payments
 		orderPayload, exists := event.Payload["order"].(map[string]interface{})
 		if !exists {
 			// This might be for "payment.captured", in which case it might be inside "payment"
@@ -91,6 +96,34 @@ func RazorpayWebhook(c *fiber.Ctx) error {
 			targetCollections = append(targetCollections, config.PlayBookingsCol)
 		case "dining":
 			targetCollections = append(targetCollections, config.DiningBookingsCol)
+		case "pass":
+			userID, _ := notes["user_id"].(string)
+			passID, _ := notes["pass_id"].(string)
+			amountVal, _ := entity["amount"].(float64)
+			amount := amountVal / 100.0
+
+			if userID != "" {
+				if passID != "" {
+					_, err := passservice.Renew(passID, orderID)
+					if err != nil {
+						fmt.Printf("DEBUG: Error renewing pass from webhook: %v\n", err)
+					} else {
+						fmt.Printf("DEBUG: Successfully renewed pass %s for User: %s via Razorpay\n", passID, userID)
+					}
+				} else {
+					_, err := passservice.Apply(userID, orderID, models.TicpinPass{
+						Status: "active",
+						Price:  amount,
+					})
+					if err != nil {
+						fmt.Printf("DEBUG: Error creating pass from webhook: %v\n", err)
+					} else {
+						fmt.Printf("DEBUG: Successfully created pass for User: %s via Razorpay\n", userID)
+					}
+				}
+			}
+			// Respond and exit
+			return c.Status(200).JSON(fiber.Map{"status": "received", "message": "pass processed"})
 		default:
 			// Search across all if type is missing
 			targetCollections = []*mongo.Collection{
@@ -101,18 +134,145 @@ func RazorpayWebhook(c *fiber.Ctx) error {
 		}
 
 		for _, col := range targetCollections {
-			result, err := col.UpdateMany(ctx, bson.M{
-				"payment_id": orderID,
-			}, bson.M{
+			// Find by either payment_id or order_id
+			filter := bson.M{
+				"$or": []bson.M{
+					{"payment_id": orderID},
+					{"order_id": orderID},
+				},
+			}
+			result, err := col.UpdateMany(ctx, filter, bson.M{
 				"$set": bson.M{
-					"status": "booked", // Consistent with rest of the app
+					"status":  "booked",
+					"paid_at": time.Now(),
 				},
 			})
 			if err == nil && result.ModifiedCount > 0 {
-				fmt.Printf("DEBUG: Successfully updated booking status for Order ID: %s in collection: %s\n", orderID, col.Name())
+				fmt.Printf("DEBUG: Successfully updated booking status for Order/Payment ID: %s in collection: %s\n", orderID, col.Name())
 				break
 			}
 		}
+
+	case "payment.failed":
+		// Handle failed payments
+		paymentPayload, exists := event.Payload["payment"].(map[string]interface{})
+		if !exists {
+			fmt.Println("DEBUG: Required payment payload missing for payment.failed")
+			return c.Status(200).JSON(fiber.Map{"status": "ignored", "message": "no payment data"})
+		}
+
+		entity, ok := paymentPayload["entity"].(map[string]interface{})
+		if !ok {
+			fmt.Println("DEBUG: Could not parse payment entity for payment.failed")
+			return c.Status(200).JSON(fiber.Map{"status": "ignored", "message": "no payment entity"})
+		}
+
+		orderID, _ := entity["order_id"].(string)
+		if orderID == "" {
+			fmt.Println("DEBUG: No order ID found in payment.failed webhook")
+			return c.Status(200).JSON(fiber.Map{"status": "ignored"})
+		}
+
+		fmt.Printf("DEBUG: Processing payment.failed for Order ID: %s\n", orderID)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		// Update booking status to failed for all booking types
+		targetCollections := []*mongo.Collection{
+			config.EventBookingsCol,
+			config.PlayBookingsCol,
+			config.DiningBookingsCol,
+		}
+
+		for _, col := range targetCollections {
+			filter := bson.M{
+				"$or": []bson.M{
+					{"payment_id": orderID},
+					{"order_id": orderID},
+				},
+			}
+			result, err := col.UpdateMany(ctx, filter, bson.M{
+				"$set": bson.M{
+					"status":    "failed",
+					"failed_at": time.Now(),
+				},
+			})
+			if err == nil && result.ModifiedCount > 0 {
+				fmt.Printf("DEBUG: Successfully updated booking status to 'failed' for Order/Payment ID: %s in collection: %s\n", orderID, col.Name())
+				break
+			}
+		}
+
+	case "payment.created":
+		// Handle payment initiation (useful for tracking)
+		fmt.Printf("DEBUG: Payment initiated - Order ID will be tracked\n")
+		// No action needed, just logging for now
+
+	case "order.created":
+		// Handle order creation (useful for tracking)
+		fmt.Printf("DEBUG: Order created - tracking order lifecycle\n")
+		// No action needed, just logging for now
+
+	case "refund.processed":
+		// Handle refunds - IMPORTANT for booking platform
+		paymentPayload, exists := event.Payload["payment"].(map[string]interface{})
+		if !exists {
+			fmt.Println("DEBUG: Required payment payload missing for refund.processed")
+			return c.Status(200).JSON(fiber.Map{"status": "ignored", "message": "no payment data"})
+		}
+
+		entity, ok := paymentPayload["entity"].(map[string]interface{})
+		if !ok {
+			fmt.Println("DEBUG: Could not parse payment entity for refund.processed")
+			return c.Status(200).JSON(fiber.Map{"status": "ignored", "message": "no payment entity"})
+		}
+
+		orderID, _ := entity["order_id"].(string)
+		if orderID == "" {
+			fmt.Println("DEBUG: No order ID found in refund.processed webhook")
+			return c.Status(200).JSON(fiber.Map{"status": "ignored"})
+		}
+
+		fmt.Printf("DEBUG: Processing refund.processed for Order ID: %s\n", orderID)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		// Update booking status to refunded for all booking types
+		targetCollections := []*mongo.Collection{
+			config.EventBookingsCol,
+			config.PlayBookingsCol,
+			config.DiningBookingsCol,
+		}
+
+		for _, col := range targetCollections {
+			filter := bson.M{
+				"$or": []bson.M{
+					{"payment_id": orderID},
+					{"order_id": orderID},
+				},
+			}
+			result, err := col.UpdateMany(ctx, filter, bson.M{
+				"$set": bson.M{
+					"status":      "refunded",
+					"refunded_at": time.Now(),
+				},
+			})
+			if err == nil && result.ModifiedCount > 0 {
+				fmt.Printf("DEBUG: Successfully updated booking status to 'refunded' for Order/Payment ID: %s in collection: %s\n", orderID, col.Name())
+				break
+			}
+		}
+
+	case "settlement.completed":
+		// Handle settlements (useful for accounting)
+		fmt.Printf("DEBUG: Settlement completed - useful for accounting\n")
+		// No action needed for booking status, but important for financial tracking
+
+	default:
+		fmt.Printf("DEBUG: Unhandled Razorpay Webhook Event: %s\n", event.Event)
+		// Return 200 for unhandled events to prevent Razorpay from retrying
 	}
 
 	return c.Status(200).JSON(fiber.Map{

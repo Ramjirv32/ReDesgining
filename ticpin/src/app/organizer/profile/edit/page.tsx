@@ -9,6 +9,7 @@ import {
     Calendar, UserCircle, Bell, Languages, Camera, Map,
     CheckCircle2, AlertCircle, X, Shield, Lock
 } from 'lucide-react';
+import { toast } from '@/components/ui/Toast';
 
 function EditProfileContent() {
     const router = useRouter();
@@ -516,7 +517,7 @@ function EditProfileContent() {
                             <div className="pt-4">
                                 <button 
                                     type="button"
-                                    onClick={() => alert('GPS Map integration would open here')}
+                                    onClick={() => toast.info('GPS Map integration coming soon')}
                                     className="w-full flex items-center justify-between p-6 bg-zinc-50 rounded-[28px] border border-dashed border-zinc-300 hover:bg-zinc-100 transition-colors group"
                                 >
                                     <div className="flex items-center gap-4">

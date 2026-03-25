@@ -3,6 +3,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { ChevronDown, ChevronUp, Info, PlusCircle, ExternalLink, Bold, Italic, Underline, Search, Upload } from 'lucide-react';
+import { toast } from '@/components/ui/Toast';
+
 import { CATEGORIES, CITIES, CATEGORY_DATA } from './data';
 import { useRouter } from 'next/navigation';
 import { getOrganizerSession } from '@/lib/auth/organizer';
@@ -127,11 +129,8 @@ const CreateEventPage = () => {
             setPayment(p => ({ ...p, organizerName: session.email.split('@')[0] }));
             // Pre-fill bank details from saved organizer setup
             try {
-                console.log('DEBUG: Fetching events setup...');
                 const setup = await organizerApi.getExistingSetup('events');
-                console.log('DEBUG: Events setup response:', setup);
                 if (setup) {
-                    console.log('DEBUG: Setting payment details from setup:', setup);
                     setPayment(p => ({
                         ...p,
                         organizerName: setup.accountHolder || p.organizerName,
@@ -141,10 +140,10 @@ const CreateEventPage = () => {
                         accountType: p.accountType,
                     }));
                 } else {
-                    console.log('DEBUG: No setup found for events');
+                    // No setup found, using defaults
                 }
             } catch (error) {
-                console.error('DEBUG: Error fetching events setup:', error);
+                // Error fetching events setup, using defaults
             }
         };
 
@@ -167,7 +166,7 @@ const CreateEventPage = () => {
     const handleUpload = async (key: string, file: File) => {
         const maxSizeMB = key === 'video' ? 5 : 1.5;
         if (file.size > maxSizeMB * 1024 * 1024) {
-            alert(`File size exceeds the allowable limit. Maximum allowed size is ${maxSizeMB}MB.`);
+            toast.warning(`File size exceeds the allowable limit. Maximum allowed size is ${maxSizeMB}MB.`);
             return;
         }
 
@@ -178,7 +177,7 @@ const CreateEventPage = () => {
             else if (key === 'landscape') setLandscapeUrl(url);
             else if (key === 'video') setVideoUrl(url);
             else if (key === 'gallery') setGalleryUrls(prev => [...prev, url]);
-        } catch { alert('Upload failed. Try again.'); }
+        } catch { toast.error('Upload failed. Try again.'); }
         finally { setUploading(u => ({ ...u, [key]: false })); }
     };
 
@@ -194,7 +193,7 @@ const CreateEventPage = () => {
         try {
             const url = await uploadMedia(file);
             setArtists(prev => prev.map((a, i) => i === idx ? { ...a, image_url: url } : a));
-        } catch { alert('Upload failed. Try again.'); }
+        } catch { toast.error('Upload failed. Try again.'); }
         finally { setUploading(u => ({ ...u, [key]: false })); }
     };
 
@@ -204,7 +203,7 @@ const CreateEventPage = () => {
         try {
             const url = await uploadMedia(file);
             setTicketCategories(prev => prev.map((t, i) => i === idx ? { ...t, image_url: url } : t));
-        } catch { alert('Upload failed. Try again.'); }
+        } catch { toast.error('Upload failed. Try again.'); }
         finally { setUploading(u => ({ ...u, [key]: false })); }
     };
 

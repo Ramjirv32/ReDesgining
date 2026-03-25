@@ -8,9 +8,12 @@ import { bookingApi, OfferItem, PaymentOrderResponse } from '@/lib/api/booking';
 import { profileApi } from '@/lib/api/profile';
 import { useUserSession } from '@/lib/auth/user';
 import { useOrganizerSession, clearOrganizerSession } from '@/lib/auth/organizer';
+import { getBookingStatus } from '@/lib/utils/booking-status';
 import AuthModal from '@/components/modals/AuthModal';
 import OrganizerLogoutModal from '@/components/modals/OrganizerLogoutModal';
-import Link from 'next/link';
+import { toast } from '@/components/ui/Toast';
+
+
 import { CITIES } from '@/app/events/create/data';
 
 const STATES = [
@@ -34,6 +37,8 @@ interface CartData {
     duration: number;
     tickets: { category?: string; name: string; price: number; quantity: number }[];
     totalPrice: number;
+    use_pass?: boolean;
+    pass_id?: string;
 }
 
 function loadScript(src: string): Promise<void> {
@@ -141,7 +146,7 @@ export default function PlayReviewPage() {
                         if (typeof p.grandTotal === 'number') setLockedGrandTotal(p.grandTotal);
                         window.history.replaceState(null, '', window.location.pathname);
                         setTimeout(() => {
-                            completeBooking(p.orderID, 'cashfree', p.cart, p.email, p.sessionId,
+                            completeBooking(p.orderID, p.orderID, 'cashfree', p.cart, p.email, p.sessionId,
                                 p.orderAmount, p.bookingFee, p.appliedCoupon || '', p.offerId);
                         }, 200);
                     }
@@ -160,7 +165,7 @@ export default function PlayReviewPage() {
                     ]);
 
                     const latestBooking = (Array.isArray(history) ? [...history] : [])
-                        ?.filter((b: any) => b.status === 'booked' || b.status === 'confirmed')
+                        ?.filter((b: any) => getBookingStatus(b) === 'booked' || getBookingStatus(b) === 'confirmed')
                         ?.sort((a: any, b: any) => new Date(b.booked_at).getTime() - new Date(a.booked_at).getTime())[0];
 
                     setBilling(prev => ({
@@ -202,11 +207,12 @@ export default function PlayReviewPage() {
     const orderAmount = cart?.totalPrice ?? 0;
     const bookingFee = Math.round(orderAmount * 0.1);
     const totalDiscount = offerDiscount + couponDiscount;
-    const grandTotal = Math.max(0, orderAmount + bookingFee - totalDiscount);
+    const isPassApplied = cart?.use_pass ?? false;
+    const grandTotal = isPassApplied ? 0 : Math.max(0, orderAmount + bookingFee - totalDiscount);
 
     const applyOffer = (offer: OfferItem) => {
         if (grandTotal === 0 && offer.id !== appliedOffer?.id) {
-            alert("The total is already ₹0. No more offers can be applied.");
+            toast.warning("The total is already ₹0. No more offers can be applied.");
             return;
         }
         const disc = offer.discount_type === 'percent'
@@ -219,7 +225,7 @@ export default function PlayReviewPage() {
 
     const validateCoupon = async (code?: string) => {
         if (grandTotal === 0 && !appliedCoupon) {
-            alert("The total is already ₹0. No coupon needed.");
+            toast.warning("The total is already ₹0. No coupon needed.");
             return;
         }
         const c = (code ?? couponInput).trim();
@@ -228,7 +234,7 @@ export default function PlayReviewPage() {
         setCouponError('');
         setCouponSuccess('');
         try {
-            const result = await bookingApi.validateCoupon(c, venueName, orderAmount, session?.id);
+            const result = await bookingApi.validateCoupon(c, 'play', orderAmount, session?.id);
             setCouponDiscount(Math.round(result.discount_amount));
             setAppliedCoupon(c.toUpperCase());
             setCouponSuccess(`✓ Coupon applied! You save ₹${Math.round(result.discount_amount)}`);
@@ -255,6 +261,7 @@ export default function PlayReviewPage() {
 
     const completeBooking = async (
         paymentId: string,
+        orderId: string,
         paymentGateway: string,
         cartData: CartData,
         emailData: string,
@@ -292,7 +299,10 @@ export default function PlayReviewPage() {
                 offer_id: offerId,
                 user_id: sessionId,
                 payment_id: paymentId,
+                order_id: orderId,
                 payment_gateway: paymentGateway,
+                status: 'booked',
+                use_ticpass: isPassApplied,
             });
             setBookingId(result.booking_id);
             ['ticpin_cart', 'ticpin_billing_email', 'ticpin_billing_data',
@@ -330,13 +340,15 @@ export default function PlayReviewPage() {
         if (!cart) return;
 
         if (grandTotal === 0) {
+            const freeId = isPassApplied ? `PASS_${cart.pass_id}_${Date.now()}` : `FREE_BOOKING_${Date.now()}`;
             await completeBooking(
-                'FREE_BOOKING_' + Date.now(),
-                'FREE',
+                freeId,
+                freeId,
+                isPassApplied ? 'TICPASS' : 'FREE',
                 cart,
                 email,
                 session?.id || organizerSession?.id,
-                orderAmount,
+                isPassApplied ? orderAmount : 0, // Order amount for pass is full but discount is 100%
                 0,
                 appliedCoupon || '',
                 appliedOffer?.id
@@ -370,6 +382,38 @@ export default function PlayReviewPage() {
                 offerId: appliedOffer?.id,
             }));
 
+            // 2. Stage the booking in "pending" status before opening payment modal
+            // This prevents "lost bookings" if the user closes the tab after paying
+            const stagedBooking = await bookingApi.createPlayBooking({
+                user_email: email || `user_${billing.phone}@ticpin.in`,
+                user_name: billing.name,
+                user_phone: billing.phone,
+                address: billing.address,
+                city: billing.city,
+                state: billing.state,
+                pincode: billing.pincode,
+                nationality: billing.nationality,
+                play_id: cart.eventId,
+                venue_name: cart.eventName,
+                date: cart.date,
+                slot: cart.slot,
+                duration: cart.duration,
+                tickets: cart.tickets.map(t => ({
+                    category: t.category ?? t.name,
+                    price: t.price,
+                    quantity: t.quantity,
+                })),
+                order_amount: orderAmount,
+                booking_fee: bookingFee,
+                coupon_code: appliedCoupon || undefined,
+                offer_id: appliedOffer?.id,
+                user_id: session?.id || organizerSession?.id,
+                payment_id: orderRes.order_id, // Store Order ID as temporary payment ID
+                order_id: orderRes.order_id,
+                payment_gateway: orderRes.gateway,
+                status: 'pending'
+            });
+
             if (orderRes.gateway === 'cashfree') {
                 await loadScript('https://sdk.cashfree.com/js/v3/cashfree.js');
                 const cashfree = (window as any).Cashfree({
@@ -398,7 +442,7 @@ export default function PlayReviewPage() {
                     theme: { color: '#000000' },
                     handler: async (response: { razorpay_payment_id: string }) => {
                         await completeBooking(
-                            response.razorpay_payment_id, 'razorpay',
+                            response.razorpay_payment_id, orderRes.order_id, 'razorpay',
                             cart, email, session?.id || organizerSession?.id,
                             orderAmount, bookingFee,
                             appliedCoupon, appliedOffer?.id,
@@ -408,7 +452,7 @@ export default function PlayReviewPage() {
                         ondismiss: () => {
                             sessionStorage.removeItem('ticpin_pending_play');
                             setBookingLoading(false);
-                            setBookingError('Payment was cancelled. Please try again.');
+                            setBookingError('Payment was cancelled. You can resume it from your bookings.');
                         },
                     },
                 };

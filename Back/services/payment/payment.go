@@ -6,10 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 )
 
@@ -30,19 +28,25 @@ var httpClient = &http.Client{
 }
 
 func GetPaymentGateway() GatewayType {
-	weightStr := os.Getenv("PAYMENT_TRAFFIC_WEIGHT_CASHFREE")
-	weight := 0.5
-	if weightStr != "" {
-		if w, err := strconv.ParseFloat(weightStr, 64); err == nil {
-			weight = w
-		}
-	}
-
-	r := rand.Float64()
-	if r < weight {
-		return GatewayCashfree
-	}
+	// Force Razorpay for testing
 	return GatewayRazorpay
+
+	// Original logic (commented for testing)
+	/*
+		weightStr := os.Getenv("PAYMENT_TRAFFIC_WEIGHT_CASHFREE")
+		weight := 0.5
+		if weightStr != "" {
+			if w, err := strconv.ParseFloat(weightStr, 64); err == nil {
+				weight = w
+			}
+		}
+
+		r := rand.Float64()
+		if r < weight {
+			return GatewayCashfree
+		}
+		return GatewayRazorpay
+	*/
 }
 
 type OrderRequest struct {
@@ -68,8 +72,10 @@ func CreateOrderCashfree(req OrderRequest) (*OrderResponse, error) {
 	clientSecret := os.Getenv("CASHFREE_CLIENT_SECRET")
 	baseURL := os.Getenv("CASHFREE_PAYMENT_URL")
 	if baseURL == "" {
-		baseURL = "https://api.cashfree.com/pg"
+		baseURL = "https://api.cashfree.com/pg" // Use production for testing
 	}
+
+	fmt.Printf("DEBUG: Cashfree API - ClientID: %s, BaseURL: %s\n", clientID, baseURL)
 
 	expiry := time.Now().Add(30 * time.Minute).In(time.FixedZone("IST", 5*3600+30*60)).
 		Format("2006-01-02T15:04:05-07:00")
@@ -92,14 +98,20 @@ func CreateOrderCashfree(req OrderRequest) (*OrderResponse, error) {
 	}
 
 	jsonPayload, _ := json.Marshal(payload)
+	fmt.Printf("DEBUG: Cashfree Request Payload: %s\n", string(jsonPayload))
+
 	httpReq, err := http.NewRequest("POST", baseURL+"/orders", bytes.NewBuffer(jsonPayload))
 	if err != nil {
 		return nil, err
 	}
+
 	httpReq.Header.Add("x-client-id", clientID)
 	httpReq.Header.Add("x-client-secret", clientSecret)
-	httpReq.Header.Add("x-api-version", "2023-08-01")
+	httpReq.Header.Add("x-api-version", "2022-01-01")
 	httpReq.Header.Add("Content-Type", "application/json")
+
+	fmt.Printf("DEBUG: Cashfree Request URL: %s\n", httpReq.URL.String())
+	fmt.Printf("DEBUG: Cashfree Request Headers: %+v\n", httpReq.Header)
 
 	resp, err := httpClient.Do(httpReq)
 	if err != nil {
@@ -108,9 +120,17 @@ func CreateOrderCashfree(req OrderRequest) (*OrderResponse, error) {
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
+	fmt.Printf("DEBUG: Cashfree Response Status: %d\n", resp.StatusCode)
+	fmt.Printf("DEBUG: Cashfree Response Body: %s\n", string(body))
+
 	var result map[string]interface{}
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("cashfree response parse error: %s", string(body))
+	}
+
+	// Check for error response
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("cashfree order creation failed: %s", string(body))
 	}
 
 	sessionID, _ := result["payment_session_id"].(string)

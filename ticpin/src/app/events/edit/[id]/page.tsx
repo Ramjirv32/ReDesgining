@@ -9,21 +9,19 @@ import { getOrganizerSession } from '@/lib/auth/organizer';
 import { uploadMedia } from '@/lib/api/admin';
 import { eventsApi } from '@/lib/api/events';
 import { organizerApi } from '@/lib/api/organizer';
+import { toast } from '@/components/ui/Toast';
 import { ArtistSection, TicketSection } from '@/components/events/shared/FormSections';
-
 export default function EditEventPage() {
     const router = useRouter();
     const params = useParams();
     const id = params.id as string;
     const editorRef = useRef<HTMLDivElement>(null);
-
     const [loadingData, setLoadingData] = useState(true);
     const [isBold, setIsBold] = useState(false);
     const [isItalic, setIsItalic] = useState(false);
     const [isUnderline, setIsUnderline] = useState(false);
     const [hasContent, setHasContent] = useState(false);
-
-    // Form fields
+    
     const [eventName, setEventName] = useState('');
     const [venueName, setVenueName] = useState('');
     const [venueAddress, setVenueAddress] = useState('');
@@ -203,7 +201,7 @@ export default function EditEventPage() {
             else if (key === 'portrait') setPortraitUrl(url);
             else if (key === 'landscape') setLandscapeUrl(url);
             else if (key === 'video') setVideoUrl(url);
-        } catch { alert('Upload failed. Try again.'); }
+        } catch { toast.error('Upload failed. Try again.'); }
         finally { setUploading(u => ({ ...u, [key]: false })); }
     };
 
@@ -213,7 +211,7 @@ export default function EditEventPage() {
         try {
             const url = await uploadMedia(file);
             setArtists(prev => prev.map((a, i) => i === idx ? { ...a, image_url: url } : a));
-        } catch { alert('Upload failed. Try again.'); }
+        } catch { toast.error('Upload failed. Try again.'); }
         finally { setUploading(u => ({ ...u, [key]: false })); }
     };
 
@@ -223,7 +221,7 @@ export default function EditEventPage() {
         try {
             const url = await uploadMedia(file);
             setTicketCategories(prev => prev.map((t, i) => i === idx ? { ...t, image_url: url } : t));
-        } catch { alert('Upload failed. Try again.'); }
+        } catch { toast.error('Upload failed. Try again.'); }
         finally { setUploading(u => ({ ...u, [key]: false })); }
     };
 

@@ -2,6 +2,8 @@
 
 import { X, Search, Loader2, MapPin } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
+import { toast } from '@/components/ui/Toast';
+
 
 const API_KEY = "AIzaSyC2gFDSPGY7wtSFHzYwzbPkP6tcq61Lmt8";
 
@@ -129,7 +131,7 @@ export default function LocationModal({ isOpen, onClose, onSelect }: LocationMod
             onClose();
         } catch (error) {
             console.error(error);
-            alert("Error fetching location details. Please check your connection.");
+            toast.error("Error fetching location details. Please check your connection.");
         } finally {
             setIsLoading(false);
         }
@@ -142,13 +144,13 @@ export default function LocationModal({ isOpen, onClose, onSelect }: LocationMod
 
     const handleCurrentLocation = () => {
         if (!navigator.geolocation) {
-            alert("Geolocation is not supported by your browser");
+            toast.warning("Geolocation is not supported by your browser");
             return;
         }
 
         navigator.geolocation.getCurrentPosition(
             (pos) => fetchLocationDetails(pos.coords.latitude, pos.coords.longitude),
-            () => alert("Location access denied or unavailable."),
+            () => toast.warning("Location access denied or unavailable."),
             { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
         );
     };

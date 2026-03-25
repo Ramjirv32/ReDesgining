@@ -4,7 +4,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useIdentityStore } from '@/store/useIdentityStore';
-import { ChevronLeft, Plus, Send, Info, Paperclip, X, FileText, Image as ImageIcon } from 'lucide-react';
+import { toast } from '@/components/ui/Toast';
+
+import { ChevronLeft, Plus, Send, Info, Paperclip, X, FileText, Image as ImageIcon, Mic } from 'lucide-react';
 
 interface SupportOption {
     id: string;
@@ -77,12 +79,12 @@ export default function ChatSupportClient() {
     const { userSession, organizerSession, sync } = useIdentityStore();
     const effectiveSession = organizerSession || userSession;
     const fileInputRef = useRef<HTMLInputElement>(null);
-    
+
     // Sync session on mount
     useEffect(() => {
         sync();
     }, [sync]);
-    
+
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [activeSession, setActiveSession] = useState<ChatSession | null>(null);
     const [adminSessions, setAdminSessions] = useState<ChatSession[]>([]);
@@ -98,7 +100,8 @@ export default function ChatSupportClient() {
     const [filePreview, setFilePreview] = useState<string | null>(null);
     const [lightboxImage, setLightboxImage] = useState<string | null>(null);
     const [userExistingSessions, setUserExistingSessions] = useState<Map<string, ChatSession>>(new Map());
-    
+    const [isListening, setIsListening] = useState(false);
+
     const isAdmin = userSession?.phone === '6383667872' || (organizerSession?.isAdmin === true);
 
     // Fetch all existing sessions for the user on mount
@@ -106,14 +109,14 @@ export default function ChatSupportClient() {
         if (effectiveSession?.id && !isAdmin) {
             const categories = ['dining', 'event', 'play'];
             const sessionMap = new Map<string, ChatSession>();
-            
+
             Promise.all(
-                categories.map(category => 
+                categories.map(category =>
                     fetch(`/backend/api/chat/sessions?userId=${effectiveSession.id}&category=${category}`, { credentials: 'include' })
                         .then(res => res.json())
                         .then(data => {
                             if (data.sessions && data.sessions.length > 0) {
-                                const existingSession = data.sessions.find((s: ChatSession) => 
+                                const existingSession = data.sessions.find((s: ChatSession) =>
                                     s.status === 'pending' || s.status === 'active'
                                 );
                                 if (existingSession) {
@@ -134,14 +137,14 @@ export default function ChatSupportClient() {
             fetch(`/backend/api/chat/questions?category=${selectedCategory}`)
                 .then(r => r.json())
                 .then(d => setQuestions(Array.isArray(d) ? d : []));
-            
+
             // Check for existing session for this category
             if (effectiveSession?.id) {
                 fetch(`/backend/api/chat/sessions?userId=${effectiveSession.id}&category=${selectedCategory}`, { credentials: 'include' })
                     .then(res => res.json())
                     .then(data => {
                         if (data.sessions && data.sessions.length > 0) {
-                            const existingSession = data.sessions.find((s: ChatSession) => 
+                            const existingSession = data.sessions.find((s: ChatSession) =>
                                 s.status === 'pending' || s.status === 'active'
                             );
                             if (existingSession) {
@@ -176,7 +179,7 @@ export default function ChatSupportClient() {
             console.error('Session not found');
             return;
         }
-        
+
         // Double check if user already has an active session in this category
         const existingSession = userExistingSessions.get(category);
         if (existingSession) {
@@ -186,7 +189,7 @@ export default function ChatSupportClient() {
             fetchMessages(existingSession.sessionId);
             return;
         }
-        
+
         console.log('Starting chat with category:', category);
         setLoading(true);
         try {
@@ -206,10 +209,10 @@ export default function ChatSupportClient() {
                 const data = await res.json();
                 setActiveSession(data);
                 setSessionStatus(data.status || 'pending');
-                
+
                 // Update the userExistingSessions map to include the new session
                 setUserExistingSessions(prev => new Map(prev).set(category, data));
-                
+
                 if (data.status === 'active') {
                     // Only simulate typing for active sessions
                     setIsTyping(true);
@@ -234,12 +237,12 @@ export default function ChatSupportClient() {
             console.error('Session not found');
             return;
         }
-        
+
         try {
             const res = await fetch(`/backend/api/chat/sessions/${sessionId}/messages?admin=${isAdmin}&userId=${effectiveSession.id}`, { credentials: 'include' });
             if (res.ok) {
                 const data = await res.json();
-                
+
                 // Check if session has been terminated
                 if (Array.isArray(data) && data.length > 0) {
                     const lastMessage = data[data.length - 1];
@@ -247,7 +250,7 @@ export default function ChatSupportClient() {
                         // Session ended - disable input and show terminated message
                         setMessages(data);
                         setSessionStatus('closed');
-                        
+
                         // Remove from existing sessions map since it's now closed
                         if (activeSession && selectedCategory) {
                             setUserExistingSessions(prev => {
@@ -259,7 +262,7 @@ export default function ChatSupportClient() {
                         return;
                     }
                 }
-                
+
                 if (Array.isArray(data)) {
                     setMessages(data);
                 }
@@ -272,18 +275,18 @@ export default function ChatSupportClient() {
     // Auto-poll for new messages every 15 seconds
     useEffect(() => {
         if (!activeSession?.sessionId) return;
-        
+
         const interval = setInterval(() => {
             fetchMessages(activeSession.sessionId);
         }, 15000); // Poll every 15 seconds instead of 5
-        
+
         return () => clearInterval(interval);
     }, [activeSession?.sessionId, effectiveSession?.id]);
 
     const handleSendMessageWithContent = async (content: string, previewUrl?: string, fileType?: string, filesToUpload: File[] = []) => {
         if (!content.trim() && filesToUpload.length === 0) return;
         if (!activeSession || !effectiveSession?.id) return;
-        
+
         // Optimistic update
         const userMsg = {
             message: content,
@@ -293,7 +296,7 @@ export default function ChatSupportClient() {
             fileType: fileType
         };
         setMessages(prev => [...prev, userMsg]);
-        
+
         setUploadingFiles(true);
         try {
             const formData = new FormData();
@@ -302,12 +305,12 @@ export default function ChatSupportClient() {
             formData.append('userType', organizerSession ? 'organizer' : 'user');
             formData.append('message', content);
             formData.append('sender', isAdmin ? 'admin' : 'user');
-            
+
             // Add file if any
             if (filesToUpload.length > 0) {
                 formData.append('file0', filesToUpload[0]);
             }
-            
+
             const res = await fetch(`/backend/api/chat/sessions/${activeSession.sessionId}/messages`, {
                 method: 'POST',
                 body: formData,
@@ -318,7 +321,7 @@ export default function ChatSupportClient() {
                 // Refresh messages after sending to get permanent URLs
                 fetchMessages(activeSession.sessionId);
             }
-            
+
             // Update status message after sending
             if (sessionStatus === 'pending') {
                 setSessionStatus('pending');
@@ -332,29 +335,29 @@ export default function ChatSupportClient() {
 
     const handleSendMessage = async () => {
         if (!inputValue.trim() && attachedFiles.length === 0) return;
-        
+
         const file = attachedFiles.length > 0 ? attachedFiles[0] : null;
         const fileUrl = file ? URL.createObjectURL(file) : undefined;
         const fileType = file ? (file.type.startsWith('image/') ? 'image' : 'pdf') : undefined;
-        
+
         const currentMessage = inputValue;
         const currentFiles = [...attachedFiles];
-        
+
         setInputValue('');
         setAttachedFiles([]);
         setFilePreview(null);
-        
+
         await handleSendMessageWithContent(currentMessage, fileUrl, fileType, currentFiles);
     };
 
     const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(event.target.files || []);
         if (files.length === 0) return;
-        
+
         const file = files[0];
         const isValidType = file.type.startsWith('image/') || file.type === 'application/pdf';
         const isValidSize = file.size <= 10 * 1024 * 1024;
-        
+
         if (isValidType && isValidSize) {
             setAttachedFiles([file]);
             if (file.type.startsWith('image/')) {
@@ -363,7 +366,7 @@ export default function ChatSupportClient() {
                 setFilePreview(null);
             }
         } else {
-            alert('Invalid file type or size. Please upload images or PDFs up to 10MB.');
+            toast.warning('Invalid file type or size. Please upload images or PDFs up to 10MB.');
         }
     };
 
@@ -376,6 +379,34 @@ export default function ChatSupportClient() {
         if (bytes < 1024) return bytes + ' B';
         if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
         return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    };
+
+    const startListening = () => {
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            toast.warning("Speech recognition is not supported in this browser. Please try Chrome, Safari, or Brave.");
+            return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'en-IN';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        recognition.onstart = () => setIsListening(true);
+        recognition.onend = () => setIsListening(false);
+        recognition.onerror = () => setIsListening(false);
+
+        recognition.onresult = (event: any) => {
+            const transcript = event.results[0][0].transcript;
+            if (transcript) {
+                setInputValue(transcript);
+                // Auto send voice message
+                handleSendMessageWithContent(transcript);
+            }
+        };
+
+        recognition.start();
     };
 
     if (!selectedCategory) {
@@ -410,10 +441,9 @@ export default function ChatSupportClient() {
                                         }
                                     }
                                 }}
-                                className={`w-[193px] h-[210px] rounded-[40px] flex flex-col items-center justify-center transition-colors ${
-                                    isAdmin ? 'bg-[#E1E1E1] cursor-pointer hover:bg-zinc-200' : 
-                                    userExistingSessions.has(option.category) ? 'bg-[#5331EA20] cursor-not-allowed opacity-60' : 'bg-[#E1E1E1] cursor-pointer hover:bg-zinc-200'
-                                }`}
+                                className={`w-[193px] h-[210px] rounded-[40px] flex flex-col items-center justify-center transition-colors ${isAdmin ? 'bg-[#E1E1E1] cursor-pointer hover:bg-zinc-200' :
+                                        userExistingSessions.has(option.category) ? 'bg-[#5331EA20] cursor-not-allowed opacity-60' : 'bg-[#E1E1E1] cursor-pointer hover:bg-zinc-200'
+                                    }`}
                             >
                                 <div className="mb-4">
                                     <Image src={option.icon} alt={option.title} width={option.width} height={option.height} className="object-contain" />
@@ -564,19 +594,19 @@ export default function ChatSupportClient() {
                                             {msg.sender === 'admin' && <span className="text-[8px] opacity-60">Interactive Assistant</span>}
                                         </div>
                                         {msg.message && <p className="text-sm mb-2">{msg.message}</p>}
-                                        
+
                                         {/* Display file attachment */}
                                         {msg.fileUrl && (
                                             <div className="mt-1">
                                                 {msg.fileType === 'image' ? (
                                                     <div className="relative group cursor-pointer overflow-hidden rounded-xl border-2 border-white/30 shadow-md bg-zinc-900 flex items-center justify-center min-h-[180px] w-full max-w-[320px]"
-                                                         onClick={() => {
-                                                             const fullUrl = msg.fileUrl?.startsWith('blob:') ? msg.fileUrl : msg.fileUrl?.startsWith('http') ? msg.fileUrl : `/backend${msg.fileUrl}`;
-                                                             setLightboxImage(fullUrl);
-                                                         }}>
-                                                        <img 
-                                                            src={msg.fileUrl?.startsWith('blob:') ? msg.fileUrl : msg.fileUrl?.startsWith('http') ? msg.fileUrl : `/backend${msg.fileUrl}`} 
-                                                            alt="Shared image" 
+                                                        onClick={() => {
+                                                            const fullUrl = msg.fileUrl?.startsWith('blob:') ? msg.fileUrl : msg.fileUrl?.startsWith('http') ? msg.fileUrl : `/backend${msg.fileUrl}`;
+                                                            setLightboxImage(fullUrl);
+                                                        }}>
+                                                        <img
+                                                            src={msg.fileUrl?.startsWith('blob:') ? msg.fileUrl : msg.fileUrl?.startsWith('http') ? msg.fileUrl : `/backend${msg.fileUrl}`}
+                                                            alt="Shared image"
                                                             className="max-w-full max-h-[250px] object-cover transition-all duration-500 group-hover:scale-105"
                                                             onLoad={(e) => {
                                                                 const img = e.target as HTMLImageElement;
@@ -597,7 +627,7 @@ export default function ChatSupportClient() {
                                                     </div>
                                                 ) : (
                                                     <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-3 cursor-pointer hover:bg-white/20 transition-all shadow-sm w-full max-w-[280px]"
-                                                         onClick={() => window.open(msg.fileUrl?.startsWith('blob:') ? msg.fileUrl : msg.fileUrl?.startsWith('http') ? msg.fileUrl : `/backend${msg.fileUrl}`, '_blank')}>
+                                                        onClick={() => window.open(msg.fileUrl?.startsWith('blob:') ? msg.fileUrl : msg.fileUrl?.startsWith('http') ? msg.fileUrl : `/backend${msg.fileUrl}`, '_blank')}>
                                                         <div className="w-9 h-9 bg-red-500/80 rounded-lg flex items-center justify-center flex-shrink-0 text-white shadow-inner">
                                                             <FileText size={18} />
                                                         </div>
@@ -627,12 +657,12 @@ export default function ChatSupportClient() {
                                 </div>
                             </div>
                         )}
-                        
+
                         {messages.length < 3 && !isAdmin && questions.length > 0 && (
                             <div className="ml-[54px] w-[220px] bg-white border border-[#5331EA]/40 rounded-[10px] overflow-hidden shadow-sm animate-in fade-in slide-in-from-top-2">
                                 <div className="bg-[#D8D3EF] p-3 text-[12px] text-black">Please select the issue that you need support with:</div>
                                 <div className="flex flex-col">
-                                    {questions.map((q, i) => (
+                                    {questions.slice(0, 2).map((q, i) => (
                                         <button
                                             key={i}
                                             onClick={() => handleSendMessageWithContent(q.question)}
@@ -649,7 +679,7 @@ export default function ChatSupportClient() {
                     {/* Attached Files Preview */}
                     {attachedFiles.length > 0 && (
                         <div className="px-10 pb-4">
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-2 justify-end">
                                 {attachedFiles.map((file, index) => (
                                     <div key={index} className="flex flex-col gap-2 bg-white border border-[#5331EA]/30 rounded-2xl p-3 shadow-lg animate-in slide-in-from-bottom-2">
                                         <div className="flex items-center gap-3">
@@ -695,6 +725,13 @@ export default function ChatSupportClient() {
                                     title="Attach file (images or PDFs, max 10MB)"
                                 >
                                     <Paperclip size={24} />
+                                </button>
+                                <button
+                                    onClick={startListening}
+                                    className={`cursor-pointer transition-all mr-3 ${isListening ? 'text-red-500 animate-pulse scale-110' : 'text-zinc-400 hover:text-[#5331EA]'}`}
+                                    title="Voice message (Speech to Text)"
+                                >
+                                    <Mic size={24} />
                                 </button>
                                 <input
                                     ref={fileInputRef}
@@ -750,6 +787,13 @@ export default function ChatSupportClient() {
                                 >
                                     <Paperclip size={24} />
                                 </button>
+                                <button
+                                    onClick={startListening}
+                                    className={`cursor-pointer transition-all ml-4 ${isListening ? 'text-red-500 animate-pulse scale-110' : 'text-zinc-400 hover:text-[#5331EA]'}`}
+                                    title="Voice message (Speech to Text)"
+                                >
+                                    <Mic size={24} />
+                                </button>
                                 <input
                                     ref={fileInputRef}
                                     type="file"
@@ -787,16 +831,16 @@ export default function ChatSupportClient() {
                 {/* Lightbox Modal */}
                 {lightboxImage && (
                     <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center animate-in fade-in duration-300"
-                         onClick={() => setLightboxImage(null)}>
-                        <button 
+                        onClick={() => setLightboxImage(null)}>
+                        <button
                             className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
                             onClick={() => setLightboxImage(null)}
                         >
                             <X size={32} />
                         </button>
-                        <img 
-                            src={lightboxImage || ''} 
-                            alt="Full size" 
+                        <img
+                            src={lightboxImage || ''}
+                            alt="Full size"
                             className="max-w-[95vw] max-h-[90vh] object-contain shadow-2xl animate-in zoom-in-95 duration-300"
                             onClick={(e) => e.stopPropagation()}
                         />

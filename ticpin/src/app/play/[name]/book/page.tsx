@@ -8,6 +8,10 @@ import { useUserSession } from '@/lib/auth/user';
 import { getOrganizerSession, clearOrganizerSession } from '@/lib/auth/organizer';
 import AuthModal from '@/components/modals/AuthModal';
 import OrganizerLogoutModal from '@/components/modals/OrganizerLogoutModal';
+import { toast } from '@/components/ui/Toast';
+import { passApi, TicpinPass } from '@/lib/api/pass';
+import { Zap, ShieldCheck } from 'lucide-react';
+
 
 interface Court {
     id: string;
@@ -116,6 +120,8 @@ export default function PlayBookPage() {
     const [bookedSlots, setBookedSlots] = useState<string[]>([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
     const [activePeriod, setActivePeriod] = useState<string>('morning');
+    const [pass, setPass] = useState<TicpinPass | null>(null);
+    const [usePass, setUsePass] = useState(false);
 
 
 
@@ -156,6 +162,13 @@ export default function PlayBookPage() {
                 setLoading(false);
             });
     }, [venueName]);
+
+    // Fetch pass
+    useEffect(() => {
+        if (session?.id) {
+            passApi.getActivePass(session.id).then(setPass).catch(() => setPass(null));
+        }
+    }, [session?.id]);
 
     // Fetch booked slots whenever venue or date changes
     useEffect(() => {
@@ -305,7 +318,9 @@ export default function PlayBookPage() {
             display_slot: displaySlot, // shown to user in review / confirmation
             duration: duration,       // in 30-min units; used by backend for index expansion
             tickets,
-            totalPrice,
+            totalPrice: usePass ? 0 : totalPrice,
+            use_pass: usePass,
+            pass_id: pass?.id
         };
         sessionStorage.setItem('ticpin_cart', JSON.stringify(cartItem));
         router.push(`/play/${encodeURIComponent(venueName)}/book/review`);
@@ -321,8 +336,8 @@ export default function PlayBookPage() {
         }
         
         if (!session) { setShowAuthModal(true); return; }
-        if (selectedCourtIds.length === 0) { alert('Please select at least one court.'); return; }
-        if (!selectedSlot) { alert('Please select a time slot.'); return; }
+        if (selectedCourtIds.length === 0) { toast.warning('Please select at least one court.'); return; }
+        if (!selectedSlot) { toast.warning('Please select a time slot.'); return; }
         doBooking(venue);
     };
 
@@ -641,6 +656,31 @@ export default function PlayBookPage() {
                             )}
                         </section>
 
+                        {/* Ticpass Apply */}
+                        {pass && pass.benefits.turf_bookings.remaining > 0 && (
+                            <section className="bg-amber-50 rounded-[20px] p-6 border border-amber-200 flex items-center justify-between gap-4">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-amber-500 rounded-xl flex items-center justify-center text-white shadow-lg">
+                                        <Zap size={24} fill="currentColor" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-amber-900">Ticpin Pass Active</h3>
+                                        <p className="text-sm text-amber-700 font-medium">Use 1 of your {pass.benefits.turf_bookings.remaining} free bookings</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setUsePass(!usePass)}
+                                    className={`px-6 h-11 rounded-xl font-bold transition-all ${
+                                        usePass 
+                                        ? 'bg-amber-600 text-white shadow-inner' 
+                                        : 'bg-white text-amber-600 border border-amber-300 hover:bg-amber-100'
+                                    }`}
+                                >
+                                    {usePass ? 'Pass Applied' : 'Apply Pass'}
+                                </button>
+                            </section>
+                        )}
+
                         {/* Price summary */}
                         {selectedCourtIds.length > 0 && (
                             <section className="bg-zinc-50 rounded-[14px] p-4 border border-zinc-200 space-y-1">
@@ -651,16 +691,25 @@ export default function PlayBookPage() {
                                     return (
                                         <div key={uid} className="flex justify-between text-[15px]">
                                             <span className="text-black font-medium">{court.name} × {durationLabel}</span>
-                                            <span className="font-semibold text-black">₹{linePrice}</span>
+                                            <span className={`font-semibold ${usePass ? 'text-zinc-400 line-through decoration-red-500' : 'text-black'}`}>₹{linePrice}</span>
                                         </div>
                                     );
                                 })}
                                 <div className="border-t border-zinc-300 pt-2 mt-2 flex justify-between text-[16px] font-bold">
                                     <span>Total</span>
-                                    <span>₹{selectedCourtIds.reduce((s, uid) => {
-                                        const court = courts.find((c, idx) => `${c.id}-${idx}` === uid);
-                                        return s + Math.round((court?.price ?? 0) * duration / 2);
-                                    }, 0)}</span>
+                                    <span className="flex items-center gap-2">
+                                        {usePass && (
+                                            <span className="text-[12px] font-black text-amber-600 bg-amber-100 px-2 py-0.5 rounded tracking-widest uppercase">
+                                                PASS APPLIED
+                                            </span>
+                                        )}
+                                        <span className={usePass ? 'text-green-600' : ''}>
+                                            ₹{usePass ? 0 : selectedCourtIds.reduce((s, uid) => {
+                                                const court = courts.find((c, idx) => `${c.id}-${idx}` === uid);
+                                                return s + Math.round((court?.price ?? 0) * duration / 2);
+                                            }, 0)}
+                                        </span>
+                                    </span>
                                 </div>
                             </section>
                         )}

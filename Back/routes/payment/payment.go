@@ -11,5 +11,5 @@ func PaymentRoutes(app *fiber.App) {
 
 	app.Post("/api/payment/create-order", middleware.RequireUserAuth, paymentctrl.CreateOrderHandler)
 	app.Post("/api/payment/razorpay/webhook", paymentctrl.RazorpayWebhook)
-	app.Post("/api/payment/cashfree/webhook", paymentctrl.CashfreeWebhook)
+	// app.Post("/api/payment/cashfree/webhook", paymentctrl.CashfreeWebhook) // Commented for testing
 }

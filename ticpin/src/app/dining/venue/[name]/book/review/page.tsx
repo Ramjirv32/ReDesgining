@@ -9,6 +9,7 @@ import { profileApi } from '@/lib/api/profile';
 import Link from 'next/link';
 import { useUserSession } from '@/lib/auth/user';
 import { useOrganizerSession, clearOrganizerSession } from '@/lib/auth/organizer';
+import { getBookingStatus } from '@/lib/utils/booking-status';
 import AuthModal from '@/components/modals/AuthModal';
 import OrganizerLogoutModal from '@/components/modals/OrganizerLogoutModal';
 
@@ -23,6 +24,8 @@ interface CartData {
     totalPrice: number;
     offerId?: string | null;
     offerType?: string | null;
+    use_pass?: boolean;
+    pass_id?: string;
 }
 
 interface BillingInfo {
@@ -74,6 +77,7 @@ export default function DiningReviewPage() {
     const [selectedOffer, setSelectedOffer] = useState<OfferItem | null>(null);
     const [showGstDetails, setShowGstDetails] = useState(false);
     const [acceptedTerms, setAcceptedTerms] = useState(false);
+    const [pass, setPass] = useState<any>(null);
 
     // Modals
     const [showAuthModal, setShowAuthModal] = useState(false);
@@ -107,7 +111,13 @@ export default function DiningReviewPage() {
 
         const savedStep = sessionStorage.getItem('ticpin_dining_step');
         if (savedStep === 'billing') setStep('billing');
-    }, [venueName, router]);
+
+        if (session?.id) {
+            import('@/lib/api/pass').then(({ passApi }) => {
+                passApi.getActivePass(session.id).then(setPass);
+            });
+        }
+    }, [venueName, router, session?.id]);
 
     // Load user profile and history for billing info
     useEffect(() => {
@@ -120,7 +130,7 @@ export default function DiningReviewPage() {
                     ]);
 
                     const latestBooking = (Array.isArray(history) ? [...history] : [])
-                        ?.filter((b: any) => b.status === 'booked' || b.status === 'confirmed')
+                        ?.filter((b: any) => getBookingStatus(b) === 'booked' || getBookingStatus(b) === 'confirmed')
                         ?.sort((a: any, b: any) => new Date(b.booked_at).getTime() - new Date(a.booked_at).getTime())[0];
 
                     setBilling(prev => ({
@@ -169,12 +179,19 @@ export default function DiningReviewPage() {
     const orderAmount = cart?.totalPrice ?? 0;
     const bookingFee = 0; // Dining usually has 0 booking fee for now
     const totalDiscount = useMemo(() => {
-        if (!selectedOffer || !orderAmount) return 0;
-        return selectedOffer.discount_type === 'percent'
-            ? Math.round(orderAmount * selectedOffer.discount_value / 100)
-            : Math.min(selectedOffer.discount_value, orderAmount);
-    }, [selectedOffer, orderAmount]);
+        let disc = 0;
+        if (selectedOffer && orderAmount) {
+            disc += selectedOffer.discount_type === 'percent'
+                ? Math.round(orderAmount * selectedOffer.discount_value / 100)
+                : Math.min(selectedOffer.discount_value, orderAmount);
+        }
+        if (cart?.use_pass && pass) {
+            disc += pass.benefits.dining_vouchers.value_each || 250;
+        }
+        return disc;
+    }, [selectedOffer, orderAmount, cart?.use_pass, pass]);
     const grandTotal = Math.max(0, orderAmount + bookingFee - totalDiscount);
+    const isPassApplied = cart?.use_pass ?? false;
 
     const billingComplete = useMemo(() => {
         return (
@@ -219,7 +236,8 @@ export default function DiningReviewPage() {
 
         try {
             if (grandTotal === 0) {
-                await completeDiningBooking('FREE_DINING_' + Date.now(), 'FREE');
+                const freeId = isPassApplied ? `PASS_${cart.pass_id}_${Date.now()}` : `FREE_DINING_${Date.now()}`;
+                await completeDiningBooking(freeId, isPassApplied ? 'TICPASS' : 'FREE');
                 return;
             }
 
@@ -237,8 +255,8 @@ export default function DiningReviewPage() {
                 key: res.razorpay_key,
                 amount: grandTotal * 100,
                 currency: 'INR',
-                name: cart!.eventName,
-                description: `Dining reservation for ${cart!.guests} guests`,
+                name: cart?.eventName || 'Dining Reservation',
+                description: `Dining reservation for ${cart?.guests || 1} guests`,
                 order_id: res.order_id,
                 method: {
                     upi: true,
@@ -291,7 +309,8 @@ export default function DiningReviewPage() {
                 offer_id: cart!.offerId || undefined,
                 payment_id: paymentId,
                 payment_gateway: gateway,
-                user_id: session?.id
+                user_id: session?.id,
+                use_ticpass: isPassApplied
             });
             setStep('success');
             sessionStorage.removeItem('dining_cart');

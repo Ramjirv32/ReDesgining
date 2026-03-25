@@ -33,11 +33,13 @@ type Booking struct {
 	DiscountAmount float64            `bson:"discount_amount" json:"discount_amount"`
 	CouponCode     string             `bson:"coupon_code" json:"coupon_code"`
 	OfferID        primitive.ObjectID `bson:"offer_id,omitempty" json:"offer_id,omitempty"`
+	OrderID        string             `bson:"order_id,omitempty" json:"order_id,omitempty"`
 	GrandTotal     float64            `bson:"grand_total" json:"grand_total"`
 	PaymentID      string             `bson:"payment_id,omitempty" json:"payment_id,omitempty"`
 	PaymentGateway string             `bson:"payment_gateway,omitempty" json:"payment_gateway,omitempty"`
 	Status         string             `bson:"status" json:"status"`
 	BookedAt       time.Time          `bson:"booked_at" json:"booked_at"`
+	TicpassApplied bool               `bson:"ticpass_applied,omitempty" json:"ticpass_applied,omitempty"`
 }
 
 type PlayBooking struct {
@@ -64,11 +66,13 @@ type PlayBooking struct {
 	DiscountAmount float64            `bson:"discount_amount" json:"discount_amount"`
 	CouponCode     string             `bson:"coupon_code" json:"coupon_code"`
 	OfferID        primitive.ObjectID `bson:"offer_id,omitempty" json:"offer_id,omitempty"`
+	OrderID        string             `bson:"order_id,omitempty" json:"order_id,omitempty"`
 	GrandTotal     float64            `bson:"grand_total" json:"grand_total"`
 	PaymentID      string             `bson:"payment_id,omitempty" json:"payment_id,omitempty"`
 	PaymentGateway string             `bson:"payment_gateway,omitempty" json:"payment_gateway,omitempty"`
 	Status         string             `bson:"status" json:"status"`
 	BookedAt       time.Time          `bson:"booked_at" json:"booked_at"`
+	TicpassApplied bool               `bson:"ticpass_applied,omitempty" json:"ticpass_applied,omitempty"`
 }
 
 type DiningBooking struct {
@@ -94,9 +98,11 @@ type DiningBooking struct {
 	DiscountAmount float64            `bson:"discount_amount" json:"discount_amount"`
 	CouponCode     string             `bson:"coupon_code" json:"coupon_code"`
 	OfferID        primitive.ObjectID `bson:"offer_id,omitempty" json:"offer_id,omitempty"`
+	OrderID        string             `bson:"order_id,omitempty" json:"order_id,omitempty"`
 	GrandTotal     float64            `bson:"grand_total" json:"grand_total"`
 	PaymentID      string             `bson:"payment_id,omitempty" json:"payment_id,omitempty"`
 	PaymentGateway string             `bson:"payment_gateway,omitempty" json:"payment_gateway,omitempty"`
 	Status         string             `bson:"status" json:"status"`
 	BookedAt       time.Time          `bson:"booked_at" json:"booked_at"`
+	TicpassApplied bool               `bson:"ticpass_applied,omitempty" json:"ticpass_applied,omitempty"`
 }

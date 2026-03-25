@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { ChevronRight, X, User, BarChart3, Clock, Pencil, Trash2 } from 'lucide-react';
+import { toast } from '@/components/ui/Toast';
 import { adminApi, CouponRecord, UserRecord } from '@/lib/api/admin';
 import CreateCouponPage from '../create/createcoupon';
 
@@ -20,7 +21,6 @@ export default function ViewCouponForm({ onBack }: { onBack: () => void }) {
                 adminApi.listCoupons(),
                 adminApi.listUsers().catch(() => [])
             ]);
-            console.log('Coupon response:', couponResponse); // Debug log
             const couponData = Array.isArray(couponResponse?.data) ? couponResponse.data : 
                             Array.isArray(couponResponse) ? couponResponse : [];
             setCoupons(couponData);
@@ -44,7 +44,7 @@ export default function ViewCouponForm({ onBack }: { onBack: () => void }) {
             setCoupons(prev => prev.filter(c => c.id !== id));
             setSelectedCoupon(null);
         } catch (err) {
-            alert('Failed to delete coupon');
+            toast.error('Failed to delete coupon');
         }
     };
 

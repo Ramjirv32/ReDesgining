@@ -4,7 +4,10 @@ import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { bookingApi } from '@/lib/api/booking';
+import { passApi, TicpinPass } from '@/lib/api/pass';
+import { useUserSession } from '@/lib/auth/user';
 import { TicketSkeleton } from '@/components/ui/Skeleton';
+import { Zap } from 'lucide-react';
 
 interface TicketCategory {
     name: string;
@@ -35,6 +38,9 @@ export default function TicketSelectionPage() {
     const [counts, setCounts] = useState<Record<number, number>>({});
     const [bookedMap, setBookedMap] = useState<Record<string, number>>({});
     const [coupons, setCoupons] = useState<any[]>([]);
+    const [pass, setPass] = useState<TicpinPass | null>(null);
+    const [usePass, setUsePass] = useState(false);
+    const session = useUserSession();
 
     useEffect(() => {
         if (!name) return;
@@ -47,7 +53,11 @@ export default function TicketSelectionPage() {
             setBookedMap(availability.booked ?? {});
             setLoading(false);
         }).catch(() => setLoading(false));
-    }, [name]);
+
+        if (session?.id) {
+            passApi.getActivePass(session.id).then(setPass).catch(() => setPass(null));
+        }
+    }, [name, session?.id]);
 
     useEffect(() => {
         fetch(`/backend/api/coupons/event`)
@@ -198,6 +208,31 @@ export default function TicketSelectionPage() {
                         </div>
                     );
                 })}
+
+                {/* Ticpass Apply */}
+                {pass && pass.benefits.events_discount_active && (
+                    <div className="w-full bg-[#F5F3FF] border border-[#DDD6FE] rounded-[15px] p-5 flex items-center justify-between shadow-sm">
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-[#7C3AED] rounded-xl flex items-center justify-center text-white">
+                                <Zap size={20} fill="currentColor" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-[#5B21B6]">Ticpin Pass Member</h3>
+                                <p className="text-sm text-[#7C3AED]">Apply your 10% premium discount on this event</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setUsePass(!usePass)}
+                            className={`px-6 h-10 rounded-xl font-bold transition-all ${
+                                usePass 
+                                ? 'bg-[#7C3AED] text-white' 
+                                : 'bg-white text-[#7C3AED] border border-[#C4B5FD] hover:bg-[#F5F3FF]'
+                            }`}
+                        >
+                            {usePass ? 'Discount Applied' : 'Apply Discount'}
+                        </button>
+                    </div>
+                )}
             </main>
 
             {/* Sticky Footer */}
@@ -223,7 +258,9 @@ export default function TicketSelectionPage() {
                                 price: cat.price ?? 0,
                                 quantity: counts[i] ?? 0
                             })).filter(t => t.quantity > 0),
-                            totalPrice
+                            totalPrice,
+                            use_pass: usePass,
+                            pass_id: pass?.id
                         };
                         sessionStorage.setItem('ticpin_cart', JSON.stringify(cart));
                         router.push(`/events/${name}/book/review`);

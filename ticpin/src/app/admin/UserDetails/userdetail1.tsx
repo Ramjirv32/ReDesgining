@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { ChevronRight, Pencil, Trash2, Search } from 'lucide-react';
 import Link from 'next/link';
 import { adminApi, UserRecord } from '@/lib/api/admin';
+import { toast } from '@/components/ui/Toast';
+
 
 export default function UserDetails() {
     const router = useRouter();
@@ -34,7 +36,7 @@ export default function UserDetails() {
             setUsers(prev => prev.map(u => u.id === editUser.id ? { ...u, name: editName, phone: editPhone } : u));
             setEditUser(null);
         } catch (e) {
-            alert('Failed to update user');
+            toast.error('Failed to update user');
         }
     }
 
@@ -44,7 +46,7 @@ export default function UserDetails() {
             await adminApi.deleteUser(id);
             setUsers(prev => prev.filter(u => u.id !== id));
         } catch (e) {
-            alert('Failed to delete user');
+            toast.error('Failed to delete user');
         }
     }
 

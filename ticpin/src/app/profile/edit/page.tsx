@@ -11,6 +11,7 @@ import {
     Calendar, UserCircle, Bell, Languages, Camera, Map,
     CheckCircle2, AlertCircle, X, Shield
 } from 'lucide-react';
+import { toast } from '@/components/ui/Toast';
 function EditUserProfileContent() {
     const router = useRouter();
     const userSession = useUserSession();
@@ -642,7 +643,7 @@ function EditUserProfileContent() {
 
                             <button 
                                 type="button"
-                                onClick={() => alert('GPS Picker placeholder')}
+                                onClick={() => toast.info('GPS Picker integration coming soon')}
                                 className="w-full p-5 bg-zinc-50 rounded-[22px] border border-dashed border-zinc-300 flex items-center justify-between hover:bg-zinc-100 transition-all font-bold text-zinc-600"
                             >
                                 <span className="flex items-center gap-3"><MapPin size={20} className="text-zinc-400" /> Pin current location</span>

@@ -3,6 +3,7 @@ package paymentctrl
 import (
 	"fmt"
 	"ticpin-backend/services/payment"
+	passservice "ticpin-backend/services/pass"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -31,7 +32,27 @@ func CreateOrderHandler(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "customer_phone is required"})
 	}
 
-	orderID := fmt.Sprintf("TICPIN_%d", time.Now().UnixMilli())
+	if req.Type == "pass" && req.CustomerID != "" {
+		// PREVENT DUPLICATE PASS: Check if user already has an active pass
+		existingPass, err := passservice.GetActiveByUserID(req.CustomerID)
+		if err == nil && existingPass != nil {
+			return c.Status(400).JSON(fiber.Map{
+				"error": "You already have an active Ticpin Pass. You can only have one active pass at a time.",
+				"code":  "ACTIVE_PASS_EXISTS",
+			})
+		}
+	}
+
+	bookingType := req.Type
+	if bookingType == "" {
+		bookingType = "booking"
+	}
+	orderID := fmt.Sprintf("%s_%d", bookingType, time.Now().UnixMilli())
+	if bookingType == "pass" && req.CustomerID != "" {
+		// Razorpay receipt limit is 40 chars. 
+		// pass_ (5) + UserID (up to 30) + _ (1) + ShortTS (4) = 40
+		orderID = fmt.Sprintf("pass_%s_%d", req.CustomerID, time.Now().Unix()%10000)
+	}
 
 	notes := req.Notes
 	if notes == nil {

@@ -5,6 +5,8 @@ import Image from 'next/image';
 import { ChevronDown, ChevronUp, Info, PlusCircle, ExternalLink, Bold, Italic, Underline, Search, Upload } from 'lucide-react';
 import { CATEGORIES, CITIES, CATEGORY_DATA, FACILITIES } from './data';
 import { useRouter } from 'next/navigation';
+import { toast } from '@/components/ui/Toast';
+
 import { getOrganizerSession } from '@/lib/auth/organizer';
 import { uploadMedia } from '@/lib/api/admin';
 import { diningApi } from '@/lib/api/dining';
@@ -143,7 +145,7 @@ const CreateDiningPage = () => {
             img.onload = () => {
                 URL.revokeObjectURL(img.src);
                 if (img.width > expectedWidth || img.height > expectedHeight) {
-                    alert(`Invalid dimensions! Maximum allowed is ${expectedWidth}x${expectedHeight}px, but yours is ${img.width}x${img.height}px.`);
+                    toast.warning(`Invalid dimensions! Maximum allowed is ${expectedWidth}x${expectedHeight}px, but yours is ${img.width}x${img.height}px.`);
                     resolve(false);
                 } else {
                     resolve(true);
@@ -159,7 +161,7 @@ const CreateDiningPage = () => {
     const handleUpload = async (key: string, file: File, multi = false) => {
         const maxSizeMB = key === 'video' ? 5 : 1.5;
         if (file.size > maxSizeMB * 1024 * 1024) {
-            alert(`File size exceeds the allowable limit. Maximum allowed size is ${maxSizeMB}MB.`);
+            toast.warning(`File size exceeds the allowable limit. Maximum allowed size is ${maxSizeMB}MB.`);
             return;
         }
 
@@ -183,7 +185,7 @@ const CreateDiningPage = () => {
                 if (key === 'landscape') setLandscapeUrl(url);
                 if (key === 'video') setVideoUrl(url);
             }
-        } catch { alert('Upload failed. Try again.'); }
+        } catch { toast.error('Upload failed. Try again.'); }
         finally { setUploading(u => ({ ...u, [key]: false })); }
     };
 

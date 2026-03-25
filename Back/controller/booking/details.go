@@ -13,9 +13,7 @@ import (
 
 func GetBookingDetails(c *fiber.Ctx) error {
 	bookingID := c.Params("id")
-	userID := c.Query("user_id")
-
-	fmt.Printf("DEBUG: GetBookingDetails called - ID: %s, UserID: %s\n", bookingID, userID)
+	fmt.Printf("DEBUG: GetBookingDetails called - ID: %s\n", bookingID)
 
 	if bookingID == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "booking ID is required"})
@@ -61,20 +59,22 @@ func GetBookingDetails(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "booking not found"})
 	}
 
-	if userID != "" {
-		var hasAccess bool
-		switch b := booking.(type) {
-		case *models.Booking:
-			hasAccess = b.UserID == userID || b.UserEmail == c.Query("email")
-		case *models.PlayBooking:
-			hasAccess = b.UserID == userID || b.UserEmail == c.Query("email")
-		case *models.DiningBooking:
-			hasAccess = b.UserID == userID || b.UserEmail == c.Query("email")
-		}
+	authUserID, _ := c.Locals("userId").(string)
+	authPhone, _ := c.Locals("phone").(string)
 
-		if !hasAccess {
-			return c.Status(403).JSON(fiber.Map{"error": "access denied"})
-		}
+	isOwner := false
+	switch b := booking.(type) {
+	case *models.Booking:
+		isOwner = (b.UserID != "" && b.UserID == authUserID) || (b.UserPhone != "" && b.UserPhone == authPhone)
+	case *models.PlayBooking:
+		isOwner = (b.UserID != "" && b.UserID == authUserID) || (b.UserPhone != "" && b.UserPhone == authPhone)
+	case *models.DiningBooking:
+		isOwner = (b.UserID != "" && b.UserID == authUserID) || (b.UserPhone != "" && b.UserPhone == authPhone)
+	}
+
+	if !isOwner {
+		fmt.Printf("SECURITY ALERT: Unauthorized access attempt to booking %s by user %s/%s\n", bookingID, authUserID, authPhone)
+		return c.Status(403).JSON(fiber.Map{"error": "access denied: you do not own this booking"})
 	}
 
 	response := fiber.Map{

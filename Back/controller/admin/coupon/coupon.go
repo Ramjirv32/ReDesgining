@@ -124,7 +124,7 @@ func ListUsers(c *fiber.Ctx) error {
 func ValidateCoupon(c *fiber.Ctx) error {
 	var req struct {
 		Code        string  `json:"code"`
-		EventID     string  `json:"event_id"`
+		Category    string  `json:"category"`
 		OrderAmount float64 `json:"order_amount"`
 		UserID      string  `json:"user_id"`
 		UserEmail   string  `json:"user_email"`
@@ -132,7 +132,7 @@ func ValidateCoupon(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
 	}
-	result, err := couponsvc.Validate(req.Code, req.EventID, req.OrderAmount, req.UserID, req.UserEmail)
+	result, err := couponsvc.Validate(req.Code, req.Category, req.OrderAmount, req.UserID, req.UserEmail)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}

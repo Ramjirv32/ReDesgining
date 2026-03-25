@@ -9,6 +9,7 @@ import { getOrganizerSession } from '@/lib/auth/organizer';
 import { uploadMedia } from '@/lib/api/admin';
 import { diningApi } from '@/lib/api/dining';
 import { organizerApi } from '@/lib/api/organizer';
+import { toast } from '@/components/ui/Toast';
 
 export default function EditDiningPage() {
     const router = useRouter();
@@ -217,7 +218,7 @@ export default function EditDiningPage() {
             else if (key === 'portrait') setPortraitUrl(url);
             else if (key === 'landscape') setLandscapeUrl(url);
             else if (key === 'video') setVideoUrl(url);
-        } catch { alert('Upload failed. Try again.'); }
+        } catch { toast.error('Upload failed. Try again.'); }
         finally { setUploading(u => ({ ...u, [key]: false })); }
     };
 

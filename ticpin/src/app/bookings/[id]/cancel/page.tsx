@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { toast } from '@/components/ui/Toast';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { ChevronLeft, AlertTriangle, Clock, Shield, CreditCard, CheckCircle, XCircle } from 'lucide-react';
 
@@ -49,7 +50,7 @@ export default function CancelBookingPage() {
       setCancelled(true);
     } catch (error: any) {
       console.error('Cancellation error:', error);
-      alert(error?.message || 'Failed to cancel booking. Please try again.');
+      toast.error(error?.message || 'Failed to cancel booking. Please try again.');
     } finally {
       setLoading(false);
     }

@@ -162,13 +162,13 @@ type ValidateResult struct {
 	DiscountAmount float64
 }
 
-func Validate(code string, eventID string, orderAmount float64, userID string, userEmail string) (*ValidateResult, error) {
+func Validate(code string, category string, orderAmount float64, userID string, userEmail string) (*ValidateResult, error) {
 	code = strings.ToUpper(strings.TrimSpace(code))
 	if code == "" {
 		return nil, errors.New("coupon code is required")
 	}
 
-	fmt.Printf("DEBUG: Validate coupon - Code: %s, EventID: %s, Amount: %.2f, UserID: %s\n", code, eventID, orderAmount, userID)
+	fmt.Printf("DEBUG: Validate coupon - Code: %s, Category: %s, Amount: %.2f, UserID: %s\n", code, category, orderAmount, userID)
 
 	col := config.CouponsCol
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -180,6 +180,10 @@ func Validate(code string, eventID string, orderAmount float64, userID string, u
 	}
 
 	fmt.Printf("DEBUG: Found coupon - Category: %s, IsActive: %t, IsPublic: %t, ValidFrom: %v, ValidUntil: %v\n", c.Category, c.IsActive, c.IsPublic, c.ValidFrom, c.ValidUntil)
+	
+	if category != "" && c.Category != category {
+		return nil, fmt.Errorf("this coupon is only valid for %s bookings", c.Category)
+	}
 
 	if !c.IsActive {
 		return nil, errors.New("coupon is not active")

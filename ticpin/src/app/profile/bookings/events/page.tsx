@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ChevronLeft, Ticket, Calendar, MapPin, Search, Filter, Music, Users } from 'lucide-react';
 import { useUserSession } from '@/lib/auth/user';
 import { bookingApi } from '@/lib/api/booking';
+import { getBookingStatus, getBookingStatusStyles } from '@/lib/utils/booking-status';
 
 export default function EventBookingsPage() {
   const router = useRouter();
@@ -83,6 +84,12 @@ export default function EventBookingsPage() {
                           <p className="text-[13px] text-zinc-400 font-medium">Ticket ID: {booking.id.slice(0, 8).toUpperCase()}</p>
                        </div>
                     </div>
+                    {/* Status Badge */}
+                    <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest ${
+                      getBookingStatusStyles(getBookingStatus(booking))
+                    }`}>
+                      {getBookingStatus(booking)}
+                    </span>
                  </div>
                  
                  <div className="grid grid-cols-2 gap-4 py-4 border-t border-zinc-50 relative z-10">
@@ -91,8 +98,8 @@ export default function EventBookingsPage() {
                        <span className="text-[13px] font-bold text-zinc-600 line-clamp-1 truncate">{new Date(booking.date || Date.now()).toLocaleDateString()}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                       <Ticket size={16} className="text-zinc-400" />
-                       <span className="text-[13px] font-bold text-zinc-600 uppercase tracking-wide truncate">{booking.status}</span>
+                       <Users size={16} className="text-zinc-400" />
+                       <span className="text-[13px] font-bold text-zinc-600 uppercase tracking-wide truncate">General Entry</span>
                     </div>
                  </div>
                  

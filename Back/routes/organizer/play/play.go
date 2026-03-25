@@ -22,5 +22,5 @@ func PlayRoutes(app *fiber.App) {
 	play.Get("/list", middleware.RequireAuth, ctrl.GetOrganizerPlays)
 	play.Put("/:id", middleware.RequireAuth, ctrl.UpdateOrganizerPlay)
 	play.Delete("/:id", middleware.RequireAuth, ctrl.DeleteOrganizerPlay)
-	play.Get("/organizer/:id", middleware.RequireAuth, ctrl.GetOrganizer)
+	play.Get("/organizer/:id", middleware.RequireAuth, middleware.RequireSelfOrAdmin, ctrl.GetOrganizer)
 }

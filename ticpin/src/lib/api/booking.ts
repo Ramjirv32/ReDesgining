@@ -24,7 +24,10 @@ export interface CreateBookingPayload {
     offer_id?: string;
     user_id?: string;
     payment_id?: string;
+    order_id?: string;
     payment_gateway?: string;
+    status?: string;
+    use_ticpass?: boolean; // New field for Ticpass discount
 }
 
 export interface CreateDiningPayload {
@@ -47,7 +50,10 @@ export interface CreateDiningPayload {
     offer_id?: string;
     user_id?: string;
     payment_id?: string;
+    order_id?: string;
     payment_gateway?: string;
+    status?: string;
+    use_ticpass?: boolean; // New field for Ticpass discount
 }
 
 export interface CreatePlayPayload {
@@ -71,7 +77,10 @@ export interface CreatePlayPayload {
     offer_id?: string;
     user_id?: string;
     payment_id?: string;
+    order_id?: string;
     payment_gateway?: string;
+    status?: string;
+    use_ticpass?: boolean;
 }
 
 export interface PaymentOrderRequest {
@@ -151,7 +160,7 @@ export const bookingApi = {
     /** Validate a coupon code */
     validateCoupon: async (
         code: string,
-        eventId: string,
+        category: string,
         orderAmount: number,
         userId?: string
     ): Promise<CouponValidateResult> => {
@@ -159,9 +168,13 @@ export const bookingApi = {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ code, event_id: eventId, order_amount: orderAmount, user_id: userId }),
-        });
-        const data = await res.json();
+            body: JSON.stringify({
+                code,
+                category,
+                order_amount: orderAmount,
+                user_id: userId,
+            }),
+        });const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? 'Invalid coupon');
         return data as CouponValidateResult;
     },

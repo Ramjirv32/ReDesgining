@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"ticpin-backend/config"
 	"ticpin-backend/models"
-	profilesvc "ticpin-backend/services/profile"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -30,9 +30,14 @@ func GetActiveByUserID(userID string) (*models.TicpinPass, error) {
 	defer cancel()
 
 	var p models.TicpinPass
+	now := time.Now()
 	objID, err := primitive.ObjectIDFromHex(userID)
 	if err == nil {
-		if err := col.FindOne(ctx, bson.M{"user_id": objID, "status": "active"}).Decode(&p); err == nil {
+		if err := col.FindOne(ctx, bson.M{
+			"user_id":  objID,
+			"status":   "active",
+			"end_date": bson.M{"$gt": now},
+		}).Decode(&p); err == nil {
 			return &p, nil
 		}
 	}
@@ -46,12 +51,47 @@ func GetActiveByUserID(userID string) (*models.TicpinPass, error) {
 
 	for _, ph := range phonesToTry {
 		fmt.Printf("DEBUG: GetActiveByUserID fallback - trying phone: %s\n", ph)
-		if err := col.FindOne(ctx, bson.M{"phone": ph, "status": "active"}).Decode(&p); err == nil {
+		if err := col.FindOne(ctx, bson.M{
+			"phone":    ph,
+			"status":   "active",
+			"end_date": bson.M{"$gt": now},
+		}).Decode(&p); err == nil {
 			return &p, nil
 		}
 	}
 
 	return nil, errors.New("active pass not found")
+}
+
+func GetLatestByUserID(userID string) (*models.TicpinPass, error) {
+	col := config.GetDB().Collection("ticpin_passes")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var p models.TicpinPass
+	objID, err := primitive.ObjectIDFromHex(userID)
+	if err == nil {
+		opts := options.FindOne().SetSort(bson.M{"end_date": -1})
+		if err := col.FindOne(ctx, bson.M{"user_id": objID}, opts).Decode(&p); err == nil {
+			return &p, nil
+		}
+	}
+
+	phonesToTry := []string{userID}
+	if len(userID) == 10 {
+		phonesToTry = append(phonesToTry, "+91"+userID)
+	} else if len(userID) == 13 && userID[:3] == "+91" {
+		phonesToTry = append(phonesToTry, userID[3:])
+	}
+
+	for _, ph := range phonesToTry {
+		opts := options.FindOne().SetSort(bson.M{"end_date": -1})
+		if err := col.FindOne(ctx, bson.M{"phone": ph}, opts).Decode(&p); err == nil {
+			return &p, nil
+		}
+	}
+
+	return nil, errors.New("no pass found for user")
 }
 
 func Apply(userID, paymentID string, details models.TicpinPass) (*models.TicpinPass, error) {
@@ -65,44 +105,25 @@ func Apply(userID, paymentID string, details models.TicpinPass) (*models.TicpinP
 	defer cancel()
 
 	var existing models.TicpinPass
-	if existsErr := col.FindOne(ctx, bson.M{"user_id": objID, "status": "active"}).Decode(&existing); existsErr == nil {
-		return nil, errors.New("active pass already exists")
-	}
-
-	userProfile, _ := profilesvc.GetByUserID(userID)
-	if userProfile != nil {
-		if details.Name == "" {
-			details.Name = userProfile.Name
-		}
-		if details.Phone == "" {
-			details.Phone = userProfile.Phone
-		}
-		if details.Address == "" {
-			details.Address = userProfile.Address
-		}
-		if details.Country == "" {
-			details.Country = userProfile.Country
-		}
-		if details.State == "" {
-			details.State = userProfile.State
-		}
-		if details.District == "" {
-			details.District = userProfile.District
-		}
-	}
-
 	now := time.Now()
+	if existsErr := col.FindOne(ctx, bson.M{
+		"user_id":  objID,
+		"status":   "active",
+		"end_date": bson.M{"$gt": now},
+	}).Decode(&existing); existsErr == nil {
+		return nil, errors.New("unexpired active pass already exists")
+	}
+
+	price := details.Price
+	if price <= 0 {
+		price = PassPrice
+	}
+
 	p := &models.TicpinPass{
 		ID:        primitive.NewObjectID(),
 		UserID:    objID,
-		Name:      details.Name,
-		Phone:     details.Phone,
-		Address:   details.Address,
-		Country:   details.Country,
-		State:     details.State,
-		District:  details.District,
 		PaymentID: paymentID,
-		Price:     PassPrice,
+		Price:     price,
 		Status:    "active",
 		StartDate: now,
 		EndDate:   now.AddDate(0, PassDurationMonths, 0),

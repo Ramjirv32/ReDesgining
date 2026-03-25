@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { adminApi, OrganizerListItem, OrganizerDetail, ListingStatus } from '@/lib/api/admin';
+import { toast } from '@/components/ui/Toast';
 import {
     CheckCircle, XCircle, Clock, ChevronRight, X, User,
     ExternalLink, RefreshCw, Trash2, Calendar, Mail, Phone,
@@ -55,7 +56,7 @@ function OrganizerDetailView({ organizerId, onClose, onStatusChange }: {
             setRejectionReason('');
             onStatusChange();
         } catch (err) {
-            alert(err instanceof Error ? err.message : 'Failed to update status');
+            toast.error(err instanceof Error ? err.message : 'Failed to update status');
         } finally {
             setUpdating(null);
         }
@@ -86,7 +87,7 @@ function OrganizerDetailView({ organizerId, onClose, onStatusChange }: {
             setSavedOk(true);
             setTimeout(() => setSavedOk(false), 2500);
         } catch (e) {
-            alert(e instanceof Error ? e.message : 'Save failed');
+            toast.error(e instanceof Error ? e.message : 'Save failed');
         } finally {
             setIsSaving(false);
         }
@@ -459,7 +460,9 @@ function OrganizerModerationContent() {
         try {
             await adminApi.deleteOrganizer(id);
             fetchOrganizers();
-        } catch { alert('Delete failed'); }
+        } catch { 
+            toast.error('Delete failed'); 
+        }
     };
 
     if (!authChecked) return null;

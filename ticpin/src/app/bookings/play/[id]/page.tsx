@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { toast } from '@/components/ui/Toast';
 import { 
   ChevronLeft, 
   Download, 
@@ -23,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useUserSession } from '@/lib/auth/user';
 import { bookingApi } from '@/lib/api/booking';
+import { getBookingStatus, getBookingStatusStyles } from '@/lib/utils/booking-status';
 
 export default function PlayBookingDetailPage() {
   const router = useRouter();
@@ -61,7 +63,7 @@ export default function PlayBookingDetailPage() {
       const updatedBooking = await bookingApi.getBookingDetails(bookingId, session?.id);
       setBooking(updatedBooking);
     } catch (err) {
-      alert('Failed to cancel booking. Please try again.');
+      toast.error('Failed to cancel booking. Please try again.');
     }
   };
 
@@ -110,7 +112,7 @@ export default function PlayBookingDetailPage() {
         </div>
         
         <div style="text-align: center; font-size: 12px; opacity: 0.7;">
-          <div>Status: ${booking?.status === 'cancelled' ? 'CANCELLED' : 'CONFIRMED'}</div>
+          <div>Status: ${getBookingStatus(booking) === 'CANCELLED' ? 'CANCELLED' : getBookingStatus(booking) === 'EXPIRED' ? 'EXPIRED' : 'CONFIRMED'}</div>
           <div>Generated on ${new Date().toLocaleDateString()}</div>
         </div>
       </div>
@@ -259,14 +261,17 @@ export default function PlayBookingDetailPage() {
             {/* Status */}
             <div className="text-center">
               <div className={`inline-flex items-center gap-2 px-6 py-3 rounded-full text-lg font-bold ${
-                booking.status === 'cancelled' 
-                  ? 'bg-red-100 text-red-700' 
-                  : 'bg-green-100 text-green-700'
+                getBookingStatusStyles(getBookingStatus(booking))
               }`}>
-                {booking.status === 'cancelled' ? (
+                {getBookingStatus(booking) === 'CANCELLED' ? (
                   <>
                     <XCircle size={20} />
                     Cancelled
+                  </>
+                ) : getBookingStatus(booking) === 'EXPIRED' ? (
+                  <>
+                    <Clock size={20} />
+                    Expired
                   </>
                 ) : (
                   <>
@@ -279,7 +284,7 @@ export default function PlayBookingDetailPage() {
 
             {/* Actions */}
             <div className="flex gap-4">
-              {booking.status !== 'cancelled' && (
+              {getBookingStatus(booking) !== 'CANCELLED' && getBookingStatus(booking) !== 'EXPIRED' && (
                 <button
                   onClick={handleCancel}
                   className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors"

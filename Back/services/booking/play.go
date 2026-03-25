@@ -405,7 +405,9 @@ func CreatePlay(b *models.PlayBooking) error {
 
 	b.ID = primitive.NewObjectID()
 	b.BookingID = utils.HashObjectID(b.ID)
-	b.Status = "booked"
+	if b.Status == "" {
+		b.Status = "booked"
+	}
 	b.BookedAt = time.Now()
 
 	var lockDocs []interface{}

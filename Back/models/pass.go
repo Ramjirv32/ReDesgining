@@ -36,12 +36,6 @@ type RenewalRecord struct {
 type TicpinPass struct {
 	ID        primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	UserID    primitive.ObjectID `bson:"user_id" json:"user_id"`
-	Name      string             `bson:"name" json:"name"`
-	Phone     string             `bson:"phone" json:"phone"`
-	Address   string             `bson:"address" json:"address"`
-	Country   string             `bson:"country" json:"country"`
-	State     string             `bson:"state" json:"state"`
-	District  string             `bson:"district" json:"district"`
 	PaymentID string             `bson:"payment_id" json:"payment_id"`
 	Price     float64            `bson:"price" json:"price"`
 	Status    string             `bson:"status" json:"status"`

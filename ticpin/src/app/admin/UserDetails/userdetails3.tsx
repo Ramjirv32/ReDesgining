@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { getBookingStatus, getBookingStatusStyles } from '@/lib/utils/booking-status';
 
 interface User { 
     id: string; 
@@ -150,7 +151,11 @@ export default function UserDetails3() {
                                         <div className="flex text-[13px] font-medium text-black">
                                             <div className="w-[220px] truncate">{b.entityName}</div>
                                             <div className="w-[100px]">{b.amount ? `₹${b.amount}` : '—'}</div>
-                                            <div className="w-[100px] capitalize">{b.status}</div>
+                                            <div className="w-[100px]">
+                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${getBookingStatusStyles(getBookingStatus({ ...b, date: b.bookingDate }))}`}>
+                                                    {getBookingStatus({ ...b, date: b.bookingDate })}
+                                                </span>
+                                            </div>
                                             <div className="w-[160px]">{new Date(b.bookingDate).toLocaleDateString()}</div>
                                         </div>
                                         <div className="w-full h-[0.5px] bg-[rgba(104,104,104,0.3)] mt-[10px]"></div>

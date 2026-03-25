@@ -9,6 +9,7 @@ import { getOrganizerSession } from '@/lib/auth/organizer';
 import { uploadMedia } from '@/lib/api/admin';
 import { playApi } from '@/lib/api/play';
 import { organizerApi } from '@/lib/api/organizer';
+import { toast } from '@/components/ui/Toast';
 
 export default function EditPlayPage() {
     const router = useRouter();
@@ -248,7 +249,7 @@ export default function EditPlayPage() {
             else if (key === 'secondary_banner') setSecondaryBannerUrl(url);
             else if (key === 'video') setVideoUrl(url);
             else if (key === 'court_image') setNewCourt(prev => ({ ...prev, image_url: url }));
-        } catch { alert('Upload failed. Try again.'); }
+        } catch { toast.error('Upload failed. Try again.'); }
         finally { setUploading(u => ({ ...u, [key]: false })); }
     };
 
@@ -597,7 +598,7 @@ export default function EditPlayPage() {
                                             setCourts([...courts, newCourt]);
                                             setNewCourt({ name: '', type: '', price: '', image_url: '' });
                                         } else if (!newCourt.image_url) {
-                                            alert('Please upload an image for the court.');
+                                            toast.warning('Please upload an image for the court.');
                                         }
                                     }}
                                     className="bg-black text-white rounded-[15px] h-[54px] px-8 flex items-center gap-2"

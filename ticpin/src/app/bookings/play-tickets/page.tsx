@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { toast } from '@/components/ui/Toast';
 import { useRouter } from 'next/navigation';
 import { 
   ChevronLeft, 
@@ -23,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useUserSession } from '@/lib/auth/user';
 import { bookingApi } from '@/lib/api/booking';
+import { getBookingStatus, getBookingStatusStyles } from '@/lib/utils/booking-status';
 
 export default function PlayTicketsPage() {
   const router = useRouter();
@@ -63,7 +65,7 @@ export default function PlayTicketsPage() {
         setBookings(playBookings);
       }
     } catch (err) {
-      alert('Failed to cancel booking. Please try again.');
+      toast.error('Failed to cancel booking. Please try again.');
     }
   };
 
@@ -161,14 +163,17 @@ export default function PlayTicketsPage() {
                     <div className="text-right">
                       <div className="text-3xl font-bold">₹{booking.grand_total || booking.order_amount}</div>
                       <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold mt-2 ${
-                        booking.status === 'cancelled' 
-                          ? 'bg-red-500 text-white' 
-                          : 'bg-green-500 text-white'
+                        getBookingStatusStyles(getBookingStatus(booking))
                       }`}>
-                        {booking.status === 'cancelled' ? (
+                        {getBookingStatus(booking) === 'CANCELLED' ? (
                           <>
                             <XCircle size={12} />
                             Cancelled
+                          </>
+                        ) : getBookingStatus(booking) === 'EXPIRED' ? (
+                          <>
+                            <Clock size={12} />
+                            Expired
                           </>
                         ) : (
                           <>
@@ -253,7 +258,7 @@ export default function PlayTicketsPage() {
 
                   {/* Actions */}
                   <div className="flex gap-3 pt-4 border-t">
-                    {booking.status !== 'cancelled' && (
+                    {getBookingStatus(booking) !== 'CANCELLED' && getBookingStatus(booking) !== 'EXPIRED' && (
                       <button
                         onClick={() => handleCancel(booking.booking_id)}
                         className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors"

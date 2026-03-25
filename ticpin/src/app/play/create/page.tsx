@@ -5,6 +5,8 @@ import Image from 'next/image';
 import { ChevronDown, ChevronUp, Info, PlusCircle, ExternalLink, Bold, Italic, Underline, Search, Upload, Trash2 } from 'lucide-react';
 import { CATEGORIES, CITIES, CATEGORY_DATA } from './data';
 import { useRouter } from 'next/navigation';
+import { toast } from '@/components/ui/Toast';
+
 import { getOrganizerSession } from '@/lib/auth/organizer';
 import { uploadMedia } from '@/lib/api/admin';
 import { playApi } from '@/lib/api/play';
@@ -201,7 +203,7 @@ const CreatePlayPage = () => {
             img.onload = () => {
                 URL.revokeObjectURL(img.src);
                 if (img.width > expectedWidth || img.height > expectedHeight) {
-                    alert(`Invalid dimensions! Maximum allowed is ${expectedWidth}x${expectedHeight}px, but yours is ${img.width}x${img.height}px.`);
+                    toast.warning(`Invalid dimensions! Maximum allowed is ${expectedWidth}x${expectedHeight}px, but yours is ${img.width}x${img.height}px.`);
                     resolve(false);
                 } else {
                     resolve(true);
@@ -217,7 +219,7 @@ const CreatePlayPage = () => {
     const handleUpload = async (key: string, file: File, multi = false) => {
         const maxSizeMB = key === 'video' ? 5 : 1.5;
         if (file.size > maxSizeMB * 1024 * 1024) {
-            alert(`File size exceeds the allowable limit. Maximum allowed size is ${maxSizeMB}MB.`);
+            toast.warning(`File size exceeds the allowable limit. Maximum allowed size is ${maxSizeMB}MB.`);
             return;
         }
 
@@ -242,7 +244,7 @@ const CreatePlayPage = () => {
                 if (key === 'video') setVideoUrl(url);
                 if (key === 'court_image') setNewCourt(prev => ({ ...prev, image_url: url }));
             }
-        } catch { alert('Upload failed. Try again.'); }
+        } catch { toast.error('Upload failed. Try again.'); }
         finally { setUploading(u => ({ ...u, [key]: false })); }
     };
 
@@ -408,6 +410,7 @@ const CreatePlayPage = () => {
                         <button
                             type="button"
                             onClick={() => {
+                                // Keep raw confirm for now as per low priority, but alert is the main focus
                                 if (window.confirm('Clear all entered data and start fresh?')) clearAllDraft();
                             }}
                             className="flex items-center gap-2 border border-red-300 text-red-500 hover:bg-red-50 rounded-[10px] px-5 h-[42px] text-[18px] font-medium transition-colors shrink-0"
@@ -915,7 +918,7 @@ const CreatePlayPage = () => {
                                             setCourts([...courts, newCourt]);
                                             setNewCourt({ name: '', type: '', price: '', image_url: '' });
                                         } else if (!newCourt.image_url) {
-                                            alert('Please upload an image for the court.');
+                                            toast.warning('Please upload an image for the court.');
                                         }
                                     }}
                                     className="bg-black text-white rounded-[15px] h-[54px] px-8 flex items-center gap-2"

@@ -8,6 +8,10 @@ import { useUserSession } from '@/lib/auth/user';
 import { getOrganizerSession, clearOrganizerSession } from '@/lib/auth/organizer';
 import AuthModal from '@/components/modals/AuthModal';
 import OrganizerLogoutModal from '@/components/modals/OrganizerLogoutModal';
+import { toast } from '@/components/ui/Toast';
+import { passApi, TicpinPass } from '@/lib/api/pass';
+import { Zap } from 'lucide-react';
+
 
 interface RealDining {
     id: string;
@@ -66,6 +70,8 @@ const DiningBooking: React.FC = () => {
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const session = useUserSession();
     const organizerSession = getOrganizerSession();
+    const [pass, setPass] = useState<TicpinPass | null>(null);
+    const [usePass, setUsePass] = useState(false);
 
     useEffect(() => {
         if (!name || typeof name !== 'string') return;
@@ -123,7 +129,7 @@ const DiningBooking: React.FC = () => {
         }
 
         if (!venue || !selectedSlot) {
-            alert('Please select a time slot');
+            toast.warning('Please select a time slot');
             return;
         }
 
@@ -144,7 +150,9 @@ const DiningBooking: React.FC = () => {
                     quantity: 1
                 }
             ],
-            totalPrice: (venue.price_starts_from || 0) * guests
+            totalPrice: (venue.price_starts_from || 0) * guests,
+            use_pass: usePass,
+            pass_id: pass?.id
         };
 
         sessionStorage.setItem('dining_cart', JSON.stringify(cartItem));
@@ -398,6 +406,32 @@ const DiningBooking: React.FC = () => {
                         </div>
                     </div>
                 </div>
+
+                {/* Ticpass Apply */}
+                {pass && pass.benefits.dining_vouchers.remaining > 0 && (
+                    <div className="absolute w-[1181px] bg-[#FFF8E6] border border-[#FFD980] rounded-[20px] p-6 flex items-center justify-between"
+                         style={{ left: `${130 - offsetX}px`, top: `${1350 - offsetY}px` }}>
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-[#F59E0B] rounded-xl flex items-center justify-center text-white">
+                                <Zap size={24} fill="currentColor" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-[#92400E]">Ticpin Pass Member</h3>
+                                <p className="text-sm text-[#B45309]">Apply your ₹{pass.benefits.dining_vouchers.value_each || 250} dining voucher</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setUsePass(!usePass)}
+                            className={`px-8 h-12 rounded-xl font-bold transition-all ${
+                                usePass 
+                                ? 'bg-[#D97706] text-white' 
+                                : 'bg-white text-[#D97706] border border-[#FCD34D] hover:bg-[#FEF3C7]'
+                            }`}
+                        >
+                            {usePass ? 'Voucher Applied' : 'Apply Voucher'}
+                        </button>
+                    </div>
+                )}
 
                 <button
                     className="absolute w-[1181px] h-[60px] bg-black rounded-[15px] flex items-center justify-center hover:opacity-90 active:scale-[0.99] transition-all"
