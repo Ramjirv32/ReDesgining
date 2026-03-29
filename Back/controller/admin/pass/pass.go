@@ -20,7 +20,7 @@ func ListUsersForPass(c *fiber.Ctx) error {
 	defer cancel()
 
 	// 1. Get all users
-	cursor, err := config.GetDB().Collection("users").Find(ctx, bson.M{})
+	cursor, err := config.UsersCol.Find(ctx, bson.M{})
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -33,7 +33,7 @@ func ListUsersForPass(c *fiber.Ctx) error {
 
 	// 2. Identify users with active unexpired passes
 	now := time.Now()
-	passCursor, err := config.GetDB().Collection("ticpin_passes").Find(ctx, bson.M{
+	passCursor, err := config.PassesCol.Find(ctx, bson.M{
 		"status":   "active",
 		"end_date": bson.M{"$gt": now},
 	})
@@ -111,7 +111,7 @@ func CreateAdminPass(c *fiber.Ctx) error {
 	}
 
 	// Create record
-	_, err := config.GetDB().Collection("ticpin_passes").InsertOne(context.Background(), pass)
+	_, err := config.PassesCol.InsertOne(context.Background(), pass)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -138,7 +138,7 @@ func ListAllPasses(c *fiber.Ctx) error {
 	defer cancel()
 
 	opts := options.Find().SetSort(bson.M{"createdAt": -1})
-	cursor, err := config.GetDB().Collection("ticpin_passes").Find(ctx, filter, opts)
+	cursor, err := config.PassesCol.Find(ctx, filter, opts)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -159,7 +159,7 @@ func ListAllPasses(c *fiber.Ctx) error {
 	enriched := []EnrichedPass{}
 	for _, p := range passes {
 		var u models.User
-		config.GetDB().Collection("users").FindOne(ctx, bson.M{"_id": p.UserID}).Decode(&u)
+		config.UsersCol.FindOne(ctx, bson.M{"_id": p.UserID}).Decode(&u)
 		enriched = append(enriched, EnrichedPass{
 			TicpinPass: p,
 			UserName:   u.Name,
@@ -208,7 +208,7 @@ func UpdateAdminPass(c *fiber.Ctx) error {
 		update["benefits.dining_vouchers.remaining"] = req.DiningLeft
 	}
 
-	result, err := config.GetDB().Collection("ticpin_passes").UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": update})
+	result, err := config.PassesCol.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": update})
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -241,7 +241,7 @@ func RenewAdminPass(c *fiber.Ctx) error {
 	defer cancel()
 
 	var p models.TicpinPass
-	if err := config.GetDB().Collection("ticpin_passes").FindOne(ctx, bson.M{"_id": id}).Decode(&p); err != nil {
+	if err := config.PassesCol.FindOne(ctx, bson.M{"_id": id}).Decode(&p); err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "pass not found"})
 	}
 
@@ -275,7 +275,7 @@ func RenewAdminPass(c *fiber.Ctx) error {
 		},
 	}
 
-	_, err = config.GetDB().Collection("ticpin_passes").UpdateOne(ctx, bson.M{"_id": id}, update)
+	_, err = config.PassesCol.UpdateOne(ctx, bson.M{"_id": id}, update)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -293,7 +293,7 @@ func DeleteAdminPass(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	result, err := config.GetDB().Collection("ticpin_passes").DeleteOne(ctx, bson.M{"_id": id})
+	result, err := config.PassesCol.DeleteOne(ctx, bson.M{"_id": id})
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -321,7 +321,7 @@ func GetUserBySearch(c *fiber.Ctx) error {
 		},
 	}
 
-	cursor, err := config.GetDB().Collection("users").Find(ctx, filter)
+	cursor, err := config.UsersCol.Find(ctx, filter)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}

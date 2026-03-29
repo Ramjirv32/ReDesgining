@@ -3,7 +3,14 @@
  */
 
 export const getBookingStatus = (booking: any) => {
+  const status = (booking?.status || 'PENDING').toUpperCase();
+  if (status === 'CANCELLED') return 'CANCELLED';
+
+  if (!booking?.date) return status;
+
   const bookingDate = new Date(booking.date);
+  if (isNaN(bookingDate.getTime())) return status;
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   bookingDate.setHours(0, 0, 0, 0);
@@ -12,8 +19,7 @@ export const getBookingStatus = (booking: any) => {
     return 'EXPIRED';
   }
   
-  const status = booking.status || 'PENDING';
-  return status.toUpperCase();
+  return status;
 };
 
 export const getBookingStatusStyles = (status: string) => {

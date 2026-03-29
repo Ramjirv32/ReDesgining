@@ -172,6 +172,11 @@ func CreateIndexes() {
 	})
 
 	SlotLocksCol.Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys:    bson.D{{Key: "created_at", Value: 1}},
+		Options: options.Index().SetExpireAfterSeconds(900),
+	})
+
+	SlotLocksCol.Indexes().CreateOne(ctx, mongo.IndexModel{
 		Keys:    bson.D{{Key: "booking_id", Value: 1}},
 		Options: options.Index().SetUnique(true),
 	})

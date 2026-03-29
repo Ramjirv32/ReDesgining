@@ -253,6 +253,28 @@ func RazorpayWebhook(c *fiber.Ctx) error {
 					{"order_id": orderID},
 				},
 			}
+
+			// NEW: Before updating status, check if we need to refund Ticpass benefits
+			var bookingDoc bson.M
+			if err := col.FindOne(ctx, filter).Decode(&bookingDoc); err == nil {
+				ticpassApplied, _ := bookingDoc["ticpass_applied"].(bool)
+				userID, _ := bookingDoc["user_id"].(string)
+
+				if ticpassApplied && userID != "" {
+					fmt.Printf("DEBUG: Found Ticpass booking to refund. User: %s, Collection: %s\n", userID, col.Name())
+					pass, err := passservice.GetActiveByUserID(userID)
+					if err == nil && pass != nil {
+						if col.Name() == "play_bookings" {
+							_, _ = passservice.RefundTurfBooking(pass.ID.Hex())
+							fmt.Printf("DEBUG: Refunded Ticpass turf benefit for User: %s\n", userID)
+						} else if col.Name() == "dining_bookings" {
+							_, _ = passservice.RefundDiningVoucher(pass.ID.Hex())
+							fmt.Printf("DEBUG: Refunded Ticpass dining benefit for User: %s\n", userID)
+						}
+					}
+				}
+			}
+
 			result, err := col.UpdateMany(ctx, filter, bson.M{
 				"$set": bson.M{
 					"status":      "refunded",

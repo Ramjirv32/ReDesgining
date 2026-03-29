@@ -82,7 +82,7 @@ func Create(b *models.Booking) error {
 			pipeline := []bson.M{
 				{"$match": bson.M{
 					"event_id": b.EventID,
-					"status":   "booked",
+					"status":   bson.M{"$in": []string{"booked", "confirmed"}},
 				}},
 				{"$unwind": "$tickets"},
 				{"$match": bson.M{"tickets.category": t.Category}},
@@ -124,7 +124,7 @@ func GetAvailability(eventID string) (map[string]int, error) {
 	defer cancel()
 
 	pipeline := []bson.M{
-		{"$match": bson.M{"event_id": objID, "status": "booked"}},
+		{"$match": bson.M{"event_id": objID, "status": bson.M{"$in": []string{"booked", "confirmed"}}}},
 		{"$unwind": "$tickets"},
 		{"$group": bson.M{
 			"_id":   "$tickets.category",

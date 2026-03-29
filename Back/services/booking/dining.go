@@ -27,7 +27,7 @@ func CreateDining(b *models.DiningBooking) error {
 	defer cancel()
 
 	var dining models.Dining
-	errDining := config.GetDB().Collection("dining").FindOne(ctx, bson.M{"_id": b.DiningID}).Decode(&dining)
+	errDining := config.DiningsCol.FindOne(ctx, bson.M{"_id": b.DiningID}).Decode(&dining)
 	if errDining == nil {
 		b.OrganizerID = dining.OrganizerID
 	}
@@ -50,7 +50,9 @@ func CreateDining(b *models.DiningBooking) error {
 
 	b.ID = primitive.NewObjectID()
 	b.BookingID = utils.HashObjectID(b.ID)
-	b.Status = "booked"
+	if b.Status == "" {
+		b.Status = "booked"
+	}
 	b.BookedAt = time.Now()
 
 	_, err = col.InsertOne(ctx, b)

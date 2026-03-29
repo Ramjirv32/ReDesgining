@@ -6,6 +6,7 @@ import (
 	"ticpin-backend/config"
 	"ticpin-backend/models"
 	bookingsvc "ticpin-backend/services/booking"
+	passsvc "ticpin-backend/services/pass"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -178,10 +179,37 @@ func CancelBooking(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "failed to cancel booking"})
 	}
 
-	if category == "play" {
+	if category == "play" || category == "dining" {
 		go func() {
 			_ = bookingsvc.DeletePlayLocks(bookingPrimitiveID)
 		}()
+
+		// Refund Ticpass benefit if applied
+		if category == "play" {
+			if b, ok := bookingFound.(*models.PlayBooking); ok && b.TicpassApplied {
+				go func() {
+					pass, err := passsvc.GetActiveByUserID(b.UserID)
+					if err == nil && pass != nil {
+						_, err = passsvc.RefundTurfBooking(pass.ID.Hex())
+						if err != nil {
+							fmt.Printf("DEBUG: Failed to refund Ticpass turf benefit for pass %s: %v\n", pass.ID.Hex(), err)
+						}
+					}
+				}()
+			}
+		} else if category == "dining" {
+			if b, ok := bookingFound.(*models.DiningBooking); ok && b.TicpassApplied {
+				go func() {
+					pass, err := passsvc.GetActiveByUserID(b.UserID)
+					if err == nil && pass != nil {
+						_, err = passsvc.RefundDiningVoucher(pass.ID.Hex())
+						if err != nil {
+							fmt.Printf("DEBUG: Failed to refund Ticpass dining benefit for pass %s: %v\n", pass.ID.Hex(), err)
+						}
+					}
+				}()
+			}
+		}
 	}
 
 	go func() {

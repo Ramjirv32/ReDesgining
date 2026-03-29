@@ -54,7 +54,6 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 	fmt.Printf("DEBUG: CreatePlayBooking - PlayID: %s, User: %s, PaymentID: %s\n",
 		req.PlayID, req.UserEmail, req.PaymentID)
 
-
 	if req.PaymentID != "" || req.OrderID != "" {
 		var existing models.PlayBooking
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -73,7 +72,7 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 		}
 
 		if err := config.PlayBookingsCol.FindOne(ctx, filter).Decode(&existing); err == nil {
-			
+
 			if existing.Status == "booked" {
 				return c.Status(200).JSON(fiber.Map{
 					"message":         "play booking already confirmed",
@@ -156,9 +155,9 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 	cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cleanupCancel()
 
-	tenMinutesAgo := time.Now().Add(-10 * time.Minute)
+	fifteenMinutesAgo := time.Now().Add(-15 * time.Minute)
 	_, _ = config.SlotLocksCol.DeleteMany(cleanupCtx, bson.M{
-		"created_at": bson.M{"$lt": tenMinutesAgo},
+		"created_at": bson.M{"$lt": fifteenMinutesAgo},
 	})
 
 	if req.PlayID == "" {
@@ -248,7 +247,7 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 				// Free Turf Booking Benefit: 100% discount on order amount
 				discountAmount = req.OrderAmount
 				ticpassApplied = true
-				
+
 				// Decrement the benefit usage in DB
 				_, err = passsvc.UseTurfBooking(pass.ID.Hex())
 				if err != nil {

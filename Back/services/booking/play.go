@@ -138,7 +138,7 @@ func buildOccupiedGrid(
 	cursor, err := col.Find(ctx, bson.M{
 		"play_id": playID,
 		"date":    date,
-		"status":  "booked",
+		"status":  bson.M{"$in": []string{"booked", "confirmed"}},
 	}, options.Find().SetProjection(bson.M{
 		"slot":     1,
 		"duration": 1,

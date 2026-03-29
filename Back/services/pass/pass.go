@@ -247,6 +247,60 @@ func useBenefit(passID, benefitType string) (*models.TicpinPass, error) {
 	return &p, nil
 }
 
+func RefundTurfBooking(passID string) (*models.TicpinPass, error) {
+	return refundBenefit(passID, "turf")
+}
+
+func RefundDiningVoucher(passID string) (*models.TicpinPass, error) {
+	return refundBenefit(passID, "dining")
+}
+
+func refundBenefit(passID, benefitType string) (*models.TicpinPass, error) {
+	objID, err := primitive.ObjectIDFromHex(passID)
+	if err != nil {
+		return nil, err
+	}
+
+	col := config.GetDB().Collection("ticpin_passes")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var p models.TicpinPass
+	if err := col.FindOne(ctx, bson.M{"_id": objID, "status": "active"}).Decode(&p); err != nil {
+		return nil, errors.New("active pass not found")
+	}
+
+	var updateFields bson.M
+	if benefitType == "turf" {
+		if p.Benefits.TurfBookings.Used <= 0 {
+			return &p, nil // Already at min, nothing to refund
+		}
+		p.Benefits.TurfBookings.Used--
+		p.Benefits.TurfBookings.Remaining++
+		updateFields = bson.M{
+			"benefits.turf_bookings.used":      p.Benefits.TurfBookings.Used,
+			"benefits.turf_bookings.remaining": p.Benefits.TurfBookings.Remaining,
+			"updatedAt":                        time.Now(),
+		}
+	} else {
+		if p.Benefits.DiningVouchers.Used <= 0 {
+			return &p, nil
+		}
+		p.Benefits.DiningVouchers.Used--
+		p.Benefits.DiningVouchers.Remaining++
+		updateFields = bson.M{
+			"benefits.dining_vouchers.used":      p.Benefits.DiningVouchers.Used,
+			"benefits.dining_vouchers.remaining": p.Benefits.DiningVouchers.Remaining,
+			"updatedAt":                          time.Now(),
+		}
+	}
+
+	if _, err = col.UpdateOne(ctx, bson.M{"_id": objID}, bson.M{"$set": updateFields}); err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
 func ExpireOld() error {
 	col := config.GetDB().Collection("ticpin_passes")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

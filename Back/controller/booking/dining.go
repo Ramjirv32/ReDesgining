@@ -122,9 +122,9 @@ func CreateDiningBooking(c *fiber.Ctx) error {
 	cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cleanupCancel()
 
-	tenMinutesAgo := time.Now().Add(-10 * time.Minute)
+	fifteenMinutesAgo := time.Now().Add(-15 * time.Minute)
 	_, _ = config.SlotLocksCol.DeleteMany(cleanupCtx, bson.M{
-		"created_at": bson.M{"$lt": tenMinutesAgo},
+		"created_at": bson.M{"$lt": fifteenMinutesAgo},
 	})
 
 	// Check if user already has a booking for this time slot
@@ -204,7 +204,7 @@ func CreateDiningBooking(c *fiber.Ctx) error {
 	if grandTotal < 0 {
 		grandTotal = 0
 	}
-	
+
 	// Check if user wants to use Ticpass dining benefits
 	var ticpassApplied bool
 	if req.UseTicpass && req.UserID != "" {
@@ -213,11 +213,13 @@ func CreateDiningBooking(c *fiber.Ctx) error {
 			if pass.Benefits.DiningVouchers.Remaining > 0 {
 				// Dining Voucher Benefit: Deduct voucher value (e.g. 250)
 				voucherVal := float64(pass.Benefits.DiningVouchers.ValueEach)
-				if voucherVal <= 0 { voucherVal = 250 } // Fallback
-				
+				if voucherVal <= 0 {
+					voucherVal = 250
+				} // Fallback
+
 				discountAmount += voucherVal
 				ticpassApplied = true
-				
+
 				// Decrement the benefit usage in DB
 				_, err = passsvc.UseDiningVoucher(pass.ID.Hex())
 				if err != nil {
