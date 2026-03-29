@@ -37,6 +37,7 @@ type TicpinPass struct {
 	ID        primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	UserID    primitive.ObjectID `bson:"user_id" json:"user_id"`
 	PaymentID string             `bson:"payment_id" json:"payment_id"`
+	QRToken   string             `bson:"qr_token" json:"qr_token"`
 	Price     float64            `bson:"price" json:"price"`
 	Status    string             `bson:"status" json:"status"`
 	StartDate time.Time          `bson:"start_date" json:"start_date"`

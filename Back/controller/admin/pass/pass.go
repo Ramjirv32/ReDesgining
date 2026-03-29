@@ -86,6 +86,7 @@ func CreateAdminPass(c *fiber.Ctx) error {
 	pass := models.TicpinPass{
 		UserID:    userObjID,
 		PaymentID: "ADMIN_CREATED_" + fmt.Sprintf("%d", now.Unix()),
+		QRToken:   primitive.NewObjectID().Hex(),
 		Price:     req.Price,
 		Status:    "active",
 		StartDate: now,

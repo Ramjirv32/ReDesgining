@@ -213,7 +213,7 @@ func CreateIndexes() {
 
 	PassesCol.Indexes().CreateOne(ctx, mongo.IndexModel{
 		Keys:    bson.D{{Key: "qr_token", Value: 1}},
-		Options: options.Index().SetUnique(true),
+		Options: options.Index().SetUnique(true).SetSparse(true),
 	})
 
 	CouponsCol.Indexes().CreateOne(ctx, mongo.IndexModel{

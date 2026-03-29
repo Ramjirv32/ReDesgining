@@ -123,6 +123,7 @@ func Apply(userID, paymentID string, details models.TicpinPass) (*models.TicpinP
 		ID:        primitive.NewObjectID(),
 		UserID:    objID,
 		PaymentID: paymentID,
+		QRToken:   primitive.NewObjectID().Hex(),
 		Price:     price,
 		Status:    "active",
 		StartDate: now,
