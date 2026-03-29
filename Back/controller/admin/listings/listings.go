@@ -234,6 +234,18 @@ func UpdatePlay(c *fiber.Ctx) error {
 	if err := c.BodyParser(&update); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid body"})
 	}
+
+	// Validate required fields
+	if update.Name != "" && len(update.Name) < 3 {
+		return c.Status(400).JSON(fiber.Map{"error": "name must be at least 3 characters"})
+	}
+	if len(update.Courts) > 0 && len(update.Courts) > 20 {
+		return c.Status(400).JSON(fiber.Map{"error": "maximum 20 courts allowed"})
+	}
+	if update.PriceStartsFrom < 0 {
+		return c.Status(400).JSON(fiber.Map{"error": "price starts from must be non-negative"})
+	}
+
 	update.UpdatedAt = time.Now()
 
 	col := config.GetDB().Collection("plays")

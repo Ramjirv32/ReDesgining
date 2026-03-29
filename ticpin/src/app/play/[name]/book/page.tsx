@@ -41,19 +41,37 @@ interface RealPlay {
 const parseTime = (timeStr: string): number => {
     if (!timeStr) return NaN;
     const s = timeStr.trim();
+    
+    // More flexible regex validation - allows single digit hours
+    if (!/^\d{1,2}:\d{2}(\s*[AP]M)?$/i.test(s)) {
+        return NaN; // Invalid format
+    }
+    
     // "09:00 AM" / "9:00 pm"
     const ampm = s.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
     if (ampm) {
         let h = parseInt(ampm[1], 10);
         const m = parseInt(ampm[2], 10);
         const p = ampm[3].toUpperCase();
+        
+        // Validate hour range (0-23 for input, will be converted)
+        if (h < 0 || h > 23 || m < 0 || m > 59) return NaN;
+        
         if (p === 'PM' && h !== 12) h += 12;
         if (p === 'AM' && h === 12) h = 0;
         return h * 60 + m;
     }
     // "09:00" (24-hr)
     const h24 = s.match(/^(\d{1,2}):(\d{2})$/);
-    if (h24) return parseInt(h24[1], 10) * 60 + parseInt(h24[2], 10);
+    if (h24) {
+        const h = parseInt(h24[1], 10);
+        const m = parseInt(h24[2], 10);
+        
+        // Validate 24-hour range
+        if (h < 0 || h > 23 || m < 0 || m > 59) return NaN;
+        
+        return h * 60 + m;
+    }
     return NaN;
 };
 
@@ -72,11 +90,20 @@ function getNextDays(count = 7) {
     const days = [];
     const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
     const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    
+    const today = new Date();
+    
     for (let i = 0; i < count; i++) {
-        const d = new Date();
-        d.setDate(d.getDate() + i);
+        const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
+        
+        // Build date key using local time components to avoid UTC conversion
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const key = `${year}-${month}-${day}`;
+        
         days.push({
-            key: d.toISOString().split('T')[0],
+            key: key,
             label: String(d.getDate()).padStart(2, '0'),
             day: DAYS[d.getDay()],
             month: MONTHS[d.getMonth()],
@@ -132,11 +159,16 @@ export default function PlayBookPage() {
             const slotStr = booked.substring(0, pipeIdx);
             const bCourtName = booked.substring(pipeIdx + 1);
             if (bCourtName !== courtName) continue;
-            // Parse start minute of the booked 30-min backend slot
+            
+            // Parse start minute of booked 30-min slot
             const bStart = parseSlotStartMin(slotStr);
             if (isNaN(bStart)) continue;
-            const bEnd = bStart + 30; // each backend slot is exactly 30 min wide
-            // Overlap: [startMin, endMin) overlaps [bStart, bEnd) when startMin < bEnd AND bStart < endMin
+            
+            // Calculate the end time of the booked slot (assuming 30-min slots as per backend)
+            const bEnd = bStart + 30;
+            
+            // Check for any overlap: [startMin, endMin) overlaps [bStart, bEnd)
+            // Overlap condition: startMin < bEnd AND bStart < endMin
             if (startMin < bEnd && bStart < endMin) return false;
         }
         return true;
@@ -322,7 +354,16 @@ export default function PlayBookPage() {
             use_pass: usePass,
             pass_id: pass?.id
         };
-        sessionStorage.setItem('ticpin_cart', JSON.stringify(cartItem));
+        
+        // Safely store cart with error handling
+        try {
+            sessionStorage.setItem('ticpin_cart', JSON.stringify(cartItem));
+        } catch (error) {
+            console.error('Failed to store cart data:', error);
+            toast.error('Unable to proceed with booking. Please try again.');
+            return;
+        }
+        
         router.push(`/play/${encodeURIComponent(venueName)}/book/review`);
     };
 

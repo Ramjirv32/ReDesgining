@@ -194,11 +194,60 @@ func Renew(passID, paymentID string) (*models.TicpinPass, error) {
 }
 
 func UseTurfBooking(passID string) (*models.TicpinPass, error) {
-	return useBenefit(passID, "turf")
+	return useBenefitWithTransaction(passID, "turf")
 }
 
 func UseDiningVoucher(passID string) (*models.TicpinPass, error) {
-	return useBenefit(passID, "dining")
+	return useBenefitWithTransaction(passID, "dining")
+}
+
+func useBenefitWithTransaction(passID, benefitType string) (*models.TicpinPass, error) {
+	objID, err := primitive.ObjectIDFromHex(passID)
+	if err != nil {
+		return nil, err
+	}
+
+	col := config.GetDB().Collection("ticpin_passes")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var p models.TicpinPass
+	if err := col.FindOne(ctx, bson.M{"_id": objID, "status": "active"}).Decode(&p); err != nil {
+		return nil, errors.New("active pass not found")
+	}
+
+	var updateFields bson.M
+	if benefitType == "turf" {
+		if p.Benefits.TurfBookings.Remaining <= 0 {
+			return nil, errors.New("no turf bookings remaining")
+		}
+		p.Benefits.TurfBookings.Used++
+		p.Benefits.TurfBookings.Remaining--
+		updateFields = bson.M{
+			"benefits.turf_bookings.used":      p.Benefits.TurfBookings.Used,
+			"benefits.turf_bookings.remaining": p.Benefits.TurfBookings.Remaining,
+			"updatedAt":                        time.Now(),
+		}
+	} else {
+		if p.Benefits.DiningVouchers.Remaining <= 0 {
+			return nil, errors.New("no dining vouchers remaining")
+		}
+		p.Benefits.DiningVouchers.Used++
+		p.Benefits.DiningVouchers.Remaining--
+		updateFields = bson.M{
+			"benefits.dining_vouchers.used":      p.Benefits.DiningVouchers.Used,
+			"benefits.dining_vouchers.remaining": p.Benefits.DiningVouchers.Remaining,
+			"updatedAt":                          time.Now(),
+		}
+	}
+
+	// Simple atomic update without complex transactions for now
+	// Note: MongoDB transactions require replica sets, for simplicity using atomic updates
+	_, err = col.UpdateOne(ctx, bson.M{"_id": objID}, bson.M{"$set": updateFields})
+	if err != nil {
+		return nil, err
+	}
+	return &p, nil
 }
 
 func useBenefit(passID, benefitType string) (*models.TicpinPass, error) {
@@ -251,8 +300,16 @@ func RefundTurfBooking(passID string) (*models.TicpinPass, error) {
 	return refundBenefit(passID, "turf")
 }
 
+func RestoreTurfBooking(passID string) (*models.TicpinPass, error) {
+	return restoreBenefit(passID, "turf")
+}
+
 func RefundDiningVoucher(passID string) (*models.TicpinPass, error) {
 	return refundBenefit(passID, "dining")
+}
+
+func RestoreDiningVoucher(passID string) (*models.TicpinPass, error) {
+	return restoreBenefit(passID, "dining")
 }
 
 func refundBenefit(passID, benefitType string) (*models.TicpinPass, error) {
@@ -288,6 +345,58 @@ func refundBenefit(passID, benefitType string) (*models.TicpinPass, error) {
 		}
 		p.Benefits.DiningVouchers.Used--
 		p.Benefits.DiningVouchers.Remaining++
+		updateFields = bson.M{
+			"benefits.dining_vouchers.used":      p.Benefits.DiningVouchers.Used,
+			"benefits.dining_vouchers.remaining": p.Benefits.DiningVouchers.Remaining,
+			"updatedAt":                          time.Now(),
+		}
+	}
+
+	if _, err = col.UpdateOne(ctx, bson.M{"_id": objID}, bson.M{"$set": updateFields}); err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
+func restoreBenefit(passID, benefitType string) (*models.TicpinPass, error) {
+	objID, err := primitive.ObjectIDFromHex(passID)
+	if err != nil {
+		return nil, err
+	}
+
+	col := config.GetDB().Collection("ticpin_passes")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var p models.TicpinPass
+	if err := col.FindOne(ctx, bson.M{"_id": objID, "status": "active"}).Decode(&p); err != nil {
+		return nil, errors.New("active pass not found")
+	}
+
+	var updateFields bson.M
+	if benefitType == "turf" {
+		// Only restore if we have remaining capacity (prevent going above max)
+		if p.Benefits.TurfBookings.Remaining >= p.Benefits.TurfBookings.Total {
+			return &p, nil // Already at max, nothing to restore
+		}
+		if p.Benefits.TurfBookings.Used > 0 {
+			p.Benefits.TurfBookings.Used--
+			p.Benefits.TurfBookings.Remaining++
+		}
+		updateFields = bson.M{
+			"benefits.turf_bookings.used":      p.Benefits.TurfBookings.Used,
+			"benefits.turf_bookings.remaining": p.Benefits.TurfBookings.Remaining,
+			"updatedAt":                        time.Now(),
+		}
+	} else {
+		// Only restore if we have remaining capacity
+		if p.Benefits.DiningVouchers.Remaining >= p.Benefits.DiningVouchers.Total {
+			return &p, nil // Already at max, nothing to restore
+		}
+		if p.Benefits.DiningVouchers.Used > 0 {
+			p.Benefits.DiningVouchers.Used--
+			p.Benefits.DiningVouchers.Remaining++
+		}
 		updateFields = bson.M{
 			"benefits.dining_vouchers.used":      p.Benefits.DiningVouchers.Used,
 			"benefits.dining_vouchers.remaining": p.Benefits.DiningVouchers.Remaining,

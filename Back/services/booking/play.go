@@ -430,6 +430,12 @@ func CreatePlay(b *models.PlayBooking) error {
 			options.InsertMany().SetOrdered(true))
 		if lockErr != nil {
 			if mongo.IsDuplicateKeyError(lockErr) {
+				// Check if this is a Ticpass booking to provide a better error message
+				if b.TicpassApplied && b.GrandTotal == 0 {
+					return fmt.Errorf(
+						"this free slot (using Ticpass) was just booked by someone else — please select a different time",
+					)
+				}
 				return fmt.Errorf(
 					"this slot was just booked by someone else — please select a different time",
 				)

@@ -14,6 +14,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -262,14 +263,38 @@ func RazorpayWebhook(c *fiber.Ctx) error {
 
 				if ticpassApplied && userID != "" {
 					fmt.Printf("DEBUG: Found Ticpass booking to refund. User: %s, Collection: %s\n", userID, col.Name())
+
+					// Check if already refunded to prevent double refunds
+					bookingID := bookingDoc["_id"]
+					if bookingID != nil {
+						if oid, ok := bookingID.(primitive.ObjectID); ok {
+							var existingBooking map[string]interface{}
+							err := col.FindOne(ctx, bson.M{"_id": oid}).Decode(&existingBooking)
+							if err == nil {
+								if status, ok := existingBooking["status"].(string); ok && (status == "refunded" || status == "cancelled") {
+									fmt.Printf("INFO: Booking %s already refunded/cancelled, skipping Ticpass refund\n", oid.Hex())
+									continue // Skip to next collection
+								}
+							}
+						}
+					}
+
 					pass, err := passservice.GetActiveByUserID(userID)
 					if err == nil && pass != nil {
 						if col.Name() == "play_bookings" {
-							_, _ = passservice.RefundTurfBooking(pass.ID.Hex())
-							fmt.Printf("DEBUG: Refunded Ticpass turf benefit for User: %s\n", userID)
+							_, err = passservice.RefundTurfBooking(pass.ID.Hex())
+							if err != nil {
+								fmt.Printf("ERROR: Failed to refund Ticpass turf benefit for User: %s, Error: %v\n", userID, err)
+							} else {
+								fmt.Printf("DEBUG: Refunded Ticpass turf benefit for User: %s\n", userID)
+							}
 						} else if col.Name() == "dining_bookings" {
-							_, _ = passservice.RefundDiningVoucher(pass.ID.Hex())
-							fmt.Printf("DEBUG: Refunded Ticpass dining benefit for User: %s\n", userID)
+							_, err = passservice.RefundDiningVoucher(pass.ID.Hex())
+							if err != nil {
+								fmt.Printf("ERROR: Failed to refund Ticpass dining benefit for User: %s, Error: %v\n", userID, err)
+							} else {
+								fmt.Printf("DEBUG: Refunded Ticpass dining benefit for User: %s\n", userID)
+							}
 						}
 					}
 				}

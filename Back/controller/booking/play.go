@@ -86,6 +86,40 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 
 			// 2. If it exists as "pending" and we are now confirming it (status "booked" or empty)
 			if existing.Status == "pending" && (req.Status == "booked" || req.Status == "") {
+				// Check if Ticpass should be applied and decremented for this pending booking confirmation
+				if req.UseTicpass && req.UserID != "" && !existing.TicpassApplied {
+					pass, err := passsvc.GetActiveByUserID(req.UserID)
+					if err == nil && pass != nil && pass.Benefits.TurfBookings.Remaining > 0 {
+						// Decrement Ticpass for this pending booking confirmation
+						_, err = passsvc.UseTurfBooking(pass.ID.Hex())
+						if err != nil {
+							fmt.Printf("ERROR: Failed to decrement Ticpass for pending booking confirmation: %v\n", err)
+						} else {
+							fmt.Printf("DEBUG: Used 1 Ticpass turf benefit for user %s on pending booking confirmation. Booking ID: %s\n", req.UserID, existing.BookingID)
+							// Update the booking to reflect Ticpass usage
+							updateWithTicpass := bson.M{
+								"$set": bson.M{
+									"status":          "booked",
+									"payment_id":      req.PaymentID,
+									"booked_at":       time.Now(),
+									"ticpass_applied": true,
+									"discount_amount": existing.OrderAmount, // Free booking
+									"grand_total":     0,                    // Free booking
+								},
+							}
+							_, _ = config.PlayBookingsCol.UpdateOne(ctx, bson.M{"_id": existing.ID}, updateWithTicpass)
+							return c.Status(200).JSON(fiber.Map{
+								"message":         "play booking confirmed with Ticpass",
+								"booking_id":      existing.BookingID,
+								"id":              existing.ID.Hex(),
+								"grand_total":     0,
+								"discount_amount": existing.OrderAmount,
+								"status":          "booked",
+							})
+						}
+					}
+				}
+
 				update := bson.M{
 					"$set": bson.M{
 						"status":     "booked",
@@ -151,7 +185,7 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid play_id"})
 	}
 
-	// Clean up expired locks (older than 10 minutes) to prevent stale locks
+	// Clean up expired locks (older than 15 minutes) to prevent stale locks
 	cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cleanupCancel()
 
@@ -160,18 +194,42 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 		"created_at": bson.M{"$lt": fifteenMinutesAgo},
 	})
 
-	if req.PlayID == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "play_id is required"})
+	// Clean up orphaned locks for this specific play, date, and slot combination ONLY if we're booking the same slot
+	cleanupPlayObjID, err := primitive.ObjectIDFromHex(req.PlayID)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid play_id"})
 	}
-	if req.Date == "" || req.Slot == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "date and slot are required"})
+
+	if req.Date != "" && req.Slot != "" {
+		orphanedLocksFilter := bson.M{
+			"play_id": cleanupPlayObjID,
+			"date":    req.Date,
+			"slot":    req.Slot,
+		}
+		cursor, _ := config.SlotLocksCol.Find(cleanupCtx, orphanedLocksFilter)
+		var locks []bson.M
+		cursor.All(cleanupCtx, &locks)
+
+		for _, lock := range locks {
+			bookingID := lock["booking_id"]
+			var booking models.PlayBooking
+			err := config.PlayBookingsCol.FindOne(cleanupCtx, bson.M{"_id": bookingID}).Decode(&booking)
+			if err != nil || (booking.Status == "cancelled" || booking.Status == "failed" || booking.Status == "refunded") {
+				// This lock is orphaned - remove it
+				config.SlotLocksCol.DeleteOne(cleanupCtx, bson.M{"_id": lock["_id"]})
+			}
+		}
+	}
+
+	if req.PlayID == "" || req.Date == "" || req.Slot == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "play_id, date and slot are required"})
 	}
 	if len(req.Tickets) == 0 {
 		return c.Status(400).JSON(fiber.Map{"error": "at least one court/ticket is required"})
 	}
 
 	// 1. Fetch play area to verify prices
-	play, err := playservice.GetByID(req.PlayID, false)
+	play, err := playservice.GetByID(req.PlayID, true)
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "play not found"})
 	}
@@ -238,8 +296,10 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 		grandTotal = 0
 	}
 
-	// Check if user wants to use Ticpass benefits
+	// Check if user wants to use Ticpass benefits (but don't decrement yet - wait for successful booking)
 	var ticpassApplied bool
+	var ticpassToDecrement bool
+	var passID string
 	if req.UseTicpass && req.UserID != "" {
 		pass, err := passsvc.GetActiveByUserID(req.UserID)
 		if err == nil && pass != nil {
@@ -247,14 +307,9 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 				// Free Turf Booking Benefit: 100% discount on order amount
 				discountAmount = req.OrderAmount
 				ticpassApplied = true
-
-				// Decrement the benefit usage in DB
-				_, err = passsvc.UseTurfBooking(pass.ID.Hex())
-				if err != nil {
-					fmt.Printf("ERROR: Failed to decrement Ticpass turf benefit: %v\n", err)
-				} else {
-					fmt.Printf("DEBUG: Used 1 Ticpass turf benefit for user %s. Booking is now FREE.\n", req.UserID)
-				}
+				ticpassToDecrement = true
+				passID = pass.ID.Hex()
+				fmt.Printf("DEBUG: Ticpass will be applied for user %s if booking succeeds. Pass ID: %s\n", req.UserID, passID)
 			} else {
 				// Fallback to 10% discount if all free bookings are used (optional, but keep it for goodwill)
 				ticpassDiscount := req.OrderAmount * 0.10
@@ -310,7 +365,46 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 	}
 
 	if err := bookingsvc.CreatePlay(booking); err != nil {
+		// ROLLBACK: If booking fails, restore Ticpass if it was marked for decrement
+		if ticpassToDecrement && passID != "" {
+			fmt.Printf("INFO: Booking failed, attempting to restore Ticpass benefit for user %s\n", req.UserID)
+			_, restoreErr := passsvc.RestoreTurfBooking(passID)
+			if restoreErr != nil {
+				fmt.Printf("ERROR: Failed to restore Ticpass benefit: %v\n", restoreErr)
+			} else {
+				fmt.Printf("DEBUG: Successfully restored Ticpass benefit for user %s\n", req.UserID)
+			}
+		}
+
+		// Clean up any slot locks that might have been created during this failed attempt
+		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cleanupCancel()
+
+		if req.PlayID != "" && req.Date != "" && req.Slot != "" {
+			cleanupPlayObjID, err := primitive.ObjectIDFromHex(req.PlayID)
+			if err == nil {
+				// Remove any locks for this booking attempt
+				config.SlotLocksCol.DeleteMany(cleanupCtx, bson.M{
+					"play_id":    cleanupPlayObjID,
+					"date":       req.Date,
+					"slot":       req.Slot,
+					"booking_id": booking.ID, // Remove locks for this booking ID
+				})
+			}
+		}
+
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	// Only decrement Ticpass benefit AFTER successful booking creation (for new bookings, not pending confirmations)
+	if ticpassToDecrement && passID != "" && (booking.Status == "booked" || booking.Status == "confirmed") {
+		_, err = passsvc.UseTurfBooking(passID)
+		if err != nil {
+			fmt.Printf("ERROR: Failed to decrement Ticpass turf benefit after successful booking: %v\n", err)
+			// Don't fail the booking since it's already created, but log the error
+		} else {
+			fmt.Printf("DEBUG: Successfully used 1 Ticpass turf benefit for user %s. Booking ID: %s\n", req.UserID, booking.BookingID)
+		}
 	}
 
 	bookingID := booking.ID.Hex()
