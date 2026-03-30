@@ -307,7 +307,7 @@ const CreatePlayPage = () => {
                 artist_name: '',
                 artist_image_url: '',
                 tickets_needed_for: 'person',
-                price_starts_from: courts.length > 0 ? Math.min(...courts.map(c => parseFloat(c.price))) : 0,
+                price_starts_from: courts.length > 0 ? Math.min(...courts.map(c => parseFloat(c.price) || 0)) : 0,
                 terms: '', // Added as placeholder if needed, though form should capture it
                 payment: {
                     organizer_name: payment.organizerName,

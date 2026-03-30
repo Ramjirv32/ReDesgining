@@ -306,7 +306,7 @@ export default function EditPlayPage() {
                     price: parseFloat(c.price),
                     image_url: c.image_url
                 })),
-                price_starts_from: courts.length > 0 ? Math.min(...courts.map(c => parseFloat(c.price))) : 0,
+                price_starts_from: courts.length > 0 ? Math.min(...courts.map(c => parseFloat(c.price) || 0)) : 0,
                 points_of_contact: pocs,
                 sales_notifications: salesNotifs,
             });

@@ -214,6 +214,19 @@ func IsAvailable(
 	if err := config.PlaysCol.FindOne(ctx, bson.M{"_id": playID}).Decode(&play); err != nil {
 		return false, fmt.Errorf("play not found: %w", err)
 	}
+
+	// Validate that the court exists in the venue
+	validCourt := false
+	for _, court := range play.Courts {
+		if court.Name == courtName {
+			validCourt = true
+			break
+		}
+	}
+	if !validCourt {
+		return false, fmt.Errorf("court %q does not exist in this venue", courtName)
+	}
+
 	open, close := venueHours(&play)
 	venueSlots := generateSlots(open, close)
 	n := slotCount(open, close)
@@ -233,9 +246,13 @@ func IsAvailable(
 	}
 
 	courtGrid := grid[courtName]
+	// If court has no bookings yet, it's available
+	if courtGrid == nil {
+		return true, nil
+	}
 
 	for i := 0; i < durationSlots; i++ {
-		if courtGrid != nil && si+i < len(courtGrid) && courtGrid[si+i] {
+		if si+i < len(courtGrid) && courtGrid[si+i] {
 			return false, nil
 		}
 	}
@@ -255,6 +272,19 @@ func FindNextAvailable(
 	if err := config.PlaysCol.FindOne(ctx, bson.M{"_id": playID}).Decode(&play); err != nil {
 		return "", fmt.Errorf("play not found: %w", err)
 	}
+
+	// Validate that the court exists in the venue
+	validCourt := false
+	for _, court := range play.Courts {
+		if court.Name == courtName {
+			validCourt = true
+			break
+		}
+	}
+	if !validCourt {
+		return "", fmt.Errorf("court %q does not exist in this venue", courtName)
+	}
+
 	open, close := venueHours(&play)
 	venueSlots := generateSlots(open, close)
 	n := slotCount(open, close)
@@ -275,17 +305,23 @@ func FindNextAvailable(
 		return "", err
 	}
 	courtGrid := grid[courtName]
+	// If court has no bookings yet, all slots are available
+	if courtGrid == nil {
+		if fromIdx < n {
+			return venueSlots[fromIdx], nil
+		}
+		return "", nil
+	}
 
 	for j := fromIdx; j+durationSlots <= n; j++ {
 		free := true
 		for k := 0; k < durationSlots; k++ {
-			if courtGrid != nil && j+k < len(courtGrid) && courtGrid[j+k] {
+			if j+k < len(courtGrid) && courtGrid[j+k] {
 				free = false
 				break
 			}
 		}
 		if free {
-
 			return venueSlots[j], nil
 		}
 	}
@@ -385,11 +421,30 @@ func CreatePlay(b *models.PlayBooking) error {
 		return err
 	}
 
+	// Validate that all courts exist in the venue
+	// Create a map of valid court names from the venue
+	validCourts := make(map[string]bool)
+	for _, court := range play.Courts {
+		validCourts[court.Name] = true
+	}
+
+	// Validate each ticket references a valid court
+	for _, ticket := range b.Tickets {
+		if !validCourts[ticket.Category] {
+			return fmt.Errorf("court %q does not exist in this venue", ticket.Category)
+		}
+	}
+
 	for _, ticket := range b.Tickets {
 		courtGrid := grid[ticket.Category]
+		// Additional validation: court should exist in grid (even if no bookings)
+		if courtGrid == nil {
+			// This is normal for courts with no existing bookings
+			courtGrid = make([]bool, n)
+		}
 		for i := 0; i < duration; i++ {
 			idx := si + i
-			if courtGrid != nil && idx < len(courtGrid) && courtGrid[idx] {
+			if idx < n && courtGrid[idx] {
 				nextLabel := findNextFromGrid(grid, venueSlots, n, si+1, duration, ticket.Category)
 				msg := fmt.Sprintf(
 					"court %q is already booked during %s",

@@ -479,9 +479,10 @@ export default function PlayBookPage() {
                                 <h2 className="text-[13px] font-semibold uppercase tracking-[0.12em] text-black">
                                     SELECT TIME SLOT
                                 </h2>
-                                {!loadingSlots && courts.length > 0 && (() => {
+                                {!loadingSlots && (() => {
                                     const total = blockSlots.length;
-                                    const free = blockSlots.filter(b =>
+                                    // If there are no courts, show all slots as available
+                                    const free = courts.length === 0 ? total : blockSlots.filter(b =>
                                         courts.some(c => isWindowAvailable(c.name, b.startMin, b.endMin))
                                     ).length;
                                     return (
@@ -548,25 +549,28 @@ export default function PlayBookPage() {
                                                         const hasFreeCourt =
                                                             courts.length > 0 &&
                                                             courts.some(c => isWindowAvailable(c.name, b.startMin, b.endMin));
+                                                        
+                                                        // If there are no courts configured, show slots as available for booking
+                                                        const slotAvailable = courts.length === 0 ? true : hasFreeCourt;
                                                         const minutePart = String(b.startMin % 60).padStart(2, '0');
                                                         return (
                                                             <div key={si} className="flex flex-col items-center gap-0.5">
                                                                 <button
-                                                                    disabled={!hasFreeCourt}
+                                                                    disabled={!slotAvailable}
                                                                     onClick={() => {
                                                                         setSelectedSlot(b.label);
                                                                         setSelectedCourtIds([]);
                                                                     }}
-                                                                    className={`relative w-[68px] h-[52px] rounded-[14px] border-2 text-[13px] font-semibold transition-all overflow-hidden ${!hasFreeCourt
+                                                                    className={`relative w-[68px] h-[52px] rounded-[14px] border-2 text-[13px] font-semibold transition-all overflow-hidden ${!slotAvailable
                                                                         ? 'border-zinc-200 bg-zinc-50 cursor-not-allowed text-zinc-300'
                                                                         : isSelected
                                                                             ? 'border-[#E7C200] scale-[1.02] shadow-md'
                                                                             : 'bg-white text-black border-zinc-300 hover:border-zinc-500 hover:shadow-sm'
                                                                         }`}
-                                                                    style={isSelected && hasFreeCourt ? { background: '#E7C200', color: '#000' } : {}}
+                                                                    style={isSelected && slotAvailable ? { background: '#E7C200', color: '#000' } : {}}
                                                                 >
                                                                     {/* Diagonal hatch for booked slots */}
-                                                                    {!hasFreeCourt && (
+                                                                    {!slotAvailable && (
                                                                         <span
                                                                             className="absolute inset-0 pointer-events-none"
                                                                             style={{
@@ -581,7 +585,7 @@ export default function PlayBookPage() {
                                                                 </button>
 
                                                                 {/* State indicator beneath button */}
-                                                                {!hasFreeCourt ? (
+                                                                {!slotAvailable ? (
                                                                     <span className="text-[9px] font-bold text-red-400 uppercase tracking-wide">Booked</span>
                                                                 ) : isSelected ? (
                                                                     <span className="w-[6px] h-[6px] rounded-full bg-[#E7C200] border border-zinc-300 inline-block" />
