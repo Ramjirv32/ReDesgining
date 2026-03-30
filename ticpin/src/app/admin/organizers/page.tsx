@@ -8,7 +8,8 @@ import { toast } from '@/components/ui/Toast';
 import {
     CheckCircle, XCircle, Clock, ChevronRight, X, User,
     ExternalLink, RefreshCw, Trash2, Calendar, Mail, Phone,
-    CreditCard, Hash, ArrowLeft, Edit3, Save, XCircle as DiscardIcon, Check
+    CreditCard, Hash, ArrowLeft, Edit3, Save, XCircle as DiscardIcon, Check,
+    Utensils, Music, Gamepad2, Shield
 } from 'lucide-react';
 import { getOrganizerSession } from '@/lib/auth/organizer';
 
@@ -19,6 +20,7 @@ function OrganizerDetailView({ organizerId, onClose, onStatusChange }: {
     onClose: () => void;
     onStatusChange: () => void;
 }) {
+    const router = useRouter();
     const [detail, setDetail] = useState<OrganizerDetail | null>(null);
     const [editedDetail, setEditedDetail] = useState<OrganizerDetail | null>(null);
     const [loading, setLoading] = useState(true);
@@ -28,7 +30,7 @@ function OrganizerDetailView({ organizerId, onClose, onStatusChange }: {
     const [isEditMode, setIsEditMode] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [savedOk, setSavedOk] = useState(false);
-    const [panViewerUrl, setPanViewerUrl] = useState<string | null>(null);
+    const [activeCategory, setActiveCategory] = useState<'play' | 'dining' | 'events'>('play');
 
     useEffect(() => {
         adminApi.getOrganizerDetail(organizerId)
@@ -209,18 +211,52 @@ function OrganizerDetailView({ organizerId, onClose, onStatusChange }: {
                                     ID: {org.id}
                                 </p>
 
-                                {/* Category Status Badges */}
-                                <div className="mt-6 pt-6 border-t border-black/10 w-full space-y-3">
-                                    <p className="text-[12px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Category Status</p>
-                                    {Object.entries(org.categoryStatus || {}).map(([cat, status]) => (
-                                        <div key={cat} className={`flex items-center justify-between px-4 py-2 rounded-xl text-[14px] font-bold border-2
-                                            ${status === 'approved' ? 'bg-[#D1FAE5] text-[#065F46] border-[#065F46]/10'
-                                                : status === 'rejected' ? 'bg-red-50 text-red-700 border-red-100'
-                                                    : 'bg-[#FFD9B7] text-[#8B4D1A] border-orange-200/20'}`}>
-                                            <span className="uppercase tracking-widest text-[11px]">{cat}</span>
-                                            <span>{(status as string).toUpperCase()}</span>
-                                        </div>
-                                    ))}
+                                {/* Three Boxes: Play, Events, Dining */}
+                                <div className="mt-8 pt-6 border-t border-black/10 w-full space-y-4">
+                                    <p className="text-[12px] font-bold text-zinc-500 uppercase tracking-[0.2em] mb-4 text-center">Category Moderation</p>
+                                    <div className="flex flex-col gap-3">
+                                        {[
+                                            { id: 'play', label: 'Play', icon: Gamepad2 },
+                                            { id: 'events', label: 'Events', icon: Music },
+                                            { id: 'dining', label: 'Dining', icon: Utensils },
+                                        ].map((cat) => {
+                                            const status = (org.categoryStatus as any)?.[cat.id];
+                                            const isActive = activeCategory === cat.id;
+                                            const hasApplied = detail.setups?.some(s => s.category.toLowerCase() === cat.id.toLowerCase());
+                                            const Icon = cat.icon;
+
+                                            return (
+                                                <button
+                                                    key={cat.id}
+                                                    onClick={() => setActiveCategory(cat.id as any)}
+                                                    className={`group relative flex items-center gap-4 p-4 rounded-[20px] border-2 transition-all duration-300
+                                                        ${isActive
+                                                            ? 'bg-[#5331EA] border-[#5331EA] shadow-lg scale-[1.02]'
+                                                            : 'bg-white/50 border-black/5 hover:border-[#AC9BF7]/30 hover:bg-white'}`}
+                                                >
+                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors
+                                                        ${isActive ? 'bg-white/20 text-white' : 'bg-[#EEEDFC] text-[#5331EA]'}`}>
+                                                        <Icon size={20} />
+                                                    </div>
+                                                    <div className="flex flex-col items-start overflow-hidden">
+                                                        <span className={`text-[15px] font-bold transition-colors ${isActive ? 'text-white' : 'text-black'}`}>
+                                                            {cat.label}
+                                                        </span>
+                                                        <span className={`text-[11px] font-bold uppercase tracking-wider transition-colors
+                                                            ${!hasApplied ? (isActive ? 'text-white/60' : 'text-zinc-400') :
+                                                                status === 'approved' ? (isActive ? 'text-green-300' : 'text-green-600') :
+                                                                    status === 'rejected' ? (isActive ? 'text-red-300' : 'text-red-500') :
+                                                                        (isActive ? 'text-orange-300' : 'text-orange-500')}`}>
+                                                            {!hasApplied ? 'Not Applied' : (status || 'Pending')}
+                                                        </span>
+                                                    </div>
+                                                    {isActive && (
+                                                        <div className="absolute right-4 w-2 h-2 rounded-full bg-white animate-pulse" />
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -246,20 +282,44 @@ function OrganizerDetailView({ organizerId, onClose, onStatusChange }: {
                                 </div>
                             </div>
 
-                            {/* --- Setup Details per category --- */}
-                            {detail.setups && detail.setups.length > 0 ? (
-                                detail.setups.map((setup, idx) => (
-                                    <div key={setup.id} className={`${idx > 0 ? 'mt-10 pt-10 border-t-2 border-dashed border-[#EEEDFC]' : ''}`}>
-                                        <div className="flex items-center justify-between mb-4">
-                                            <h4 className="text-[20px] font-bold text-black uppercase tracking-wider">{setup.category} Application</h4>
-                                            <span className={`px-5 py-1.5 rounded-full text-[14px] font-bold border-2 ${detail.organizer.categoryStatus?.[setup.category] === 'approved' ? 'bg-[#D1FAE5] text-[#065F46] border-[#065F46]/20' :
+                            {/* --- Setup Details for Active Category --- */}
+                            {(() => {
+                                const setupIdx = detail.setups?.findIndex(s => s.category.toLowerCase() === activeCategory.toLowerCase());
+                                const setup = setupIdx !== undefined && setupIdx !== -1 ? detail.setups[setupIdx] : null;
+
+                                if (!setup) {
+                                    return (
+                                        <div className="flex-1 flex items-center justify-center flex-col py-20 bg-[#F8F7FF] rounded-[30px] border-2 border-dashed border-[#EEEDFC]">
+                                            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm mb-6">
+                                                <Clock size={40} className="text-[#AC9BF7] opacity-50" />
+                                            </div>
+                                            <p className="text-[24px] font-bold text-black uppercase tracking-tight">Not Applied Yet</p>
+                                            <p className="text-[16px] text-zinc-500 mt-2 max-w-sm text-center">
+                                                This organizer has not submitted an application for the <span className="font-bold text-[#5331EA]">{activeCategory.toUpperCase()}</span> category.
+                                            </p>
+                                        </div>
+                                    );
+                                }
+
+                                const idx = setupIdx; // for field paths
+
+                                return (
+                                    <div key={setup.id} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                        <div className="flex items-center justify-between mb-8">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 bg-[#EEEDFC] rounded-2xl flex items-center justify-center text-[#5331EA]">
+                                                    {activeCategory === 'play' ? <Gamepad2 size={24} /> : activeCategory === 'events' ? <Music size={24} /> : <Utensils size={24} />}
+                                                </div>
+                                                <h4 className="text-[24px] font-bold text-black uppercase tracking-tight">{activeCategory} Application</h4>
+                                            </div>
+                                            <span className={`px-6 py-2 rounded-full text-[15px] font-bold border-2 ${detail.organizer.categoryStatus?.[setup.category] === 'approved' ? 'bg-[#D1FAE5] text-[#065F46] border-[#065F46]/20' :
                                                 detail.organizer.categoryStatus?.[setup.category] === 'rejected' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-[#FFD9B7] text-[#8B4D1A] border-orange-200/20'
                                                 }`}>
                                                 {detail.organizer.categoryStatus?.[setup.category]?.toUpperCase() || 'PENDING'}
                                             </span>
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-x-10 gap-y-4">
+                                        <div className="grid grid-cols-2 gap-x-12 gap-y-6">
                                             {[
                                                 { label: 'Organisation Type', path: `setups.${idx}.orgType`, value: setup.orgType },
                                                 { label: 'Phone', path: `setups.${idx}.phone`, value: setup.phone },
@@ -274,144 +334,80 @@ function OrganizerDetailView({ organizerId, onClose, onStatusChange }: {
                                                 { label: 'Backup Email', path: `setups.${idx}.backupEmail`, value: setup.backupEmail },
                                                 { label: 'Backup Phone', path: `setups.${idx}.backupPhone`, value: setup.backupPhone },
                                             ].map((row, i) => (
-                                                <div key={i} className={`flex flex-col border-b pb-1.5 ${isEditMode ? 'border-[#AC9BF7]/50' : 'border-[#AEAEAE]'}`}>
-                                                    <span className="text-[14px] font-medium text-[#686868]">{row.label}</span>
-                                                    <div className="mt-0.5 flex justify-between items-center">
-                                                        {renderField(row)}
+                                                <div key={i} className={`flex flex-col border-b pb-2 ${isEditMode ? 'border-[#AC9BF7]/50' : 'border-[#EEEDFC]'}`}>
+                                                    <span className="text-[14px] font-semibold text-zinc-400 uppercase tracking-wider">{row.label}</span>
+                                                    <div className="mt-1 flex justify-between items-center">
+                                                        {renderField(row as any)}
                                                     </div>
                                                 </div>
                                             ))}
                                         </div>
 
-                                        {/* PAN Document Viewer Trigger */}
+                                        {/* PAN Document Access */}
                                         {setup.panCardUrl && (
-                                            <div className="mt-5 flex gap-3 flex-wrap">
+                                            <div className="mt-8 pt-8 border-t border-[#EEEDFC] flex gap-4">
                                                 <button
-                                                    onClick={() => setPanViewerUrl(setup.panCardUrl)}
-                                                    className="inline-flex items-center gap-2 text-[#5331EA] font-bold text-[16px] bg-[#EEEDFC] px-6 py-2.5 rounded-[12px] hover:bg-[#AC9BF7] hover:text-white transition-all shadow-sm"
+                                                    onClick={() => router.push(`/admin/organizers/${organizerId}/pan-card`)}
+                                                    className="inline-flex items-center gap-3 text-[#5331EA] font-bold text-[16px] bg-[#EEEDFC] px-8 py-3.5 rounded-2xl hover:bg-[#AC9BF7] hover:text-white transition-all shadow-sm"
                                                 >
-                                                    <ExternalLink size={18} /> View PAN Document
+                                                    <Shield size={20} /> Manage PAN Card
                                                 </button>
-                                                <a
-                                                    href={setup.panCardUrl}
-                                                    download
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    className="inline-flex items-center gap-2 text-zinc-600 font-bold text-[16px] bg-zinc-100 px-6 py-2.5 rounded-[12px] hover:bg-zinc-200 transition-all shadow-sm"
-                                                >
-                                                    ↓ Download
-                                                </a>
+                                                <div className="flex items-center gap-2 text-[13px] text-zinc-500 bg-white px-4 py-2 rounded-lg">
+                                                    <Shield size={16} />
+                                                    Secure Admin Access
+                                                </div>
                                             </div>
                                         )}
 
                                         {/* Approval Actions */}
-                                        <div className="mt-6 flex gap-4 justify-end">
+                                        <div className="mt-10 pt-8 border-t border-[#EEEDFC] flex gap-4 justify-end">
                                             {showRejectInput === setup.id ? (
-                                                <div className="flex flex-1 gap-3 items-center">
+                                                <div className="flex flex-1 gap-4 items-center">
                                                     <input
                                                         type="text"
-                                                        placeholder="Rejection reason…"
-                                                        className="flex-1 h-12 px-5 rounded-[12px] border-2 border-red-100 focus:border-red-400 focus:outline-none text-[16px]"
+                                                        placeholder="Write rejection reason here..."
+                                                        className="flex-1 h-14 px-6 rounded-2xl border-2 border-red-100 focus:border-red-400 focus:outline-none text-[16px] font-medium"
                                                         value={rejectionReason}
                                                         onChange={e => setRejectionReason(e.target.value)}
                                                     />
                                                     <button onClick={() => handleStatusUpdate(setup.category, 'rejected')}
-                                                        className="h-12 px-6 rounded-[12px] bg-red-600 text-white font-bold text-[16px] hover:scale-105 transition-transform shadow-md">
-                                                        Confirm
+                                                        className="h-14 px-8 rounded-2xl bg-red-600 text-white font-bold text-[16px] hover:scale-105 transition-transform shadow-lg">
+                                                        Confirm Rejection
                                                     </button>
                                                     <button onClick={() => { setShowRejectInput(null); setRejectionReason(''); }}
-                                                        className="text-[#686868] font-bold hover:text-black px-2">
-                                                        Cancel
+                                                        className="text-zinc-400 font-bold hover:text-black px-4 transition-colors">
+                                                        Go Back
                                                     </button>
                                                 </div>
                                             ) : (
-                                                <>
+                                                <div className="flex items-center gap-4">
                                                     <button onClick={() => handleStatusUpdate(setup.category, 'approved')}
                                                         disabled={detail.organizer.categoryStatus?.[setup.category] === 'approved' || updating === setup.category}
-                                                        className="px-8 py-2.5 rounded-[12px] bg-[#D1FAE5] text-[#065F46] text-[16px] font-bold transition-all hover:scale-105 disabled:opacity-50 shadow-sm">
-                                                        ✓ Approve
+                                                        className="h-14 px-10 rounded-2xl bg-green-500 text-white text-[16px] font-bold transition-all hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:scale-100">
+                                                        Approve Category
                                                     </button>
                                                     <button onClick={() => setShowRejectInput(setup.id)}
                                                         disabled={detail.organizer.categoryStatus?.[setup.category] === 'rejected' || updating === setup.category}
-                                                        className="px-8 py-2.5 rounded-[12px] bg-red-50 text-red-700 text-[16px] font-bold transition-all hover:scale-105 disabled:opacity-50 shadow-sm">
-                                                        ✗ Reject
+                                                        className="h-14 px-10 rounded-2xl bg-red-50 text-red-600 text-[16px] font-bold transition-all hover:scale-105 hover:bg-red-100 disabled:opacity-50">
+                                                        Reject
                                                     </button>
                                                     <button onClick={() => handleStatusUpdate(setup.category, 'pending')}
-                                                        className="px-8 py-2.5 rounded-[12px] bg-[#EEEDFC] text-black border border-[#AC9BF7]/30 text-[16px] font-bold transition-all hover:scale-105 shadow-sm">
-                                                        ⟳ Pending
+                                                        disabled={updating === setup.category}
+                                                        className="h-14 px-8 rounded-2xl bg-zinc-100 text-zinc-600 border border-zinc-200 text-[16px] font-bold transition-all hover:bg-zinc-200">
+                                                        Move to Pending
                                                     </button>
-                                                </>
+                                                </div>
                                             )}
                                         </div>
                                     </div>
-                                ))
-                            ) : (
-                                <div className="flex-1 flex items-center justify-center flex-col opacity-40 mt-10">
-                                    <Clock size={64} className="mb-4" />
-                                    <p className="text-[22px] font-bold">No application setups submitted yet</p>
-                                </div>
-                            )}
+                                );
+                            })()}
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* PAN Document Modal Overlay */}
-            {panViewerUrl && (
-                <div
-                    className="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center p-4"
-                    onClick={() => setPanViewerUrl(null)}
-                >
-                    <div
-                        className="relative bg-white rounded-[20px] overflow-hidden shadow-2xl w-full max-w-5xl"
-                        style={{ height: '90vh' }}
-                        onClick={e => e.stopPropagation()}
-                    >
-                        {/* Modal Header */}
-                        <div className="flex items-center justify-between px-6 py-3 bg-[#EEEDFC] border-b border-[#AC9BF7]/30">
-                            <span className="text-[16px] font-bold text-[#5331EA]">PAN Document Viewer</span>
-                            <div className="flex items-center gap-3">
-                                <a
-                                    href={panViewerUrl ?? '#'}
-                                    download
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="text-[13px] font-semibold text-[#5331EA] bg-white px-4 py-1.5 rounded-lg hover:bg-[#5331EA] hover:text-white transition-all"
-                                >
-                                    ↓ Download
-                                </a>
-                                <a
-                                    href={panViewerUrl ?? '#'}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="text-[13px] font-semibold text-zinc-600 bg-white px-4 py-1.5 rounded-lg hover:bg-zinc-100 transition-all"
-                                >
-                                    Open in Tab ↗
-                                </a>
-                                <button
-                                    onClick={() => setPanViewerUrl(null)}
-                                    className="w-8 h-8 rounded-full bg-white flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all text-zinc-500"
-                                >
-                                    <X size={18} />
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* PDF iframe Viewer */}
-                        {panViewerUrl && (
-                            <iframe
-                                key={panViewerUrl}
-                                src={`https://docs.google.com/viewer?url=${encodeURIComponent(panViewerUrl)}&embedded=true`}
-                                className="w-full"
-                                style={{ height: 'calc(90vh - 56px)', border: 'none' }}
-                                title="PAN Document"
-                                allow="fullscreen"
-                            />
-                        )}
-                    </div>
-                </div>
-            )}
-        </>
+            </>
     );
 }
 
@@ -460,8 +456,8 @@ function OrganizerModerationContent() {
         try {
             await adminApi.deleteOrganizer(id);
             fetchOrganizers();
-        } catch { 
-            toast.error('Delete failed'); 
+        } catch {
+            toast.error('Delete failed');
         }
     };
 

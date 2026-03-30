@@ -234,6 +234,8 @@ export default function DiningReviewPage() {
         setBookingLoading(true);
         setBookingError('');
 
+        if (!cart) return;
+
         try {
             if (grandTotal === 0) {
                 const freeId = isPassApplied ? `PASS_${cart.pass_id}_${Date.now()}` : `FREE_DINING_${Date.now()}`;

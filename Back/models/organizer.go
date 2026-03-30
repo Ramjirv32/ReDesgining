@@ -19,7 +19,11 @@ type Organizer struct {
 	BackupOTP         string             `bson:"backupOTP" json:"-"`
 	BackupOTPExpiry   time.Time          `bson:"backupOTPExpiry" json:"-"`
 	IsVerified        bool               `bson:"isVerified" json:"isVerified"`
+	PANCardPublicID   string             `bson:"pan_card_public_id" json:"pan_card_public_id"`
+	PANCardUploadedAt *time.Time         `bson:"pan_card_uploaded_at" json:"pan_card_uploaded_at"`
+	PANCardStatus     string             `bson:"pan_card_status" json:"pan_card_status"`
 	CreatedAt         time.Time          `bson:"createdAt" json:"createdAt"`
+	PANCardURL        string             `bson:"panCardUrl" json:"panCardUrl"`
 }
 
 type OrganizerSetup struct {

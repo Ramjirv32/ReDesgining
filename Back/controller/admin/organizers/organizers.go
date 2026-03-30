@@ -52,8 +52,39 @@ func ListOrganizers(c *fiber.Ctx) error {
 		"organizers": list,
 		"total":      total,
 		"page":       page,
-		"pages":      (total + int64(limit) - 1) / int64(limit),
+		"limit":      limit,
+		"totalPages": (total + int64(limit) - 1) / int64(limit),
 	})
+}
+
+func GetOrganizerByID(c *fiber.Ctx) error {
+	organizerID := c.Params("id")
+	if organizerID == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "Organizer ID is required"})
+	}
+
+	objID, err := primitive.ObjectIDFromHex(organizerID)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid organizer ID"})
+	}
+
+	col := config.GetDB().Collection("organizers")
+	var organizer models.Organizer
+
+	err = col.FindOne(c.Context(), bson.M{"_id": objID}).Decode(&organizer)
+	if err != nil {
+		if err.Error() == "mongo: no documents in result" {
+			return c.Status(404).JSON(fiber.Map{"error": "Organizer not found"})
+		}
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	// Infer PAN card status if missing
+	if organizer.PANCardStatus == "" && (organizer.PANCardPublicID != "" || organizer.PANCardURL != "") {
+		organizer.PANCardStatus = "uploaded"
+	}
+
+	return c.JSON(organizer)
 }
 
 func GetOrganizerDetail(c *fiber.Ctx) error {
@@ -68,6 +99,15 @@ func GetOrganizerDetail(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "not found"})
 	}
 
+	// Fetch profile
+	var profile models.Profile
+	config.GetDB().Collection("profiles").FindOne(c.Context(), bson.M{"organizerId": id}).Decode(&profile)
+
+	// Infer PAN card status if missing
+	if org.PANCardStatus == "" && (org.PANCardPublicID != "" || org.PANCardURL != "") {
+		org.PANCardStatus = "uploaded"
+	}
+
 	cursor, err := config.GetDB().Collection("organizer_setups").Find(c.Context(), bson.M{"organizerId": id})
 	var setups []models.OrganizerSetup
 	if err == nil {
@@ -76,6 +116,7 @@ func GetOrganizerDetail(c *fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{
 		"organizer": org,
+		"profile":   profile,
 		"setups":    setups,
 	})
 }
@@ -132,6 +173,7 @@ func UpdateOrganizer(c *fiber.Ctx) error {
 
 	config.GetDB().Collection("organizers").UpdateOne(c.Context(), bson.M{"_id": objID}, bson.M{"$set": bson.M{
 		"email": payload.Organizer.Email,
+		"name":  payload.Organizer.Name,
 	}})
 
 	config.GetDB().Collection("profiles").UpdateOne(c.Context(), bson.M{"organizerId": objID}, bson.M{"$set": payload.Profile}, options.Update().SetUpsert(true))

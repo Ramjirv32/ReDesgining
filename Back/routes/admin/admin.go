@@ -7,12 +7,12 @@ import (
 	adminnotification "ticpin-backend/controller/admin/notification"
 	adminoffer "ticpin-backend/controller/admin/offer"
 	adminorgs "ticpin-backend/controller/admin/organizers"
+	panctrl "ticpin-backend/controller/admin/pan"
 	adminpass "ticpin-backend/controller/admin/pass"
 	adminstats "ticpin-backend/controller/admin/stats"
 	adminusers "ticpin-backend/controller/admin/users"
 	orgmedia "ticpin-backend/controller/organizer/media"
 	"ticpin-backend/middleware"
-
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -72,6 +72,12 @@ func AdminRoutes(app *fiber.App) {
 	admin.Post("/passes/:id/renew", adminpass.RenewAdminPass)
 	admin.Get("/passes/eligible-users", adminpass.ListUsersForPass)
 	admin.Get("/passes/search-users", adminpass.GetUserBySearch)
+
+	// PAN Card routes (admin only)
+	admin.Get("/organizers/:id/pan-card", panctrl.GetPANCard)
+	admin.Post("/organizers/:id/pan-card", panctrl.UploadPANCard)
+	admin.Delete("/organizers/:id/pan-card", panctrl.DeletePANCard)
+	admin.Post("/organizers/:id/pan-card/secure", panctrl.SecureLegacyPANCard)
 
 	admin.Post("/upload-media", orgmedia.UploadMedia)
 }

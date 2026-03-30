@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
-import { CheckCircle2, ChevronRight, Tag, Trash2, ChevronDown, ArrowLeft, TriangleAlert, User, Percent } from 'lucide-react';
+import { CheckCircle2, ChevronRight, Tag, Trash2, ChevronDown, ArrowLeft, TriangleAlert, User, Percent, ChevronUp } from 'lucide-react';
 import { bookingApi, OfferItem, PaymentOrderResponse } from '@/lib/api/booking';
 import { profileApi } from '@/lib/api/profile';
 import { useUserSession } from '@/lib/auth/user';
@@ -87,6 +87,7 @@ export default function PlayReviewPage() {
 
     const [expandedSection, setExpandedSection] = useState<'none' | 'offers' | 'coupons'>('none');
     const [showGstDetails, setShowGstDetails] = useState(false);
+    const [timeLeft, setTimeLeft] = useState<{[key: string]: string}>({});
 
     const [email, setEmail] = useState('');
     useEffect(() => {
@@ -196,6 +197,75 @@ export default function PlayReviewPage() {
     }, [billing]);
     useEffect(() => { sessionStorage.setItem('ticpin_play_step', step); }, [step]);
 
+    // Countdown timer effect
+    useEffect(() => {
+        const timer = setInterval(() => {
+            const newTimeLeft: {[key: string]: string} = {};
+            
+            // Calculate time left for offers
+            offers.forEach(o => {
+                if (o.valid_until) {
+                    const expiry = new Date(o.valid_until).getTime();
+                    const now = Date.now();
+                    const diff = expiry - now;
+                    
+                    if (diff > 0) {
+                        const hours = Math.floor(diff / (1000 * 60 * 60));
+                        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                        
+                        if (hours > 24) {
+                            const days = Math.floor(hours / 24);
+                            const remainingHours = hours % 24;
+                            newTimeLeft[o.id] = `${days}d ${remainingHours}h ${minutes}m`;
+                        } else if (hours > 0) {
+                            newTimeLeft[o.id] = `${hours}h ${minutes}m ${seconds}s`;
+                        } else if (minutes > 0) {
+                            newTimeLeft[o.id] = `${minutes}m ${seconds}s`;
+                        } else {
+                            newTimeLeft[o.id] = `${seconds}s`;
+                        }
+                    } else {
+                        newTimeLeft[o.id] = 'Expired';
+                    }
+                }
+            });
+            
+            // Calculate time left for coupons
+            availableCoupons.forEach(c => {
+                if (c.valid_until) {
+                    const expiry = new Date(c.valid_until).getTime();
+                    const now = Date.now();
+                    const diff = expiry - now;
+                    
+                    if (diff > 0) {
+                        const hours = Math.floor(diff / (1000 * 60 * 60));
+                        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                        
+                        if (hours > 24) {
+                            const days = Math.floor(hours / 24);
+                            const remainingHours = hours % 24;
+                            newTimeLeft[`coupon_${c.id}`] = `${days}d ${remainingHours}h ${minutes}m`;
+                        } else if (hours > 0) {
+                            newTimeLeft[`coupon_${c.id}`] = `${hours}h ${minutes}m ${seconds}s`;
+                        } else if (minutes > 0) {
+                            newTimeLeft[`coupon_${c.id}`] = `${minutes}m ${seconds}s`;
+                        } else {
+                            newTimeLeft[`coupon_${c.id}`] = `${seconds}s`;
+                        }
+                    } else {
+                        newTimeLeft[`coupon_${c.id}`] = 'Expired';
+                    }
+                }
+            });
+            
+            setTimeLeft(newTimeLeft);
+        }, 1000); // Update every second
+        
+        return () => clearInterval(timer);
+    }, [offers, availableCoupons]);
+
     useEffect(() => {
         if (!venueName) return;
         bookingApi.getPlayOffers(venueName).then(setOffers).catch(() => setOffers([]));
@@ -203,9 +273,11 @@ export default function PlayReviewPage() {
             setAvailableCoupons(Array.isArray(res) ? res : []);
         }).catch(() => setAvailableCoupons([]));
     }, [venueName, session?.id]);
-
     const orderAmount = cart?.totalPrice ?? 0;
     const bookingFee = Math.round(orderAmount * 0.1);
+    // Check if any offers are expiring soon
+    const hasExpiringOffers = offers.some(o => o.valid_until && new Date(o.valid_until) <= new Date(Date.now() + 24 * 60 * 60 * 1000) && new Date(o.valid_until) > new Date());
+    const hasExpiringCoupons = availableCoupons.some(c => c.valid_until && new Date(c.valid_until) <= new Date(Date.now() + 24 * 60 * 60 * 1000) && new Date(c.valid_until) > new Date());
     const totalDiscount = offerDiscount + couponDiscount;
     const isPassApplied = cart?.use_pass ?? false;
     const grandTotal = isPassApplied ? 0 : Math.max(0, orderAmount + bookingFee - totalDiscount);
@@ -215,12 +287,23 @@ export default function PlayReviewPage() {
             toast.warning("The total is already ₹0. No more offers can be applied.");
             return;
         }
+        
+        const isExpiringSoon = offer.valid_until && new Date(offer.valid_until) <= new Date(Date.now() + 24 * 60 * 60 * 1000) && new Date(offer.valid_until) > new Date();
+        
         const disc = offer.discount_type === 'percent'
             ? Math.round(orderAmount * offer.discount_value / 100)
             : Math.min(offer.discount_value, orderAmount);
         setOfferDiscount(disc);
         setAppliedOffer(offer);
         setExpandedSection('none');
+        
+        // Show urgency message for expiring offers
+        if (isExpiringSoon) {
+            const expiryDate = new Date(offer.valid_until).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            toast.success(`🎉 Perfect timing! You saved ₹${disc} with an offer expiring on ${expiryDate}!`);
+        } else {
+            toast.success(`✅ Offer applied! You saved ₹${disc}`);
+        }
     };
 
     const validateCoupon = async (code?: string) => {
@@ -237,7 +320,17 @@ export default function PlayReviewPage() {
             const result = await bookingApi.validateCoupon(c, 'play', orderAmount, session?.id);
             setCouponDiscount(Math.round(result.discount_amount));
             setAppliedCoupon(c.toUpperCase());
-            setCouponSuccess(`✓ Coupon applied! You save ₹${Math.round(result.discount_amount)}`);
+            
+            // Check if this coupon is expiring soon
+            const coupon = availableCoupons.find(cp => cp.code.toUpperCase() === c.toUpperCase());
+            const isExpiringSoon = coupon && coupon.valid_until && new Date(coupon.valid_until) <= new Date(Date.now() + 24 * 60 * 60 * 1000) && new Date(coupon.valid_until) > new Date();
+            
+            if (isExpiringSoon) {
+                const expiryDate = new Date(coupon.valid_until!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                setCouponSuccess(`🎉 Perfect timing! Coupon applied! You save ₹${Math.round(result.discount_amount)} (Expires ${expiryDate})`);
+            } else {
+                setCouponSuccess(`✓ Coupon applied! You save ₹${Math.round(result.discount_amount)}`);
+            }
             setExpandedSection('none');
         } catch (err: unknown) {
             setCouponError(err instanceof Error ? err.message : 'Invalid coupon');
@@ -585,25 +678,94 @@ export default function PlayReviewPage() {
                                     <div className="w-6 h-6 rounded-full border border-zinc-300 flex items-center justify-center text-zinc-600">
                                         <Percent size={12} strokeWidth={3} />
                                     </div>
-                                    <span className="text-[15px] font-medium text-black">View all play offers</span>
+                                    <span className="text-[15px] font-medium text-black">Play Offers</span>
+                                    {offers.length > 0 ? (
+                                        <span className={`px-2 py-1 text-[11px] font-semibold rounded-full ${
+                                            appliedOffer ? 'bg-green-100 text-green-700' : 'bg-black text-white'
+                                        }`}>
+                                            {offers.length}
+                                        </span>
+                                    ) : (
+                                        <span className="px-2 py-1 bg-zinc-100 text-zinc-500 text-[11px] font-medium rounded-full">
+                                            0
+                                        </span>
+                                    )}
+                                    {hasExpiringOffers && !appliedOffer && (
+                                        <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-bold rounded-full animate-pulse">
+                                            ⏰ EXPIRING SOON
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="flex items-center gap-2">
                                     {appliedOffer && <span className="text-[12px] text-green-600 font-semibold uppercase">{appliedOffer.title}</span>}
-                                    <ChevronRight size={18} className={`text-zinc-400 transition-transform ${expandedSection === 'offers' ? 'rotate-90' : ''}`} />
+                                    {expandedSection === 'offers' ? 
+                                        <ChevronUp size={18} className="text-zinc-400 transition-transform" /> : 
+                                        <ChevronDown size={18} className="text-zinc-400 transition-transform" />
+                                    }
                                 </div>
                             </button>
 
                             {expandedSection === 'offers' && (
                                 <div className="p-4 bg-zinc-50 border-t border-zinc-100 space-y-3">
-                                    {offers.length > 0 ? offers.map(o => (
-                                        <div key={o.id} className="flex justify-between items-center p-3 bg-white rounded-lg border border-zinc-200 shadow-sm">
-                                            <div>
-                                                <p className="text-[14px] font-semibold text-black">{o.title}</p>
-                                                <p className="text-[13px] text-zinc-500">{o.description}</p>
+                                    {offers.length > 0 ? offers.map(o => {
+                                        const isExpiringSoon = o.valid_until && new Date(o.valid_until) <= new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+                                        const expiryDate = o.valid_until ? new Date(o.valid_until).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+                                        const isExpired = Boolean(o.valid_until && new Date(o.valid_until) < new Date());
+                                        const countdown = timeLeft[o.id] || 'Loading...';
+                                        
+                                        return (
+                                        <div key={o.id} className={`flex justify-between items-center p-3 rounded-lg border shadow-sm ${
+                                            isExpired ? 'bg-gray-50 border-gray-200 opacity-60' : 'bg-white border-zinc-200'
+                                        }`}>
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <p className={`text-[14px] font-semibold ${isExpired ? 'text-gray-500' : 'text-black'}`}>
+                                                        {o.title}
+                                                    </p>
+                                                    {isExpiringSoon && !isExpired && (
+                                                        <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-bold rounded-full animate-pulse">
+                                                            EXPIRES SOON
+                                                        </span>
+                                                    )}
+                                                    {isExpired && (
+                                                        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-medium rounded-full">
+                                                            EXPIRED
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p className="text-[13px] text-zinc-500 mb-1">{o.description}</p>
+                                                {o.valid_until && (
+                                                    <div className="flex items-center gap-2">
+                                                        <p className={`text-[11px] font-medium ${isExpired ? 'text-gray-400' : 'text-zinc-600'}`}>
+                                                            Valid until: {expiryDate}
+                                                        </p>
+                                                        {!isExpired && (
+                                                            <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
+                                                                isExpiringSoon 
+                                                                    ? 'bg-red-100 text-red-700 animate-pulse' 
+                                                                    : 'bg-blue-100 text-blue-700'
+                                                            }`}>
+                                                                ⏰ {countdown}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
-                                            <button onClick={() => applyOffer(o)} className="px-4 py-1.5 bg-black text-white text-[12px] font-semibold rounded-md">Apply</button>
+                                            <button 
+                                                onClick={() => applyOffer(o)} 
+                                                disabled={isExpired}
+                                                className={`px-4 py-1.5 text-[12px] font-semibold rounded-md transition-colors ${
+                                                    isExpired 
+                                                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                                                        : isExpiringSoon 
+                                                            ? 'bg-red-600 text-white hover:bg-red-700 animate-pulse'
+                                                            : 'bg-black text-white hover:bg-gray-800'
+                                                }`}
+                                            >
+                                                {isExpired ? 'Expired' : isExpiringSoon ? 'Apply Quick!' : 'Apply'}
+                                            </button>
                                         </div>
-                                    )) : <p className="text-[13px] text-zinc-500 text-center py-2">No offers available</p>}
+                                    )}) : <p className="text-[13px] text-zinc-500 text-center py-2">No offers available</p>}
                                     {appliedOffer && (
                                         <button onClick={() => { setAppliedOffer(null); setOfferDiscount(0); }} className="text-[12px] text-red-500 font-semibold pt-2 w-full text-right">Remove offer</button>
                                     )}
@@ -619,11 +781,30 @@ export default function PlayReviewPage() {
                             >
                                 <div className="flex items-center gap-3">
                                     <Tag size={18} className="text-zinc-600 ml-1" />
-                                    <span className="text-[15px] font-medium text-black ml-1">View all coupon codes</span>
+                                    <span className="text-[15px] font-medium text-black ml-1">Coupon Codes</span>
+                                    {availableCoupons.length > 0 ? (
+                                        <span className={`px-2 py-1 text-[11px] font-semibold rounded-full ${
+                                            appliedCoupon ? 'bg-green-100 text-green-700' : 'bg-black text-white'
+                                        }`}>
+                                            {availableCoupons.length}
+                                        </span>
+                                    ) : (
+                                        <span className="px-2 py-1 bg-zinc-100 text-zinc-500 text-[11px] font-medium rounded-full">
+                                            0
+                                        </span>
+                                    )}
+                                    {hasExpiringCoupons && !appliedCoupon && (
+                                        <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-bold rounded-full animate-pulse">
+                                            ⏰ EXPIRING SOON
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="flex items-center gap-2">
                                     {appliedCoupon && <span className="text-[12px] text-green-600 font-semibold uppercase">{appliedCoupon}</span>}
-                                    <ChevronRight size={18} className={`text-zinc-400 transition-transform ${expandedSection === 'coupons' ? 'rotate-90' : ''}`} />
+                                    {expandedSection === 'coupons' ? 
+                                        <ChevronUp size={18} className="text-zinc-400 transition-transform" /> : 
+                                        <ChevronDown size={18} className="text-zinc-400 transition-transform" />
+                                    }
                                 </div>
                             </button>
 
@@ -651,15 +832,78 @@ export default function PlayReviewPage() {
 
                                     {availableCoupons.length > 0 && (
                                         <div className="space-y-2 pt-2">
-                                            {availableCoupons.map(c => (
-                                                <div key={c.id} className="flex justify-between items-center p-3 bg-white rounded-lg border border-zinc-200 border-dashed">
-                                                    <div>
-                                                        <p className="text-[14px] font-semibold text-black">{c.code}</p>
-                                                        <p className="text-[12px] text-zinc-500">{c.discount_type === 'percent' ? `${c.discount_value}%` : `₹${c.discount_value}`} OFF</p>
+                                            {availableCoupons.map(c => {
+                                                const isExpiringSoon = c.valid_until && new Date(c.valid_until) <= new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+                                                const expiryDate = c.valid_until ? new Date(c.valid_until).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+                                                const isExpired = Boolean(c.valid_until && new Date(c.valid_until) < new Date());
+                                                const isAlmostUsedUp = c.max_uses && c.used_count >= (c.max_uses * 0.8); // 80% used
+                                                const countdown = timeLeft[`coupon_${c.id}`] || 'Loading...';
+                                                
+                                                return (
+                                                <div key={c.id} className={`flex justify-between items-center p-3 rounded-lg border ${
+                                                    isExpired ? 'bg-gray-50 border-gray-200 opacity-60' : 'bg-white border-zinc-200 border-dashed'
+                                                }`}>
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <p className={`text-[14px] font-semibold ${isExpired ? 'text-gray-500' : 'text-black'}`}>
+                                                                {c.code}
+                                                            </p>
+                                                            {isExpiringSoon && !isExpired && (
+                                                                <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-bold rounded-full animate-pulse">
+                                                                    EXPIRES SOON
+                                                                </span>
+                                                            )}
+                                                            {isExpired && (
+                                                                <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-medium rounded-full">
+                                                                    EXPIRED
+                                                                </span>
+                                                            )}
+                                                            {isAlmostUsedUp && !isExpired && (
+                                                                <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-[10px] font-medium rounded-full">
+                                                                    FEW LEFT
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className={`text-[12px] mb-1 ${isExpired ? 'text-gray-400' : 'text-zinc-500'}`}>
+                                                            {c.discount_type === 'percent' ? `${c.discount_value}%` : `₹${c.discount_value}`} OFF
+                                                        </p>
+                                                        {c.valid_until && (
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <p className={`text-[11px] font-medium ${isExpired ? 'text-gray-400' : 'text-zinc-600'}`}>
+                                                                    Valid until: {expiryDate}
+                                                                </p>
+                                                                {!isExpired && (
+                                                                    <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
+                                                                        isExpiringSoon 
+                                                                            ? 'bg-red-100 text-red-700 animate-pulse' 
+                                                                            : 'bg-blue-100 text-blue-700'
+                                                                    }`}>
+                                                                        ⏰ {countdown}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                        {c.max_uses && (
+                                                            <p className={`text-[11px] font-medium ${isExpired ? 'text-gray-400' : 'text-zinc-600'}`}>
+                                                                Uses: {c.used_count}/{c.max_uses}
+                                                            </p>
+                                                        )}
                                                     </div>
-                                                    <button onClick={() => { setCouponInput(c.code); validateCoupon(c.code); }} className="px-4 py-1.5 bg-zinc-100 text-black text-[12px] font-semibold rounded-md hover:bg-zinc-200">Apply</button>
+                                                    <button 
+                                                        onClick={() => { setCouponInput(c.code); validateCoupon(c.code); }} 
+                                                        disabled={isExpired}
+                                                        className={`px-4 py-1.5 text-[12px] font-semibold rounded-md transition-colors ${
+                                                            isExpired 
+                                                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                                                                : isExpiringSoon 
+                                                                    ? 'bg-red-600 text-white hover:bg-red-700 animate-pulse'
+                                                                    : 'bg-zinc-100 text-black hover:bg-zinc-200'
+                                                        }`}
+                                                    >
+                                                        {isExpired ? 'Expired' : isExpiringSoon ? 'Quick Apply!' : 'Apply'}
+                                                    </button>
                                                 </div>
-                                            ))}
+                                            )})}
                                         </div>
                                     )}
                                     {appliedCoupon && (
