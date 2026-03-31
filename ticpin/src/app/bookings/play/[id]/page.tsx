@@ -57,13 +57,45 @@ export default function PlayBookingDetailPage() {
   const handleCancel = async () => {
     if (!confirm('Are you sure you want to cancel this booking?')) return;
     
+    // FIX RC2 & RC4: Better error handling for cancel operation
     try {
-      await bookingApi.cancelBooking(bookingId, 'play');
-      // Refetch booking details to get updated status
-      const updatedBooking = await bookingApi.getBookingDetails(bookingId, session?.id);
-      setBooking(updatedBooking);
-    } catch (err) {
-      toast.error('Failed to cancel booking. Please try again.');
+      const response: any = await bookingApi.cancelBooking(bookingId, 'play');
+      
+      // Verify cancellation was successful by checking message
+      if (response?.message?.includes('cancelled successfully')) {
+        toast.success('Booking cancelled successfully. Refund will be processed shortly.');
+        
+        // Wait a moment for backend to process refunds/email
+        setTimeout(async () => {
+          const updatedBooking = await bookingApi.getBookingDetails(bookingId, session?.id);
+          setBooking(updatedBooking);
+        }, 1000);
+      } else {
+        toast.error('Cancellation status unclear. Please refresh the page.');
+        const updatedBooking = await bookingApi.getBookingDetails(bookingId, session?.id);
+        setBooking(updatedBooking);
+      }
+    } catch (err: any) {
+      // FIX RC1 & RC2: Show specific error messages from API
+      const errorMessage = err?.response?.data?.error || err?.message || 'Failed to cancel booking';
+      
+      if (errorMessage.includes('expired')) {
+        toast.error('Cannot cancel expired bookings.');
+      } else if (errorMessage.includes('already confirmed') || errorMessage.includes('already been paid')) {
+        toast.error('This booking cannot be cancelled as it has already been confirmed.');
+      } else if (errorMessage.includes('already cancelled')) {
+        toast.error('This booking has already been cancelled.');
+      } else {
+        toast.error(errorMessage);
+      }
+      
+      // Attempt to refresh booking status
+      try {
+        const updatedBooking = await bookingApi.getBookingDetails(bookingId, session?.id);
+        setBooking(updatedBooking);
+      } catch (refreshErr) {
+        console.error('Failed to refresh booking status:', refreshErr);
+      }
     }
   };
 

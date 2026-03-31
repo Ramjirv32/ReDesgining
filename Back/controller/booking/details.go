@@ -90,11 +90,17 @@ func GetBookingDetails(c *fiber.Ctx) error {
 		var event models.Event
 		config.EventsCol.FindOne(ctx, bson.M{"_id": b.EventID}).Decode(&event)
 
+		// FIX BUG1: Ensure consistent date format (YYYY-MM-DD)
+		var formattedDate string
+		if !event.Date.IsZero() {
+			formattedDate = event.Date.Format("2006-01-02")
+		}
+
 		response["event_name"] = event.Name
 		response["event_image_url"] = event.PortraitImageURL
 		response["venue_name"] = event.VenueName
 		response["venue_address"] = event.VenueAddress
-		response["date"] = event.Date
+		response["date"] = formattedDate
 		response["time"] = event.Time
 		response["user_name"] = "User"
 		response["user_email"] = b.UserEmail
@@ -121,7 +127,7 @@ func GetBookingDetails(c *fiber.Ctx) error {
 		response["time"] = b.Slot
 		response["user_name"] = "User"
 		response["user_email"] = b.UserEmail
-		response["user_phone"] = ""
+		response["user_phone"] = b.UserPhone
 		response["tickets"] = b.Tickets
 		response["order_amount"] = b.OrderAmount
 		response["booking_fee"] = b.BookingFee
@@ -144,7 +150,7 @@ func GetBookingDetails(c *fiber.Ctx) error {
 		response["time"] = b.TimeSlot
 		response["user_name"] = "User"
 		response["user_email"] = b.UserEmail
-		response["user_phone"] = ""
+		response["user_phone"] = b.UserPhone
 		response["tickets"] = []map[string]interface{}{
 			{"category": "Table", "quantity": b.Guests, "price": b.OrderAmount},
 		}
