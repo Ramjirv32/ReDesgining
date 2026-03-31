@@ -7,6 +7,7 @@ import (
 	"ticpin-backend/models"
 	bookingsvc "ticpin-backend/services/booking"
 	passsvc "ticpin-backend/services/pass"
+	paymentsvc "ticpin-backend/services/payment"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -203,6 +204,65 @@ func CancelBooking(c *fiber.Ctx) error {
 
 	if result.MatchedCount == 0 {
 		return c.Status(400).JSON(fiber.Map{"error": "booking cannot be cancelled (already confirmed or paid)"})
+	}
+
+	// Extract payment details for refund
+	var paymentID string
+	var grandTotal float64
+	switch b := bookingFound.(type) {
+	case *models.Booking:
+		paymentID = b.PaymentID
+		if paymentID == "" {
+			paymentID = b.OrderID
+		}
+		grandTotal = b.GrandTotal
+	case *models.PlayBooking:
+		paymentID = b.PaymentID
+		if paymentID == "" {
+			paymentID = b.OrderID
+		}
+		grandTotal = b.GrandTotal
+	case *models.DiningBooking:
+		paymentID = b.PaymentID
+		if paymentID == "" {
+			paymentID = b.OrderID
+		}
+		grandTotal = b.GrandTotal
+	}
+
+	// Process refund if payment exists
+	if paymentID != "" && grandTotal > 0 {
+		go func() {
+			refundCtx, refundCancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer refundCancel()
+
+			refundNotes := map[string]string{
+				"booking_id":   bookingIDStr,
+				"booking_type": category,
+				"reason":       "booking_cancelled",
+				"cancelled_at": time.Now().Format("2006-01-02T15:04:05Z07:00"),
+			}
+
+			refundID, err := paymentsvc.CreateRefund(paymentID, grandTotal, refundNotes)
+			if err != nil {
+				fmt.Printf("ERROR: Failed to create refund for booking %s (Payment ID: %s): %v\n", bookingIDStr, paymentID, err)
+			} else {
+				fmt.Printf("SUCCESS: Refund initiated for booking %s - Refund ID: %s, Payment ID: %s, Amount: %.2f\n", bookingIDStr, refundID, paymentID, grandTotal)
+				// Update booking with refund ID for tracking
+				_, updateErr := col.UpdateOne(refundCtx, bson.M{"_id": bookingPrimitiveID}, bson.M{
+					"$set": bson.M{
+						"refund_id":     refundID,
+						"refund_date":   time.Now(),
+						"refund_amount": grandTotal,
+					},
+				})
+				if updateErr != nil {
+					fmt.Printf("ERROR: Failed to update refund ID in booking %s: %v\n", bookingIDStr, updateErr)
+				}
+			}
+
+			_ = refundCtx
+		}()
 	}
 
 	if category == "play" || category == "dining" {

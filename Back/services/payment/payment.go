@@ -206,3 +206,66 @@ func CreateOrder(req OrderRequest) (*OrderResponse, error) {
 	}
 	return CreateOrderRazorpay(req)
 }
+
+// CreateRefundRazorpay initiates a refund for a Razorpay payment
+func CreateRefundRazorpay(paymentID string, amount float64, notes map[string]string) (string, error) {
+	keyID := os.Getenv("NEXT_PUBLIC_RAZORPAY_KEY_ID")
+	keySecret := os.Getenv("RAZORPAY_KEY_SECRET")
+
+	payload := map[string]interface{}{
+		"receipt": paymentID,
+	}
+	if amount > 0 {
+		amountPaise := int64(amount * 100)
+		payload["amount"] = amountPaise
+	}
+	if notes != nil && len(notes) > 0 {
+		payload["notes"] = notes
+	}
+
+	jsonPayload, _ := json.Marshal(payload)
+	httpReq, err := http.NewRequest("POST", "https://api.razorpay.com/v1/refunds", bytes.NewBuffer(jsonPayload))
+	if err != nil {
+		return "", fmt.Errorf("failed to create refund request: %v", err)
+	}
+
+	auth := base64.StdEncoding.EncodeToString([]byte(keyID + ":" + keySecret))
+	httpReq.Header.Add("Authorization", "Basic "+auth)
+	httpReq.Header.Add("Content-Type", "application/json")
+
+	fmt.Printf("DEBUG: Creating Razorpay refund for Payment ID: %s\n", paymentID)
+
+	resp, err := httpClient.Do(httpReq)
+	if err != nil {
+		return "", fmt.Errorf("failed to call razorpay refund API: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", fmt.Errorf("razorpay refund response parse error: %s", string(body))
+	}
+
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("razorpay refund API error (status %d): %s", resp.StatusCode, string(body))
+	}
+
+	refundID, _ := result["id"].(string)
+	if refundID == "" {
+		return "", fmt.Errorf("razorpay did not return refund ID: %s", string(body))
+	}
+
+	fmt.Printf("DEBUG: Successfully created Razorpay refund - Refund ID: %s, Payment ID: %s\n", refundID, paymentID)
+	return refundID, nil
+}
+
+// CreateRefund initiates a refund based on payment gateway
+func CreateRefund(paymentID string, amount float64, notes map[string]string) (string, error) {
+	gateway := GetPaymentGateway()
+	if gateway == GatewayCashfree {
+		// Cashfree refund implementation (if needed in future)
+		return "", fmt.Errorf("cashfree refunds not yet implemented")
+	}
+	return CreateRefundRazorpay(paymentID, amount, notes)
+}
