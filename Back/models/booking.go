@@ -73,6 +73,7 @@ type PlayBooking struct {
 	Status         string             `bson:"status" json:"status"`
 	BookedAt       time.Time          `bson:"booked_at" json:"booked_at"`
 	TicpassApplied bool               `bson:"ticpass_applied,omitempty" json:"ticpass_applied,omitempty"`
+	LockKey        string             `bson:"lock_key,omitempty" json:"lock_key,omitempty"`
 }
 
 type DiningBooking struct {

@@ -45,6 +45,7 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 		PaymentGateway string                 `json:"payment_gateway" validate:"required"`
 		Status         string                 `json:"status"`
 		UseTicpass     bool                   `json:"use_ticpass"`
+		LockKey        string                 `json:"lock_key" validate:"omitempty"`
 	}
 
 	if err := utils.ParseAndValidate(c, &req); err != nil {
@@ -359,6 +360,7 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 		Status:         req.Status,
 		BookedAt:       time.Now(),
 		TicpassApplied: ticpassApplied,
+		LockKey:        req.LockKey,
 	}
 	if booking.Status == "" {
 		booking.Status = "booked"

@@ -177,8 +177,8 @@ func CreateIndexes() {
 	})
 
 	SlotLocksCol.Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys:    bson.D{{Key: "booking_id", Value: 1}},
-		Options: options.Index().SetUnique(true),
+		Keys: bson.D{{Key: "booking_id", Value: 1}},
+		// Removed SetUnique(true) - multiple locks can share same booking_id for multi-slot/multi-court bookings
 	})
 
 	EventBookingsCol.Indexes().CreateMany(ctx, []mongo.IndexModel{

@@ -13,7 +13,6 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -132,7 +131,11 @@ func buildOccupiedGrid(
 	date string,
 	open, close int,
 	venueSlots []string,
+	excludeLockKey string,
 ) (map[string][]bool, error) {
+	// ✅ FIX: Exclude locks with same lock_key (user's own locks)
+	// Only check other users' locks, not current user's own locks
+	// This allows users to retry their own reservations
 
 	col := config.PlayBookingsCol
 	cursor, err := col.Find(ctx, bson.M{
@@ -163,6 +166,7 @@ func buildOccupiedGrid(
 
 	grid := map[string][]bool{}
 
+	// Process BOOKINGS
 	for _, b := range bookings {
 
 		startIdx, found := labelToIdx[b.Slot]
@@ -198,6 +202,66 @@ func buildOccupiedGrid(
 		}
 	}
 
+	// ✅ FIX: Also check LOCKS table (pre-payment reservations)
+	// This ensures users can't book a slot that's already locked
+	lockCol := config.SlotLocksCol
+	lockFilter := bson.M{
+		"play_id": playID,
+		"date":    date,
+		// Only check locks WITHOUT booking_id (purely pre-payment locks)
+		// Locks with booking_id are already in PlayBookings, so skip them
+		"booking_id": bson.M{"$exists": false},
+	}
+	// ✅ CRITICAL FIX 2: Exclude same user's own locks
+	// Only block OTHER users' locks, not the current user's own lock_key
+	if excludeLockKey != "" {
+		lockFilter["lock_key"] = bson.M{"$ne": excludeLockKey}
+	}
+	lockCursor, err := lockCol.Find(ctx, lockFilter, options.Find().SetProjection(bson.M{
+		"slot":       1,
+		"court_name": 1,
+	}))
+	if err != nil {
+		return nil, err
+	}
+	defer lockCursor.Close(ctx)
+
+	var locks []bson.M
+	if err := lockCursor.All(ctx, &locks); err != nil {
+		return nil, err
+	}
+
+	// Process LOCKS (only active, non-booked locks)
+	for _, lock := range locks {
+		slot, ok := lock["slot"].(string)
+		if !ok {
+			continue
+		}
+		courtName, ok := lock["court_name"].(string)
+		if !ok {
+			continue
+		}
+
+		lockIdx, found := labelToIdx[slot]
+		if !found {
+			sm := slotLabelStartMin(slot)
+			if sm < 0 {
+				continue
+			}
+			lockIdx = slotIndex(open, sm)
+			if lockIdx < 0 {
+				continue
+			}
+		}
+
+		if _, ok := grid[courtName]; !ok {
+			grid[courtName] = make([]bool, n)
+		}
+		if lockIdx < n {
+			grid[courtName][lockIdx] = true
+		}
+	}
+
 	return grid, nil
 }
 
@@ -208,6 +272,7 @@ func IsAvailable(
 	startSlotLabel string,
 	durationSlots int,
 	courtName string,
+	lockKey string,
 ) (bool, error) {
 
 	var play models.Play
@@ -240,7 +305,7 @@ func IsAvailable(
 		return false, fmt.Errorf("slot %q is outside venue operating hours", startSlotLabel)
 	}
 
-	grid, err := buildOccupiedGrid(ctx, playID, date, open, close, venueSlots)
+	grid, err := buildOccupiedGrid(ctx, playID, date, open, close, venueSlots, lockKey)
 	if err != nil {
 		return false, err
 	}
@@ -259,6 +324,38 @@ func IsAvailable(
 	return true, nil
 }
 
+// ✅ Old signature for backward compatibility (calls with empty string)
+func GetPlayBookedSlots(playIDHex string, date string) ([]string, error) {
+	playID, err := primitive.ObjectIDFromHex(playIDHex)
+	if err != nil {
+		return nil, errors.New("invalid play_id")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var play models.Play
+	if err := config.PlaysCol.FindOne(ctx, bson.M{"_id": playID}).Decode(&play); err != nil {
+		return nil, fmt.Errorf("play not found: %w", err)
+	}
+	open, close := venueHours(&play)
+	venueSlots := generateSlots(open, close)
+
+	grid, err := buildOccupiedGrid(ctx, playID, date, open, close, venueSlots, "")
+	if err != nil {
+		return nil, err
+	}
+
+	var result []string
+	for courtName, slots := range grid {
+		for i, taken := range slots {
+			if taken && i < len(venueSlots) {
+				result = append(result, venueSlots[i]+"|"+courtName)
+			}
+		}
+	}
+	return result, nil
+}
 func FindNextAvailable(
 	ctx context.Context,
 	playID primitive.ObjectID,
@@ -266,6 +363,7 @@ func FindNextAvailable(
 	requestedStartLabel string,
 	durationSlots int,
 	courtName string,
+	lockKey string,
 ) (string, error) {
 
 	var play models.Play
@@ -300,7 +398,7 @@ func FindNextAvailable(
 		}
 	}
 
-	grid, err := buildOccupiedGrid(ctx, playID, date, open, close, venueSlots)
+	grid, err := buildOccupiedGrid(ctx, playID, date, open, close, venueSlots, lockKey)
 	if err != nil {
 		return "", err
 	}
@@ -326,38 +424,6 @@ func FindNextAvailable(
 		}
 	}
 	return "", nil
-}
-
-func GetPlayBookedSlots(playIDHex string, date string) ([]string, error) {
-	playID, err := primitive.ObjectIDFromHex(playIDHex)
-	if err != nil {
-		return nil, errors.New("invalid play_id")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	var play models.Play
-	if err := config.PlaysCol.FindOne(ctx, bson.M{"_id": playID}).Decode(&play); err != nil {
-		return nil, fmt.Errorf("play not found: %w", err)
-	}
-	open, close := venueHours(&play)
-	venueSlots := generateSlots(open, close)
-
-	grid, err := buildOccupiedGrid(ctx, playID, date, open, close, venueSlots)
-	if err != nil {
-		return nil, err
-	}
-
-	var result []string
-	for courtName, slots := range grid {
-		for i, taken := range slots {
-			if taken && i < len(venueSlots) {
-				result = append(result, venueSlots[i]+"|"+courtName)
-			}
-		}
-	}
-	return result, nil
 }
 
 func CreatePlay(b *models.PlayBooking) error {
@@ -416,7 +482,7 @@ func CreatePlay(b *models.PlayBooking) error {
 		)
 	}
 
-	grid, err := buildOccupiedGrid(ctx, b.PlayID, b.Date, open, close, venueSlots)
+	grid, err := buildOccupiedGrid(ctx, b.PlayID, b.Date, open, close, venueSlots, b.LockKey)
 	if err != nil {
 		return err
 	}
@@ -465,47 +531,42 @@ func CreatePlay(b *models.PlayBooking) error {
 	}
 	b.BookedAt = time.Now()
 
-	var lockDocs []interface{}
-	for _, ticket := range b.Tickets {
-		for i := 0; i < duration; i++ {
-			idx := si + i
-			if idx < len(venueSlots) {
-				lockDocs = append(lockDocs, bson.M{
-					"play_id":    b.PlayID,
-					"date":       b.Date,
-					"slot":       venueSlots[idx],
-					"court_name": ticket.Category,
-					"booking_id": b.ID,
-				})
-			}
+	// ✅ FIX: Convert existing locks to booking (don't insert new ones)
+	// If lock_key is provided, update those locks with the booking_id
+	// Otherwise, these are free/ticpass bookings - no locks needed
+	if b.LockKey != "" {
+		// ✅ CRITICAL FIX 3: Convert locks and validate they existed
+		// This prevents orphaned bookings if locks expired
+		res, err := config.SlotLocksCol.UpdateMany(ctx, bson.M{
+			"lock_key": b.LockKey,
+		}, bson.M{
+			"$set": bson.M{
+				"booking_id": b.ID,
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("could not convert locks to booking: %w", err)
 		}
-	}
-	if len(lockDocs) > 0 {
-		_, lockErr := config.SlotLocksCol.InsertMany(ctx, lockDocs,
-			options.InsertMany().SetOrdered(true))
-		if lockErr != nil {
-			if mongo.IsDuplicateKeyError(lockErr) {
-				// Check if this is a Ticpass booking to provide a better error message
-				if b.TicpassApplied && b.GrandTotal == 0 {
-					return fmt.Errorf(
-						"this free slot (using Ticpass) was just booked by someone else — please select a different time",
-					)
-				}
-				return fmt.Errorf(
-					"this slot was just booked by someone else — please select a different time",
-				)
-			}
-			return fmt.Errorf("could not reserve slot: %w", lockErr)
+		// ✅ CRITICAL: Verify locks were found (not expired)
+		if res.MatchedCount == 0 {
+			return errors.New("slot locks expired, please retry booking")
 		}
 	}
 
 	_, err = config.PlayBookingsCol.InsertOne(ctx, b)
 	if err != nil {
-
-		if len(lockDocs) > 0 {
+		// Clean up locks if booking insertion fails
+		if b.LockKey != "" {
 			cleanCtx, cleanCancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cleanCancel()
-			_, _ = config.SlotLocksCol.DeleteMany(cleanCtx, bson.M{"booking_id": b.ID})
+			// Remove booking_id from locks on failure
+			_, _ = config.SlotLocksCol.UpdateMany(cleanCtx, bson.M{
+				"lock_key": b.LockKey,
+			}, bson.M{
+				"$unset": bson.M{
+					"booking_id": "",
+				},
+			})
 		}
 		return err
 	}
