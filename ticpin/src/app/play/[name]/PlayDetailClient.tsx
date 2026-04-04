@@ -144,9 +144,9 @@ export default function PlayDetailClient({ venue, id }: { venue: RealPlay, id: s
                                         <div>
                                             <p className="text-xs text-[#686868] font-medium uppercase tracking-wider">TIMINGS</p>
                                             <p className="text-base font-medium text-black">
-                                                {(venue.opening_time && venue.closing_time)
+                                                {((venue.opening_time && venue.opening_time.trim().replace(/-/g, '') !== '') && (venue.closing_time && venue.closing_time.trim().replace(/-/g, '') !== ''))
                                                     ? `${toDisplayTime(venue.opening_time)} - ${toDisplayTime(venue.closing_time)}`
-                                                    : (venue.time ? toDisplayTime(venue.time) : 'N/A')}
+                                                    : (venue.time && venue.time.trim().replace(/-/g, '') !== '' ? toDisplayTime(venue.time) : 'N/A')}
                                             </p>
                                         </div>
                                     </div>

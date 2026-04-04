@@ -98,7 +98,7 @@ function DashboardContent() {
             accent: '#E7C200',
         },
         dining: {
-            bg: 'linear-gradient(180deg, #FFFCED 0%, #FFFFFF 100%)',
+            bg: 'rgba(211, 203, 245, 0.1)',
             title: 'Your dining',
             subtitle: 'An overview of your dining listings',
             buttonLabel: 'Create listing',
@@ -131,7 +131,7 @@ function DashboardContent() {
                         <button
                             key={item.id}
                             title={item.label}
-                            onClick={() => setActiveTab(item.id as any)}
+                            onClick={() => router.push(`?category=${item.id}`)}
                             className={`w-12 h-12 flex items-center justify-center rounded-[12px] transition-all group ${activeTab === item.id ? 'bg-black text-white shadow-md' : 'text-[#686868] hover:bg-black/5'}`}
                         >
                             <item.icon size={22} className={activeTab === item.id ? 'text-white' : 'text-[#686868] group-hover:text-black'} />
@@ -181,7 +181,7 @@ function DashboardContent() {
                     <div className="pt-4">
                         {!currentStatus ? (
                             /* State 1: Not Onboarded */
-                            <div className="flex flex-col items-center gap-8 text-center max-w-lg">
+                            <div className="flex flex-col items-center gap-8 text-center max-w-lg mx-auto py-20">
                                 <div className="w-20 h-20 bg-black/5 rounded-full flex items-center justify-center">
                                     <currentTheme.icon size={40} className="text-black/40" />
                                 </div>
@@ -201,7 +201,7 @@ function DashboardContent() {
                             </div>
                         ) : currentStatus === 'pending' ? (
                             /* State 2: Under Review */
-                            <div className="flex flex-col items-center gap-6 text-center max-w-md">
+                            <div className="flex flex-col items-center gap-6 text-center max-w-md mx-auto py-20">
                                 <div className="bg-[#F9C9A9] rounded-[15px] shadow-sm flex items-center justify-center gap-3 px-8 py-4">
                                     <Clock size={22} className="text-black" />
                                     <span className="text-[18px] font-medium text-black" style={{ fontFamily: 'Anek Latin' }}>
@@ -236,7 +236,7 @@ function DashboardContent() {
                             />
                         ) : currentStatus === 'rejected' ? (
                             /* State 4: Rejected */
-                            <div className="flex flex-col items-center gap-6 text-center max-w-md">
+                            <div className="flex flex-col items-center gap-6 text-center max-w-md mx-auto py-20">
                                 <div className="bg-red-50 border border-red-200 rounded-[15px] flex items-start gap-3 px-8 py-5 text-left">
                                     <XCircle size={22} className="text-red-500 shrink-0 mt-0.5" />
                                     <div>

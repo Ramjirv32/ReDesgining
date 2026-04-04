@@ -47,6 +47,18 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialView = 'n
 
     // Pass state (Keeping as local for now, can move to query later)
     const [pass, setPass] = useState<any>(null);
+    const [organizerProfile, setOrganizerProfile] = useState<any>(null);
+
+    useEffect(() => {
+        const orgSession = getOrganizerSession();
+        if (orgSession?.id && view === 'profile') {
+            import('@/lib/api/organizer').then(({ organizerApi }) => {
+                organizerApi.getProfile(orgSession.id).then(p => {
+                    if (p) setOrganizerProfile(p);
+                }).catch(() => {});
+            });
+        }
+    }, [view]);
 
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     const [editedName, setEditedName] = useState('');
@@ -243,6 +255,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialView = 'n
                                 <>
                                     <ProfileInfo
                                         profile={profile ?? null} isAdmin={isAdmin} userPhone={userSession?.phone || ''}
+                                        isOrganizer={!!organizerSession} organizerProfile={organizerProfile} organizerSession={organizerSession}
                                         isEditing={isEditingProfile} editedName={editedName} editedEmail={editedEmail}
                                         updating={updateProfileMutation.isPending || uploadPhotoMutation.isPending}
                                         setEditedName={setEditedName} setEditedEmail={setEditedEmail}

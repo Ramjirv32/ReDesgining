@@ -41,9 +41,22 @@ function OTPContent({ vertical, api, setupPath, loginPath }: Props) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [resent, setResent] = useState(false);
+    const [timeLeft, setTimeLeft] = useState(180);
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
     useEffect(() => { inputRefs.current[0]?.focus(); }, []);
+
+    useEffect(() => {
+        if (timeLeft <= 0) return;
+        const interval = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
+        return () => clearInterval(interval);
+    }, [timeLeft]);
+
+    const formatTime = (seconds: number) => {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m}:${s.toString().padStart(2, '0')}`;
+    };
 
     const handleChange = (index: number, value: string) => {
         if (!/^\d*$/.test(value)) return;
@@ -96,20 +109,24 @@ function OTPContent({ vertical, api, setupPath, loginPath }: Props) {
     };
 
     const handleResend = async () => {
+        if (timeLeft > 0) return;
         setResent(false); setError('');
         try {
             await api.resendOTP(email);
             setResent(true);
+            setTimeLeft(180); // Reset timer
         } catch {
             setError('Could not resend OTP. Try again later.');
         }
     };
 
-    const bg = vertical === 'play' ? 'rgba(255, 241, 168, 0.1)' : 'rgba(211, 203, 245, 0.1)';
+    const isPlay = vertical === 'play';
+    const bgClass = isPlay ? 'bg-gradient-to-b from-[#FFFCED] via-white to-white' : '';
+    const bgStyle = !isPlay ? { background: 'rgba(211, 203, 245, 0.1)' } : {};
 
     return (
-        <div className="overflow-hidden flex flex-col font-[family-name:var(--font-anek-latin)]"
-            style={{ background: bg, height: 'calc(100vh - 80px)' }}>
+        <div className={`overflow-hidden flex flex-col font-[family-name:var(--font-anek-latin)] ${bgClass}`}
+            style={{ ...bgStyle, height: 'calc(100vh - 80px)' }}>
             <main className="flex-1 flex flex-col items-center justify-start pt-20 px-6 overflow-y-auto scrollbar-hide">
                 <div className="w-full max-w-[1000px]">
                     <h1 className="font-medium text-black mb-2" style={{ fontSize: '40px', lineHeight: '44px' }}>
@@ -142,7 +159,7 @@ function OTPContent({ vertical, api, setupPath, loginPath }: Props) {
                     </div>
                     {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
                     {resent && <p className="text-green-600 text-sm mb-4">OTP resent successfully!</p>}
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-6 mt-6">
                         <button
                             onClick={handleVerify}
                             disabled={loading}
@@ -151,12 +168,18 @@ function OTPContent({ vertical, api, setupPath, loginPath }: Props) {
                         >
                             {loading ? 'Verifying...' : 'Continue'} <ChevronRight size={20} />
                         </button>
-                        <button
-                            onClick={handleResend}
-                            className="text-[#5331EA] border-b border-[#5331EA] text-[15px] font-medium hover:opacity-70"
-                        >
-                            Resend OTP
-                        </button>
+                        {timeLeft > 0 ? (
+                            <p className="text-[#AEAEAE] font-medium" style={{ fontSize: '15px' }}>
+                                Next OTP in {formatTime(timeLeft)}
+                            </p>
+                        ) : (
+                            <button
+                                onClick={handleResend}
+                                className="text-[#5331EA] border-b border-[#5331EA] text-[15px] font-medium hover:opacity-70"
+                            >
+                                Resend OTP
+                            </button>
+                        )}
                     </div>
                 </div>
             </main>

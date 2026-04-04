@@ -34,6 +34,7 @@ interface Props {
 }
 
 export default function OrganizerSigninForm({ vertical, api, setupPath, otpPath, loginPath, signinTitle, passwordPlaceholder, passwordHint }: Props) {
+    const { rememberedEmail, setRememberedEmail } = useIdentityStore();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -44,13 +45,15 @@ export default function OrganizerSigninForm({ vertical, api, setupPath, otpPath,
         const params = new URLSearchParams(window.location.search);
         const e = params.get('email');
         if (e) setEmail(decodeURIComponent(e));
+        else if (rememberedEmail) setEmail(rememberedEmail);
+
         // Read password from sessionStorage (set by login form), not from URL
         const savedPassword = sessionStorage.getItem('otp_pending_password');
         if (savedPassword) {
             setPassword(savedPassword);
             sessionStorage.removeItem('otp_pending_password');
         }
-    }, []);
+    }, [rememberedEmail]);
 
     const handleSignup = async () => {
         if (!email || !password) { setError('Email and password are required'); return; }
@@ -59,6 +62,7 @@ export default function OrganizerSigninForm({ vertical, api, setupPath, otpPath,
         try {
             await api.signin(email, password);
             sessionStorage.setItem('otp_pending_email', email);
+            setRememberedEmail(email);
             router.push(otpPath);
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : 'Signup failed';
@@ -98,10 +102,12 @@ export default function OrganizerSigninForm({ vertical, api, setupPath, otpPath,
         } finally { setLoading(false); }
     };
 
-    const bg = vertical === 'play' ? 'rgba(255, 241, 168, 0.1)' : 'rgba(211, 203, 245, 0.1)';
+    const isPlay = vertical === 'play';
+    const bgClass = isPlay ? 'bg-gradient-to-b from-[#FFFCED] via-white to-white' : '';
+    const bgStyle = !isPlay ? { background: 'rgba(211, 203, 245, 0.1)' } : {};
 
     return (
-        <div className="overflow-hidden flex flex-col font-[family-name:var(--font-anek-latin)]" style={{ background: bg, height: 'calc(100vh - 80px)' }}>
+        <div className={`overflow-hidden flex flex-col font-[family-name:var(--font-anek-latin)] ${bgClass}`} style={{ ...bgStyle, height: 'calc(100vh - 80px)' }}>
             <main className="flex-1 flex flex-col items-center justify-start pt-20 px-6 overflow-y-auto scrollbar-hide">
                 <div className="w-full max-w-[1000px]">
                     <h1 className="text-5xl font-medium text-black mb-2" style={{ fontSize: '40px', lineHeight: '44px', width: '446px' }}>

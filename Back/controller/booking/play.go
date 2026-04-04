@@ -241,7 +241,11 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 		found := false
 		for _, dbTicket := range play.Courts {
 			if dbTicket.Name == reqTicket.Category {
-				expectedSubtotal += dbTicket.Price * float64(reqTicket.Quantity)
+				dur := req.Duration
+				if dur <= 0 {
+					dur = 1
+				}
+				expectedSubtotal += dbTicket.Price * float64(reqTicket.Quantity) * (float64(dur) / 2.0)
 				found = true
 				break
 			}

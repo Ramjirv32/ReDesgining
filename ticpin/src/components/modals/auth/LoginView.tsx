@@ -37,6 +37,12 @@ const LoginView: React.FC<LoginViewProps> = ({
     onClose,
     onNumberChange
 }) => {
+    React.useEffect(() => {
+        if (view === 'otp' && otpRefs.current && otpRefs.current[0]) {
+            otpRefs.current[0].focus();
+        }
+    }, [view, otpRefs]);
+
     return (
         <div className="h-full flex flex-col overflow-hidden">
             {/* Banner Section */}

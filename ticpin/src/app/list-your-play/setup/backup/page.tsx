@@ -10,6 +10,19 @@ import { getOrganizerSession } from '@/lib/auth/organizer';
 export default function BackupContactPage() {
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
     const [showOtp, setShowOtp] = useState(false);
+    const [timeLeft, setTimeLeft] = useState(180);
+
+    React.useEffect(() => {
+        if (!showOtp || timeLeft <= 0) return;
+        const interval = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
+        return () => clearInterval(interval);
+    }, [showOtp, timeLeft]);
+
+    const formatTime = (seconds: number) => {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m}:${s.toString().padStart(2, '0')}`;
+    };
     const [email, setEmail] = useState('');
     const [prefilled, setPrefilled] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -44,6 +57,7 @@ export default function BackupContactPage() {
     };
 
     const handleSendOTP = async () => {
+        if (showOtp && timeLeft > 0) return;
         setError('');
         if (!email) { setError('Please enter an email address.'); return; }
         const session = getOrganizerSession();
@@ -55,6 +69,7 @@ export default function BackupContactPage() {
         try {
             await organizerApi.sendBackupOTP(session?.id ?? '', email, 'play');
             setShowOtp(true);
+            setTimeLeft(180);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to send OTP');
         } finally {
@@ -121,19 +136,14 @@ export default function BackupContactPage() {
                 <div className="max-w-[1100px] mx-auto flex flex-col lg:flex-row gap-16 lg:gap-24">
 
                     <aside className="w-fit pt-32 hidden lg:block">
-                        <SetupSidebar currentStep="03" completedSteps={['01', '02']} category="play" />
+                        <SetupSidebar currentStep="04" completedSteps={['01', '02', '03']} category="play" />
                     </aside>
 
                     <div className="flex-1 flex flex-col pt-4 mt-[-75px]">
-                        <div className="mb-12">
-                            <p className="text-[14px] font-medium text-black opacity-80 uppercase" style={{ fontFamily: 'Anek Latin' }}>
-                                &#123; Backup Contact &#125;
-                            </p>
-                            <div className="w-[120px] h-[1px] bg-zinc-300 mt-6" />
-                        </div>
+                        <div className="mb-12 h-[54px] lg:h-[70px]"></div>
 
                         <div className="lg:hidden mb-12">
-                            <SetupSidebar currentStep="03" completedSteps={['01', '02']} category="play" />
+                            <SetupSidebar currentStep="04" completedSteps={['01', '02', '03']} category="play" />
                         </div>
 
                         <div className="space-y-10 mt-[-15px]">
@@ -234,13 +244,19 @@ export default function BackupContactPage() {
                                                     />
                                                 ))}
                                             </div>
-                                            <button
-                                                onClick={handleSendOTP}
-                                                disabled={loading}
-                                                className="text-[14px] font-medium text-[#E7C200] disabled:opacity-60"
-                                            >
-                                                {loading ? 'Sending...' : 'Resend OTP'}
-                                            </button>
+                                            {timeLeft > 0 ? (
+                                                <p className="text-[14px] font-medium text-[#AEAEAE]">
+                                                    Next OTP in {formatTime(timeLeft)}
+                                                </p>
+                                            ) : (
+                                                <button
+                                                    onClick={handleSendOTP}
+                                                    disabled={loading}
+                                                    className="text-[14px] font-medium text-[#E7C200] disabled:opacity-60"
+                                                >
+                                                    {loading ? 'Sending...' : 'Resend OTP'}
+                                                </button>
+                                            )}
                                         </div>
 
                                         <button

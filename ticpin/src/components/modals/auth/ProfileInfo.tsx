@@ -6,6 +6,9 @@ import { UserProfile } from '@/lib/api/profile';
 interface ProfileInfoProps {
     profile: UserProfile | null;
     isAdmin: boolean;
+    isOrganizer?: boolean;
+    organizerProfile?: any;
+    organizerSession?: any;
     userPhone: string;
     isEditing: boolean;
     editedName: string;
@@ -22,6 +25,9 @@ interface ProfileInfoProps {
 const ProfileInfo: React.FC<ProfileInfoProps> = ({
     profile,
     isAdmin,
+    isOrganizer,
+    organizerProfile,
+    organizerSession,
     userPhone,
     isEditing,
     editedName,
@@ -38,8 +44,8 @@ const ProfileInfo: React.FC<ProfileInfoProps> = ({
         <div className="flex items-center gap-6 px-2 py-4 relative group">
             <div className="relative w-24 h-24 shrink-0">
                 <div className="w-full h-full bg-zinc-200 rounded-full overflow-hidden flex items-center justify-center border-4 border-white shadow-lg aspect-square">
-                    {profile?.profilePhoto ? (
-                        <Image src={profile.profilePhoto} alt="Profile" fill className="object-cover rounded-full" />
+                    {(profile?.profilePhoto || organizerProfile?.profilePhoto) ? (
+                        <Image src={profile?.profilePhoto || organizerProfile?.profilePhoto} alt="Profile" fill className="object-cover rounded-full" />
                     ) : (
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" className="rounded-full"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                     )}
@@ -100,16 +106,21 @@ const ProfileInfo: React.FC<ProfileInfoProps> = ({
                                 style={{ fontSize: '36px', fontWeight: 500, lineHeight: '100%', fontFamily: 'var(--font-anek-latin)' }}
                                 className="text-zinc-900"
                             >
-                                {isAdmin ? 'Admin Panel' : (profile?.name || (userPhone ? '' : 'Profile'))}
+                                {isAdmin ? 'Admin Panel' : (isOrganizer ? (organizerProfile?.name || 'Organizer') : (profile?.name || (userPhone ? '' : 'Profile')))}
                             </h4>
 
                         </div>
-                        {!isAdmin && (
+                        {!isAdmin && !isOrganizer && (
                             <p className="text-lg text-zinc-500 font-medium tracking-tight uppercase">
                                 {userPhone ? `+91 ${userPhone}` : '{ NUMBER }'}
                             </p>
                         )}
-                        {profile?.email && !isAdmin && (
+                        {isOrganizer && organizerSession?.email && (
+                            <p className="text-lg text-zinc-500 font-medium tracking-tight truncate max-w-[200px]">
+                                {organizerSession.email}
+                            </p>
+                        )}
+                        {profile?.email && !isAdmin && !isOrganizer && (
                             <p className="text-sm text-zinc-400 font-medium">{profile.email}</p>
                         )}
                     </>

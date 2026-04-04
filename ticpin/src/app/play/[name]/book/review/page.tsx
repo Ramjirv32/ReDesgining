@@ -9,6 +9,7 @@ import { profileApi } from '@/lib/api/profile';
 import { useUserSession } from '@/lib/auth/user';
 import { useOrganizerSession, clearOrganizerSession } from '@/lib/auth/organizer';
 import { getBookingStatus } from '@/lib/utils/booking-status';
+import { useIdentityStore } from '@/store/useIdentityStore';
 import AuthModal from '@/components/modals/AuthModal';
 import OrganizerLogoutModal from '@/components/modals/OrganizerLogoutModal';
 import { toast } from '@/components/ui/Toast';
@@ -99,14 +100,15 @@ export default function PlayReviewPage() {
     }, [session, organizerSession]);
 
     const [acceptedTerms, setAcceptedTerms] = useState(false);
+    const { rememberedBilling, setRememberedBilling } = useIdentityStore();
     const [billing, setBilling] = useState({
-        name: '',
-        phone: '',
-        nationality: 'Indian',
-        address: '',
-        city: '',
-        state: '',
-        pincode: '',
+        name: rememberedBilling?.name || '',
+        phone: rememberedBilling?.phone || '',
+        nationality: rememberedBilling?.nationality || 'Indian',
+        address: rememberedBilling?.address || '',
+        city: rememberedBilling?.city || '',
+        state: rememberedBilling?.state || '',
+        pincode: rememberedBilling?.pincode || '',
     });
 
     const [showAuthModal, setShowAuthModal] = useState(false);
@@ -193,8 +195,11 @@ export default function PlayReviewPage() {
 
     useEffect(() => { if (email) sessionStorage.setItem('ticpin_billing_email', email); }, [email]);
     useEffect(() => {
-        if (billing.name || billing.phone) sessionStorage.setItem('ticpin_billing_data', JSON.stringify(billing));
-    }, [billing]);
+        if (billing.name || billing.phone) {
+            sessionStorage.setItem('ticpin_billing_data', JSON.stringify(billing));
+            setRememberedBilling(billing);
+        }
+    }, [billing, setRememberedBilling]);
     useEffect(() => { sessionStorage.setItem('ticpin_play_step', step); }, [step]);
 
     // Countdown timer effect
@@ -621,12 +626,6 @@ export default function PlayReviewPage() {
                 <h1 className="hidden md:block absolute left-1/2 -translate-x-1/2 font-bold text-[17px]">
                     {step === 'billing' ? 'Billing Details' : 'Review your booking'}
                 </h1>
-
-                <div className="flex items-center gap-4">
-                    <button className="w-9 h-9 bg-zinc-100 rounded-full flex items-center justify-center text-zinc-400 hover:bg-zinc-200 transition-colors">
-                        <User size={18} />
-                    </button>
-                </div>
             </header>
 
             <main className="max-w-[760px] mx-auto px-4 pt-8">
