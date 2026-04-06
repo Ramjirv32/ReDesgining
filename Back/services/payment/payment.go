@@ -138,6 +138,11 @@ func CreateOrderCashfree(req OrderRequest) (*OrderResponse, error) {
 
 	sessionID, _ := result["payment_session_id"].(string)
 	if sessionID == "" {
+		// Version 2022-01-01 uses order_token
+		sessionID, _ = result["order_token"].(string)
+	}
+
+	if sessionID == "" {
 		return nil, fmt.Errorf("cashfree order creation failed: %s", string(body))
 	}
 

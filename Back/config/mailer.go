@@ -36,7 +36,7 @@ type BookingEmailData struct {
 func sendOTP(from, pass, to, subject, body string) error {
 	port, _ := strconv.Atoi(os.Getenv("SMTP_PORT"))
 	if port == 0 {
-		port = 587
+		port = 465 // Port 465 (SSL) is often more reliable and less likely to be blocked by firewalls or ISPs than port 587.
 	}
 
 	cleanPass := strings.ReplaceAll(pass, " ", "")
