@@ -18,7 +18,7 @@ type OTPRecord struct {
 
 func SendOTP(email string) error {
 	otp := config.GenerateOTP()
-	expiresAt := time.Now().Add(10 * time.Minute)
+	expiresAt := time.Now().Add(5 * time.Minute)
 
 	collection := config.GetDB().Collection("otps")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

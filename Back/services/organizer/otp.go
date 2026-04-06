@@ -17,7 +17,7 @@ func SendOTP(email, category string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	otp := config.GenerateOTP()
-	expiry := time.Now().Add(10 * time.Minute)
+	expiry := time.Now().Add(5 * time.Minute)
 	_, err := collection.UpdateOne(ctx, bson.M{"email": email}, bson.M{
 		"$set": bson.M{"otp": otp, "otpExpiry": expiry},
 	})
@@ -67,7 +67,7 @@ func SendBackupOTP(organizerID, backupEmail, category string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	otp := config.GenerateOTP()
-	expiry := time.Now().Add(10 * time.Minute)
+	expiry := time.Now().Add(5 * time.Minute)
 	_, err = collection.UpdateOne(ctx, bson.M{"_id": objID}, bson.M{
 		"$set": bson.M{"backupOTP": otp, "backupOTPExpiry": expiry},
 	})

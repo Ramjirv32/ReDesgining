@@ -35,14 +35,20 @@ func GetPaymentGateway() GatewayType {
 	if weightStr != "" {
 		if w, err := strconv.ParseFloat(weightStr, 64); err == nil {
 			weight = w
+		} else {
+			fmt.Printf("DEBUG: Error parsing PAYMENT_TRAFFIC_WEIGHT_CASHFREE: %v\n", err)
 		}
 	}
 
 	rand.Seed(time.Now().UnixNano())
 	r := rand.Float64()
+	fmt.Printf("DEBUG: [PAYMENT_GATEWAY] Raw Weight Env: '%s', Parsed Weight: %.2f, Random: %.4f\n", weightStr, weight, r)
+	
 	if r < weight {
+		fmt.Println("DEBUG: [PAYMENT_GATEWAY] Decision: CASHFREE")
 		return GatewayCashfree
 	}
+	fmt.Println("DEBUG: [PAYMENT_GATEWAY] Decision: RAZORPAY")
 	return GatewayRazorpay
 }
 

@@ -1,9 +1,12 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
+	"html/template"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -28,24 +31,63 @@ func sendOTP(from, pass, to, subject, body string) error {
 	return d.DialAndSend(m)
 }
 
+func renderOTPTemplate(category, otp string) (string, error) {
+	tmplPath := filepath.Join("templates", "otp.html")
+	// Try absolute path if relative fails or to be sure
+	if _, err := os.Stat(tmplPath); os.IsNotExist(err) {
+		// Fallback for different run contexts
+		tmplPath = filepath.Join("Back", "templates", "otp.html")
+	}
+
+	tmpl, err := template.ParseFiles(tmplPath)
+	if err != nil {
+		return "", err
+	}
+
+	var body bytes.Buffer
+	data := struct {
+		Category string
+		OTP      string
+	}{
+		Category: category,
+		OTP:      otp,
+	}
+
+	if err := tmpl.Execute(&body, data); err != nil {
+		return "", err
+	}
+
+	return body.String(), nil
+}
+
 func SendPlayOTP(toEmail, otp string) error {
 	from := os.Getenv("PLAY_EMAIL")
 	pass := os.Getenv("PLAY_APP_PASSWORD")
-	body := fmt.Sprintf("<h2>Your Ticpin Play OTP: <b>%s</b></h2><p>Valid for 10 minutes.</p>", otp)
+	body, err := renderOTPTemplate("Play", otp)
+	if err != nil {
+		// Fallback to simple body if template fails
+		body = fmt.Sprintf("<h2>Your Ticpin Play OTP: <b>%s</b></h2><p>Valid for 10 minutes.</p>", otp)
+	}
 	return sendOTP(from, pass, toEmail, "Ticpin Play OTP Verification", body)
 }
 
 func SendEventsOTP(toEmail, otp string) error {
 	from := os.Getenv("EVENTS_EMAIL")
 	pass := os.Getenv("EVENTS_APP_PASSWORD")
-	body := fmt.Sprintf("<h2>Your Ticpin Events OTP: <b>%s</b></h2><p>Valid for 10 minutes.</p>", otp)
+	body, err := renderOTPTemplate("Events", otp)
+	if err != nil {
+		body = fmt.Sprintf("<h2>Your Ticpin Events OTP: <b>%s</b></h2><p>Valid for 10 minutes.</p>", otp)
+	}
 	return sendOTP(from, pass, toEmail, "Ticpin Events OTP Verification", body)
 }
 
 func SendDiningOTP(toEmail, otp string) error {
 	from := os.Getenv("DINING_EMAIL")
 	pass := os.Getenv("DINING_APP_PASSWORD")
-	body := fmt.Sprintf("<h2>Your Ticpin Dining OTP: <b>%s</b></h2><p>Valid for 10 minutes.</p>", otp)
+	body, err := renderOTPTemplate("Dining", otp)
+	if err != nil {
+		body = fmt.Sprintf("<h2>Your Ticpin Dining OTP: <b>%s</b></h2><p>Valid for 10 minutes.</p>", otp)
+	}
 	return sendOTP(from, pass, toEmail, "Ticpin Dining OTP Verification", body)
 }
 
