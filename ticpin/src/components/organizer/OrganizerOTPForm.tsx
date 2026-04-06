@@ -39,6 +39,7 @@ function OTPContent({ vertical, api, setupPath, loginPath }: Props) {
 
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
     const [loading, setLoading] = useState(false);
+    const [isResending, setIsResending] = useState(false); // Added isResending state
     const [error, setError] = useState('');
     const [resent, setResent] = useState(false);
     const [timeLeft, setTimeLeft] = useState(0);
@@ -118,7 +119,8 @@ function OTPContent({ vertical, api, setupPath, loginPath }: Props) {
     };
 
     const handleResend = async () => {
-        if (timeLeft > 0) return;
+        if (timeLeft > 0 || isResending) return; // Prevent multiple clicks
+        setIsResending(true);
         setResent(false); setError('');
         try {
             await api.resendOTP(email);
@@ -128,6 +130,8 @@ function OTPContent({ vertical, api, setupPath, loginPath }: Props) {
             setTimeLeft(180); // Reset local timer
         } catch {
             setError('Could not resend OTP. Try again later.');
+        } finally {
+            setIsResending(false);
         }
     };
 
@@ -186,9 +190,10 @@ function OTPContent({ vertical, api, setupPath, loginPath }: Props) {
                         ) : (
                             <button
                                 onClick={handleResend}
-                                className="text-[#5331EA] border-b border-[#5331EA] text-[15px] font-medium hover:opacity-70"
+                                disabled={isResending}
+                                className={`text-[#5331EA] border-b border-[#5331EA] text-[15px] font-medium hover:opacity-70 disabled:opacity-50 disabled:cursor-not-allowed`}
                             >
-                                Resend OTP
+                                {isResending ? 'Sending...' : 'Resend OTP'}
                             </button>
                         )}
                     </div>
