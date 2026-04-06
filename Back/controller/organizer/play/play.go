@@ -1,6 +1,7 @@
 package play
 
 import (
+	"fmt"
 	"ticpin-backend/config"
 	"ticpin-backend/models"
 	organizersvc "ticpin-backend/services/organizer"
@@ -31,7 +32,8 @@ func PlayLogin(c *fiber.Ctx) error {
 	}
 
 	if err := organizersvc.SendOTP(req.Email, "play"); err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "failed to send otp"})
+		fmt.Printf("OTP Login Error for %s: %v\n", req.Email, err)
+		return c.Status(500).JSON(fiber.Map{"error": fmt.Sprintf("failed to send otp: %v", err)})
 	}
 	return c.JSON(fiber.Map{"message": "otp sent", "organizerId": org.ID})
 }
@@ -57,7 +59,8 @@ func PlaySignin(c *fiber.Ctx) error {
 	}
 
 	if err := organizersvc.SendOTP(req.Email, "play"); err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "failed to send otp"})
+		fmt.Printf("OTP Signin Error for %s: %v\n", req.Email, err)
+		return c.Status(500).JSON(fiber.Map{"error": fmt.Sprintf("failed to send otp: %v", err)})
 	}
 	return c.Status(201).JSON(fiber.Map{"message": "account created, otp sent", "organizerId": org.ID})
 }
@@ -170,6 +173,7 @@ func ResendOTP(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "email required"})
 	}
 	if err := organizersvc.SendOTP(req.Email, "play"); err != nil {
+		fmt.Printf("OTP Resend Error for %s: %v\n", req.Email, err)
 		return c.Status(500).JSON(fiber.Map{"error": "failed to send otp"})
 	}
 	return c.JSON(fiber.Map{"message": "otp sent"})

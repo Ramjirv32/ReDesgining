@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getBookingStatus, getBookingStatusStyles } from '@/lib/utils/booking-status';
+import { Eye, X } from 'lucide-react';
 
 interface User { 
     id: string; 
@@ -29,6 +30,7 @@ type Booking = {
     bookingDate: string;
     amount?: number;
     createdAt: string;
+    metadata?: Record<string, any>;
 };
 
 export default function UserDetails3() {
@@ -37,6 +39,8 @@ export default function UserDetails3() {
     const [user, setUser] = useState<User | null>(null);
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [bookingFilter, setBookingFilter] = useState<'all' | 'dining' | 'event' | 'play'>('all');
+    const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+    const [showModal, setShowModal] = useState(false);
     const tabs = ['Overview', 'Bookings', 'Ticlists', 'Activity'];
 
     function nav(tab: string) {
@@ -143,7 +147,8 @@ export default function UserDetails3() {
                                     <div className="w-[220px]">Event</div>
                                     <div className="w-[100px]">Amount</div>
                                     <div className="w-[100px]">Status</div>
-                                    <div className="w-[160px]">Date</div>
+                                    <div className="w-[120px]">Date</div>
+                                    <div className="w-[60px]">Action</div>
                                 </div>
                                 <div className="w-full h-[0.5px] bg-[#686868] mb-[8px]"></div>
                                 {filteredBookings.map((b, i) => (
@@ -156,7 +161,15 @@ export default function UserDetails3() {
                                                     {getBookingStatus({ ...b, date: b.bookingDate })}
                                                 </span>
                                             </div>
-                                            <div className="w-[160px]">{new Date(b.bookingDate).toLocaleDateString()}</div>
+                                            <div className="w-[120px]">{new Date(b.bookingDate).toLocaleDateString()}</div>
+                                            <div className="w-[60px]">
+                                                <button 
+                                                    onClick={() => { setSelectedBooking(b); setShowModal(true); }}
+                                                    className="p-1 hover:bg-gray-100 rounded-full transition-colors group"
+                                                >
+                                                    <Eye className="w-4 h-4 text-gray-400 group-hover:text-[#5331EA]" />
+                                                </button>
+                                            </div>
                                         </div>
                                         <div className="w-full h-[0.5px] bg-[rgba(104,104,104,0.3)] mt-[10px]"></div>
                                     </div>
@@ -166,6 +179,79 @@ export default function UserDetails3() {
                     </div>
                 </div>
             </div>
+
+            {/* Booking Details Modal */}
+            {showModal && selectedBooking && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-[32px] w-full max-w-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+                        <div className="flex items-center justify-between p-8 bg-gray-50 border-b">
+                            <div>
+                                <h2 className="text-2xl font-bold text-black">{selectedBooking.entityName}</h2>
+                                <p className="text-gray-500 font-medium capitalize">{selectedBooking.type} Booking</p>
+                            </div>
+                            <button 
+                                onClick={() => setShowModal(false)}
+                                className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                            >
+                                <X className="w-6 h-6 text-gray-500" />
+                            </button>
+                        </div>
+                        
+                        <div className="p-8 max-h-[70vh] overflow-y-auto">
+                            <div className="grid grid-cols-2 gap-8 mb-8">
+                                <div className="space-y-1">
+                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Status</p>
+                                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase ${getBookingStatusStyles(getBookingStatus({ ...selectedBooking, date: selectedBooking.bookingDate }))}`}>
+                                        {getBookingStatus({ ...selectedBooking, date: selectedBooking.bookingDate })}
+                                    </span>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Amount</p>
+                                    <p className="text-xl font-bold text-black">{selectedBooking.amount ? `₹${selectedBooking.amount}` : '—'}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Booking Date</p>
+                                    <p className="text-lg font-medium text-black">{new Date(selectedBooking.bookingDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Created At</p>
+                                    <p className="text-lg font-medium text-black">{new Date(selectedBooking.createdAt).toLocaleString()}</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <h4 className="text-sm font-bold text-black border-b pb-2">Full Metadata</h4>
+                                <div className="bg-gray-50 rounded-2xl p-6 font-mono text-[13px] text-gray-600 leading-relaxed overflow-x-auto">
+                                    {selectedBooking.metadata ? (
+                                        <div className="grid grid-cols-1 gap-3">
+                                            {Object.entries(selectedBooking.metadata).map(([key, value]) => {
+                                                if (key === '_id' || key === 'user_id') return null; // Skip redundant IDs
+                                                return (
+                                                    <div key={key} className="flex border-b border-gray-100 last:border-0 pb-1">
+                                                        <span className="w-40 shrink-0 text-gray-400 font-bold">{key}:</span>
+                                                        <span className="text-black break-all">{JSON.stringify(value)}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <p>No extra metadata available.</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-8 bg-gray-50 border-t flex justify-end">
+                            <button 
+                                onClick={() => setShowModal(false)}
+                                className="px-8 py-3 bg-black text-white rounded-2xl font-bold hover:bg-gray-800 transition-colors"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

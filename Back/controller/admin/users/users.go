@@ -78,11 +78,23 @@ func GetUserBookings(c *fiber.Ctx) error {
 	if err := config.GetDB().Collection("users").FindOne(ctx, bson.M{"_id": id}).Decode(&u); err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "user not found"})
 	}
+
+	var profile models.Profile
+	profileErr := config.GetDB().Collection("profiles").FindOne(ctx, bson.M{"userId": id}).Decode(&profile)
+
+	filter := bson.M{"$or": []bson.M{
+		{"user_id": id.Hex()},
+		{"user_phone": u.Phone},
+	}}
+	if profileErr == nil && profile.Email != "" {
+		filter["$or"] = append(filter["$or"].([]bson.M), bson.M{"user_email": profile.Email})
+	}
+
 	type Booking = map[string]interface{}
 	allBookings := []Booking{}
 	cols := []string{"bookings", "event_bookings", "dining_bookings", "play_bookings"}
 	for _, col := range cols {
-		cursor, err := config.GetDB().Collection(col).Find(ctx, bson.M{"user_email": u.Phone})
+		cursor, err := config.GetDB().Collection(col).Find(ctx, filter)
 		if err != nil {
 			continue
 		}
@@ -110,81 +122,147 @@ func GetUserDetails(c *fiber.Ctx) error {
 	var profile models.Profile
 	profileErr := config.GetDB().Collection("profiles").FindOne(ctx, bson.M{"userId": id}).Decode(&profile)
 
-	type Booking = struct {
-		ID          string `json:"id"`
-		Type        string `json:"type"`
-		EntityName  string `json:"entityName"`
-		Status      string `json:"status"`
-		BookingDate string `json:"bookingDate"`
-		Amount      *int   `json:"amount,omitempty"`
-		CreatedAt   string `json:"createdAt"`
+	type Booking struct {
+		ID          string                 `json:"id"`
+		Type        string                 `json:"type"`
+		EntityName  string                 `json:"entityName"`
+		Status      string                 `json:"status"`
+		BookingDate string                 `json:"bookingDate"`
+		Amount      *int                   `json:"amount,omitempty"`
+		CreatedAt   string                 `json:"createdAt"`
+		Metadata    map[string]interface{} `json:"metadata"`
 	}
 
 	allBookings := []Booking{}
 
-	cursor, _ := config.GetDB().Collection("dining_bookings").Find(ctx, bson.M{"user_email": u.Phone})
-	var diningBookings []struct {
-		ID     primitive.ObjectID `bson:"_id"`
-		Name   string             `bson:"name"`
-		Status string             `bson:"status"`
-		Date   string             `bson:"date"`
-		Amount *int               `bson:"amount"`
-		Time   string             `bson:"time"`
+	filter := bson.M{"$or": []bson.M{
+		{"user_id": id.Hex()},
+		{"user_phone": u.Phone},
+	}}
+	if profileErr == nil && profile.Email != "" {
+		filter["$or"] = append(filter["$or"].([]bson.M), bson.M{"user_email": profile.Email})
 	}
+
+	// 1. Generic Bookings
+	cursor, _ := config.GetDB().Collection("bookings").Find(ctx, filter)
+	var genericBookings []map[string]interface{}
+	if cursor.All(ctx, &genericBookings) == nil {
+		for _, b := range genericBookings {
+			id, _ := b["_id"].(primitive.ObjectID)
+			name, _ := b["event_name"].(string)
+			status, _ := b["status"].(string)
+			bookedAt, _ := b["booked_at"].(time.Time)
+			total, _ := b["grand_total"].(float64)
+			amt := int(total)
+			allBookings = append(allBookings, Booking{
+				ID:          id.Hex(),
+				Type:        "event",
+				EntityName:  name,
+				Status:      status,
+				BookingDate: bookedAt.Format("02 Jan 2006"),
+				Amount:      &amt,
+				CreatedAt:   bookedAt.Format("2006-01-02T15:04:05Z"),
+				Metadata:    b,
+			})
+		}
+	}
+
+	// 2. Dining Bookings
+	cursor, _ = config.GetDB().Collection("dining_bookings").Find(ctx, filter)
+	var diningBookings []map[string]interface{}
 	if cursor.All(ctx, &diningBookings) == nil {
 		for _, b := range diningBookings {
+			id, _ := b["_id"].(primitive.ObjectID)
+			name, _ := b["venue_name"].(string)
+			status, _ := b["status"].(string)
+			date, _ := b["date"].(string)
+			timeSlot, _ := b["time_slot"].(string)
+			var amt *int
+			if a, ok := b["amount"].(int32); ok {
+				val := int(a)
+				amt = &val
+			} else if a, ok := b["amount"].(int64); ok {
+				val := int(a)
+				amt = &val
+			} else if a, ok := b["amount"].(int); ok {
+				amt = &a
+			}
+
 			allBookings = append(allBookings, Booking{
-				ID:          b.ID.Hex(),
+				ID:          id.Hex(),
 				Type:        "dining",
-				EntityName:  b.Name,
-				Status:      b.Status,
-				BookingDate: b.Date + " " + b.Time,
-				Amount:      b.Amount,
-				CreatedAt:   b.ID.Timestamp().Format("2006-01-02T15:04:05Z"),
+				EntityName:  name,
+				Status:      status,
+				BookingDate: date + " " + timeSlot,
+				Amount:      amt,
+				CreatedAt:   id.Timestamp().Format("2006-01-02T15:04:05Z"),
+				Metadata:    b,
 			})
 		}
 	}
 
-	cursor, _ = config.GetDB().Collection("event_bookings").Find(ctx, bson.M{"user_email": u.Phone})
-	var eventBookings []struct {
-		ID     primitive.ObjectID `bson:"_id"`
-		Name   string             `bson:"event_name"`
-		Status string             `bson:"status"`
-		Date   string             `bson:"date"`
-		Amount *int               `bson:"amount"`
-	}
+	// 3. Event Bookings
+	cursor, _ = config.GetDB().Collection("event_bookings").Find(ctx, filter)
+	var eventBookings []map[string]interface{}
 	if cursor.All(ctx, &eventBookings) == nil {
 		for _, b := range eventBookings {
+			id, _ := b["_id"].(primitive.ObjectID)
+			name, _ := b["event_name"].(string)
+			status, _ := b["status"].(string)
+			date, _ := b["date"].(string)
+			var amt *int
+			if a, ok := b["amount"].(int32); ok {
+				val := int(a)
+				amt = &val
+			} else if a, ok := b["amount"].(int64); ok {
+				val := int(a)
+				amt = &val
+			} else if a, ok := b["amount"].(int); ok {
+				amt = &a
+			}
+
 			allBookings = append(allBookings, Booking{
-				ID:          b.ID.Hex(),
+				ID:          id.Hex(),
 				Type:        "event",
-				EntityName:  b.Name,
-				Status:      b.Status,
-				BookingDate: b.Date,
-				Amount:      b.Amount,
-				CreatedAt:   b.ID.Timestamp().Format("2006-01-02T15:04:05Z"),
+				EntityName:  name,
+				Status:      status,
+				BookingDate: date,
+				Amount:      amt,
+				CreatedAt:   id.Timestamp().Format("2006-01-02T15:04:05Z"),
+				Metadata:    b,
 			})
 		}
 	}
 
-	cursor, _ = config.GetDB().Collection("play_bookings").Find(ctx, bson.M{"user_email": u.Phone})
-	var playBookings []struct {
-		ID     primitive.ObjectID `bson:"_id"`
-		Name   string             `bson:"name"`
-		Status string             `bson:"status"`
-		Date   string             `bson:"date"`
-		Amount *int               `bson:"amount"`
-	}
+	// 4. Play Bookings
+	cursor, _ = config.GetDB().Collection("play_bookings").Find(ctx, filter)
+	var playBookings []map[string]interface{}
 	if cursor.All(ctx, &playBookings) == nil {
 		for _, b := range playBookings {
+			id, _ := b["_id"].(primitive.ObjectID)
+			name, _ := b["venue_name"].(string)
+			status, _ := b["status"].(string)
+			date, _ := b["date"].(string)
+			var amt *int
+			if a, ok := b["amount"].(int32); ok {
+				val := int(a)
+				amt = &val
+			} else if a, ok := b["amount"].(int64); ok {
+				val := int(a)
+				amt = &val
+			} else if a, ok := b["amount"].(int); ok {
+				amt = &a
+			}
+
 			allBookings = append(allBookings, Booking{
-				ID:          b.ID.Hex(),
+				ID:          id.Hex(),
 				Type:        "play",
-				EntityName:  b.Name,
-				Status:      b.Status,
-				BookingDate: b.Date,
-				Amount:      b.Amount,
-				CreatedAt:   b.ID.Timestamp().Format("2006-01-02T15:04:05Z"),
+				EntityName:  name,
+				Status:      status,
+				BookingDate: date,
+				Amount:      amt,
+				CreatedAt:   id.Timestamp().Format("2006-01-02T15:04:05Z"),
+				Metadata:    b,
 			})
 		}
 	}
@@ -224,10 +302,22 @@ func GetUserStats(c *fiber.Ctx) error {
 	if err := config.GetDB().Collection("users").FindOne(ctx, bson.M{"_id": id}).Decode(&u); err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "user not found"})
 	}
-	eventBookingsCount, _ := config.GetDB().Collection("event_bookings").CountDocuments(ctx, bson.M{"user_email": u.Phone})
-	eventCount, _ := config.GetDB().Collection("bookings").CountDocuments(ctx, bson.M{"user_email": u.Phone})
-	diningCount, _ := config.GetDB().Collection("dining_bookings").CountDocuments(ctx, bson.M{"user_email": u.Phone})
-	playCount, _ := config.GetDB().Collection("play_bookings").CountDocuments(ctx, bson.M{"user_email": u.Phone})
+
+	var profile models.Profile
+	profileErr := config.GetDB().Collection("profiles").FindOne(ctx, bson.M{"userId": id}).Decode(&profile)
+
+	filter := bson.M{"$or": []bson.M{
+		{"user_id": id.Hex()},
+		{"user_phone": u.Phone},
+	}}
+	if profileErr == nil && profile.Email != "" {
+		filter["$or"] = append(filter["$or"].([]bson.M), bson.M{"user_email": profile.Email})
+	}
+
+	eventBookingsCount, _ := config.GetDB().Collection("event_bookings").CountDocuments(ctx, filter)
+	eventCount, _ := config.GetDB().Collection("bookings").CountDocuments(ctx, filter)
+	diningCount, _ := config.GetDB().Collection("dining_bookings").CountDocuments(ctx, filter)
+	playCount, _ := config.GetDB().Collection("play_bookings").CountDocuments(ctx, filter)
 	return c.JSON(fiber.Map{
 		"events": eventCount + eventBookingsCount,
 		"dining": diningCount,

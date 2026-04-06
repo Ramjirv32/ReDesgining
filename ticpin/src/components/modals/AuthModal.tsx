@@ -233,7 +233,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialView = 'n
                                     <div className="flex gap-4 w-full">
                                         <button onClick={() => setShowLogoutConfirm(false)} className="flex-1 py-4 bg-zinc-100 text-zinc-900 rounded-2xl font-bold">Cancel</button>
                                         <button
-                                            onClick={() => { setShowLogoutConfirm(false); logoutUser(); setView('number'); setNumber(''); setOtp(['', '', '', '', '', '']); }}
+                                            onClick={() => { setShowLogoutConfirm(false); logoutUser(); setView('number'); setNumber(''); setOtp(['', '', '', '', '', '']); onClose(); }}
                                             className="flex-1 py-4 bg-red-500 text-white rounded-2xl shadow-lg shadow-red-500/30 font-bold"
                                         >
                                             Log Out

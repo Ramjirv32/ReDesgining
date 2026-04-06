@@ -1063,6 +1063,9 @@ function AdminPlayContent() {
                                                 <span className="text-[20px] font-medium capitalize">{item.status}</span>
                                             </div>
                                         </div>
+                                        <button onClick={e => { e.stopPropagation(); router.push(`?id=${id}`); }} className="absolute -right-7 top-1/2 -translate-y-1/2 w-[57px] h-[57px] bg-black rounded-full flex items-center justify-center text-white shadow-xl hover:scale-110 transition-transform z-10">
+                                            <ChevronRight size={30} />
+                                        </button>
                                     </div>
                                 );
                             })}

@@ -37,7 +37,7 @@ func CashfreeWebhook(c *fiber.Ctx) error {
 
 	if signature != "" && signature != expectedSignature {
 		fmt.Printf("DEBUG: Cashfree Webhook Signature Mismatch - Got: %s, Expected: %s\n", signature, expectedSignature)
-		// return c.Status(400).JSON(fiber.Map{"error": "invalid signature"}) // Optional during dev
+		return c.Status(400).JSON(fiber.Map{"error": "invalid signature"})
 	}
 
 	var payload struct {

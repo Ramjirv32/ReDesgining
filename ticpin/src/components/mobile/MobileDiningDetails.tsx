@@ -8,6 +8,8 @@ import Image from 'next/image';
 import dynamic from 'next/dynamic';
 
 const AuthModal = dynamic(() => import('@/components/modals/AuthModal'), { ssr: false });
+import { getOrganizerSession, clearOrganizerSession } from '@/lib/auth/organizer';
+const OrganizerLogoutModal = dynamic(() => import('@/components/modals/OrganizerLogoutModal'), { ssr: false });
 
 interface OfferRecord {
     id: string;
@@ -47,15 +49,26 @@ export default function MobileDiningDetails({ venue, offers }: MobileDiningDetai
     const router = useRouter();
     const session = useUserSession();
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
     const [openAccordion, setOpenAccordion] = useState<string | null>(null);
     const [guests, setGuests] = useState(2);
+    const organizerSession = getOrganizerSession();
 
     const handleBook = () => {
+        if (organizerSession) {
+            setShowLogoutModal(true);
+            return;
+        }
         if (!session) {
             setIsLoginModalOpen(true);
             return;
         }
         router.push(`/dining/venue/${encodeURIComponent(venue.name)}/book`);
+    };
+
+    const handleOrganizerLogout = () => {
+        clearOrganizerSession();
+        setIsLoginModalOpen(true);
     };
 
     const toggleAccordion = (section: string) => {
@@ -271,6 +284,13 @@ export default function MobileDiningDetails({ venue, offers }: MobileDiningDetai
                 isOpen={isLoginModalOpen}
                 onClose={() => setIsLoginModalOpen(false)}
                 onSuccess={() => router.push(`/dining/venue/${encodeURIComponent(venue.name)}/book`)}
+            />
+
+            <OrganizerLogoutModal
+                isOpen={showLogoutModal}
+                onClose={() => setShowLogoutModal(false)}
+                onConfirm={handleOrganizerLogout}
+                organizerName={organizerSession?.email}
             />
         </div>
     );

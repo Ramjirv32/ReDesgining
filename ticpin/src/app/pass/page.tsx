@@ -90,14 +90,12 @@ export default function TicpassPage() {
                     key: data.razorpay_key,
                     amount: price * 100,
                     currency: 'INR',
-                    name: 'Ticpin Pass',
+                    name: 'Ticpin',
                     description: '3 Months Ticpin Pass',
                     order_id: data.order_id,
-                    receipt: `TICPIN_PASS_${user.id.slice(-8)}`,
                     handler: async function (response: any) {
                         try {
                             setLoading(true);
-                            // Activation call
                             const endpoint = latestPass ? `/backend/api/pass/${latestPass.id}/renew` : '/backend/api/pass/apply';
                             const activateRes = await fetch(endpoint, {
                                 method: 'POST',
@@ -132,59 +130,30 @@ export default function TicpassPage() {
                 };
                 const rzp = (window as any).Razorpay(options);
                 rzp.open();
-            } else {
-                // Default to Razorpay if gateway not specified
-                const options = {
-                    key: data.razorpay_key || 'rzp_test_1234567890abcdef', // fallback key
-                    amount: price * 100,
-                    currency: 'INR',
-                    name: 'Ticpin Pass',
-                    description: '3 Months Ticpin Pass',
-                    order_id: data.order_id,
-                    receipt: `TICPIN_PASS_${user.id.slice(-8)}`,
-                    handler: async function (response: any) {
-                        try {
-                            setLoading(true);
-                            // Activation call
-                            const endpoint = latestPass ? `/backend/api/pass/${latestPass.id}/renew` : '/backend/api/pass/apply';
-                            const activateRes = await fetch(endpoint, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    user_id: user.id,
-                                    payment_id: response.razorpay_payment_id || response.razorpay_order_id,
-                                    order_id: response.razorpay_order_id
-                                })
-                            });
+            } else if (data.gateway === 'cashfree') {
+                // Load Cashfree SDK
+                if (!(window as any).Cashfree) {
+                    await new Promise<void>((resolve, reject) => {
+                        const script = document.createElement('script');
+                        script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
+                        script.onload = () => resolve();
+                        script.onerror = () => reject(new Error('Failed to load Cashfree SDK'));
+                        document.head.appendChild(script);
+                    });
+                }
 
-                            if (!activateRes.ok) {
-                                const errData = await activateRes.json();
-                                throw new Error(errData.error || 'Failed to activate pass');
-                            }
+                // Stash pending pass info for return_url handling if needed
+                // But usually Cashfree v3 handles via redirection or modal.
+                // Here we use the checkout integration.
+                const cashfree = (window as any).Cashfree({
+                    mode: process.env.NEXT_PUBLIC_CASHFREE_ENV === 'production' ? 'production' : 'sandbox',
+                });
 
-                            toast.success('Payment Successful! Your pass is active.');
-                            router.push('/profile');
-                        } catch (err: any) {
-                            console.error('Activation Error:', err);
-                            toast.error('Payment succeeded but activation failed. Contact support.');
-                        } finally {
-                            setLoading(false);
-                        }
-                    },
-                    prefill: {
-                        name: user.name || '',
-                        email: user.email || '',
-                        contact: user.phone || ''
-                    },
-                    theme: { color: '#000000' }
-                };
-                const rzp = (window as any).Razorpay(options);
-                rzp.open();
+                cashfree.checkout({
+                    paymentSessionId: data.payment_session_id,
+                    redirectTarget: '_self', // This will redirect back to the page
+                });
             }
-            // Cashfree implementation commented out for now
-            // else if (data.gateway === 'cashfree') {
-            //     toast.error('Cashfree not implemented in frontend yet');
-            // }
 
         } catch (error: any) {
             console.error('Payment Error:', error);

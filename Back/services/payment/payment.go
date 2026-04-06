@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -28,25 +30,20 @@ var httpClient = &http.Client{
 }
 
 func GetPaymentGateway() GatewayType {
-	// Force Razorpay for testing
+	weightStr := os.Getenv("PAYMENT_TRAFFIC_WEIGHT_CASHFREE")
+	weight := 0.5
+	if weightStr != "" {
+		if w, err := strconv.ParseFloat(weightStr, 64); err == nil {
+			weight = w
+		}
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	r := rand.Float64()
+	if r < weight {
+		return GatewayCashfree
+	}
 	return GatewayRazorpay
-
-	// Original logic (commented for testing)
-	/*
-		weightStr := os.Getenv("PAYMENT_TRAFFIC_WEIGHT_CASHFREE")
-		weight := 0.5
-		if weightStr != "" {
-			if w, err := strconv.ParseFloat(weightStr, 64); err == nil {
-				weight = w
-			}
-		}
-
-		r := rand.Float64()
-		if r < weight {
-			return GatewayCashfree
-		}
-		return GatewayRazorpay
-	*/
 }
 
 type OrderRequest struct {
@@ -219,7 +216,7 @@ func CreateRefundRazorpay(paymentID string, amount float64, notes map[string]str
 		amountPaise := int64(amount * 100)
 		payload["amount"] = amountPaise
 	}
-	if notes != nil && len(notes) > 0 {
+	if len(notes) > 0 {
 		payload["notes"] = notes
 	}
 

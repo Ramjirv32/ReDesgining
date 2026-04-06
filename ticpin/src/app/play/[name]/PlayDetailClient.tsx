@@ -6,11 +6,13 @@ import BottomBanner from '@/components/layout/BottomBanner';
 import Footer from '@/components/layout/Footer';
 import { ChevronDown, MapPin, Clock } from 'lucide-react';
 import { useUserSession } from '@/lib/auth/user';
+import { useOrganizerSession, clearOrganizerSession } from '@/lib/auth/organizer';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import MobilePlayDetails from '@/components/mobile/MobilePlayDetails';
 
 const AuthModal = dynamic(() => import('@/components/modals/AuthModal'), { ssr: false });
+const OrganizerLogoutModal = dynamic(() => import('@/components/modals/OrganizerLogoutModal'), { ssr: false });
 
 /**
  * Converts any stored time string to 12-hr AM/PM display format.
@@ -78,7 +80,9 @@ export default function PlayDetailClient({ venue, id }: { venue: RealPlay, id: s
     const [isAboutExpanded, setIsAboutExpanded] = useState(false);
     const [openAccordion, setOpenAccordion] = useState<string | null>(null);
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+    const [isOrgLogoutModalOpen, setIsOrgLogoutModalOpen] = useState(false);
     const session = useUserSession();
+    const organizerSession = useOrganizerSession();
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -86,11 +90,27 @@ export default function PlayDetailClient({ venue, id }: { venue: RealPlay, id: s
 
     const handleBook = () => {
         if (!venue) return;
+        
+        // 1. If Organizer is logged in, they CANNOT book
+        if (organizerSession) {
+            setIsOrgLogoutModalOpen(true);
+            return;
+        }
+
+        // 2. If no User session, show generic login
         if (!session) {
             setIsLoginModalOpen(true);
             return;
         }
+
+        // 3. Proceed to booking
         router.push(`/play/${encodeURIComponent(venue.name)}/book`);
+    };
+
+    const handleOrganizerLogout = () => {
+        clearOrganizerSession();
+        setIsOrgLogoutModalOpen(false);
+        setIsLoginModalOpen(true);
     };
 
     const toggleAccordion = (section: string) => {
@@ -339,6 +359,12 @@ export default function PlayDetailClient({ venue, id }: { venue: RealPlay, id: s
                 isOpen={isLoginModalOpen}
                 onClose={() => setIsLoginModalOpen(false)}
                 onSuccess={() => router.push(`/play/${encodeURIComponent(venue.name)}/book`)}
+            />
+            <OrganizerLogoutModal
+                isOpen={isOrgLogoutModalOpen}
+                onClose={() => setIsOrgLogoutModalOpen(false)}
+                onConfirm={handleOrganizerLogout}
+                organizerName={organizerSession?.email}
             />
         </div>
     );
