@@ -13,6 +13,26 @@ import (
 	gomail "gopkg.in/gomail.v2"
 )
 
+type BookingEmailData struct {
+	Day             string
+	Date            string
+	Month           string
+	Time            string
+	EventName       string
+	PlayName        string
+	Venue           string
+	VenueAddress    string
+	Location        string
+	BookingID       string
+	TicketCount     int
+	GateOpeningTime string
+	Duration        int
+	Offer           string
+	UserPhone       string
+	EventImageURL   string
+	PlayImageURL    string
+}
+
 func sendOTP(from, pass, to, subject, body string) error {
 	port, _ := strconv.Atoi(os.Getenv("SMTP_PORT"))
 	if port == 0 {
@@ -58,6 +78,57 @@ func renderOTPTemplate(category, otp string) (string, error) {
 	}
 
 	return body.String(), nil
+}
+
+func renderBookingTemplate(templateName string, data BookingEmailData) (string, error) {
+	tmplPath := filepath.Join("templates", templateName)
+	if _, err := os.Stat(tmplPath); os.IsNotExist(err) {
+		tmplPath = filepath.Join("Back", "templates", templateName)
+	}
+
+	tmpl, err := template.ParseFiles(tmplPath)
+	if err != nil {
+		return "", err
+	}
+
+	var body bytes.Buffer
+	if err := tmpl.Execute(&body, data); err != nil {
+		return "", err
+	}
+
+	return body.String(), nil
+}
+
+func SendBookingConfirmation(toEmail string, category string, data BookingEmailData) error {
+	var from, pass, subject, templateName string
+
+	switch category {
+	case "play":
+		from = os.Getenv("PLAY_EMAIL")
+		pass = os.Getenv("PLAY_APP_PASSWORD")
+		subject = "Ticpin Play Booking Confirmed: #" + data.BookingID
+		templateName = "play_confirmation.html"
+	case "events":
+		from = os.Getenv("EVENTS_EMAIL")
+		pass = os.Getenv("EVENTS_APP_PASSWORD")
+		subject = "Ticpin Event Booking Confirmed: #" + data.BookingID
+		templateName = "event_confirmation.html"
+	default:
+		return fmt.Errorf("invalid category for confirmation email")
+	}
+
+	if from == "" || pass == "" {
+		// Fallback to admin if vertical specific not set
+		from = os.Getenv("ADMIN_EMAIL")
+		pass = os.Getenv("ADMIN_APP_PASSWORD")
+	}
+
+	body, err := renderBookingTemplate(templateName, data)
+	if err != nil {
+		return fmt.Errorf("failed to render template: %v", err)
+	}
+
+	return sendOTP(from, pass, toEmail, subject, body)
 }
 
 func SendPlayOTP(toEmail, otp string) error {

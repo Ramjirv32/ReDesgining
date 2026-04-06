@@ -67,8 +67,8 @@ export const playApi = {
   list: () =>
     request(`/organizer/play/list`),
 
-  getOrganizer: (id: string) =>
-    request<Record<string, unknown>>(`/organizer/play/organizer/${id}`),
+  getByID: (id: string) =>
+    request<Record<string, unknown>>(`/organizer/play/${id}`),
 
   update: (id: string, payload: Record<string, unknown>) =>
     request(`/organizer/play/${id}`, {

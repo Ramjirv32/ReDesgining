@@ -69,6 +69,25 @@ func GetOrganizerPlays(c *fiber.Ctx) error {
 	return c.JSON(plays)
 }
 
+func GetOrganizerPlayByID(c *fiber.Ctx) error {
+	authOrgID, ok := c.Locals("organizerId").(string)
+	if !ok || authOrgID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	playID := c.Params("id")
+
+	p, err := playservice.GetByID(playID, true)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "play not found"})
+	}
+
+	if p.OrganizerID.Hex() != authOrgID {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "you do not own this listing"})
+	}
+
+	return c.JSON(p)
+}
+
 func UpdateOrganizerPlay(c *fiber.Ctx) error {
 	authOrgID, ok := c.Locals("organizerId").(string)
 	if !ok || authOrgID == "" {

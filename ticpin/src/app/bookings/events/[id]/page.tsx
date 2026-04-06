@@ -177,134 +177,175 @@ export default function EventBookingDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#F3F0FF] to-white">
-      {/* Header */}
-      <div className="bg-white border-b border-zinc-100 sticky top-0 z-50">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <button 
-              onClick={() => router.back()}
-              className="flex items-center gap-2 text-zinc-700 hover:text-black transition-colors"
-            >
-              <ChevronLeft size={20} />
-              <span className="font-medium">Back</span>
-            </button>
-            <h1 className="text-xl font-bold text-black">Event Ticket Details</h1>
-            <div className="w-16" /> {/* Spacer */}
+    <div className="min-h-screen bg-zinc-950 flex flex-col items-center py-12 px-4 font-[family-name:var(--font-anek-latin)]">
+      {/* Back Button */}
+      <div className="w-full max-w-[711px] mb-6">
+        <button 
+          onClick={() => router.back()}
+          className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors group"
+        >
+          <div className="w-8 h-8 rounded-full bg-zinc-900 flex items-center justify-center group-hover:bg-zinc-800 transition-colors">
+            <ChevronLeft size={18} />
           </div>
+          <span className="font-medium">Back to bookings</span>
+        </button>
+      </div>
+
+      {/* Main Ticket Card */}
+      <div className="w-full max-w-[711px] bg-[#0A0132] rounded-[15px] border border-white/10 overflow-hidden shadow-2xl">
+        
+        {/* Purple Header */}
+        <div className="bg-[#5331EA] px-12 py-6 flex items-center">
+          <span className="text-white font-[900] text-4xl tracking-[4px]">
+            TIC<span className="italic">P</span>IN
+          </span>
+        </div>
+
+        {/* Main Content Box */}
+        <div className="mx-12 bg-[#EBEBEB] rounded-b-[15px] p-8 md:p-9">
+          
+          {/* Title Row */}
+          <div className="flex items-center gap-3 mb-1.5">
+            <h2 className="text-[30px] font-bold text-black m-0">Event booking confirmed</h2>
+            <div className="w-7 h-7 bg-[#0AC655] rounded-full flex items-center justify-center flex-shrink-0">
+              <svg width="18" height="18" viewBox="0 0 28 28" fill="none">
+                <path d="M8 14.5L12 18.5L20 10" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+          </div>
+          
+          <p className="text-base text-[#686868] m-0 mb-5">
+            Booking Date : {new Date(booking.booked_at).toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}, {new Date(booking.booked_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </p>
+
+          <hr className="border-t border-[#AEAEAE] m-0 mb-5" />
+
+          {/* Event Summary Card */}
+          <div className="bg-white rounded-[10px] p-5 mb-4 flex gap-5 items-center">
+            <div className="w-[197px] h-[111px] bg-[#AC9BF7] rounded-[6px] flex-shrink-0 overflow-hidden">
+               {/* Use a real image if available, otherwise fallback */}
+               <div className="w-full h-full flex items-center justify-center text-white/50">
+                <ImageIcon size={40} />
+               </div>
+            </div>
+            <div>
+              <p className="text-lg font-bold text-black m-0 mb-1.5">{booking.event_name}</p>
+              <p className="text-base text-[#686868] m-0">{booking.city}, {booking.state}</p>
+            </div>
+          </div>
+
+          {/* Details Card */}
+          <div className="bg-white rounded-[10px] px-6 py-5 mb-4">
+            <div className="space-y-3">
+              <div className="pb-3 border-b border-[#D9D9D9]">
+                <p className="text-sm text-[#686868] m-0 mb-0.5">Booking ID</p>
+                <p className="text-lg font-semibold text-black m-0">{booking.booking_id}</p>
+              </div>
+              
+              <div className="pb-3 border-b border-[#D9D9D9]">
+                <p className="text-sm text-[#686868] m-0 mb-0.5">Date & Time</p>
+                <p className="text-lg font-semibold text-black m-0">{booking.date} | {booking.time || 'All Day'}</p>
+              </div>
+
+              <div className="pb-3 border-b border-[#D9D9D9]">
+                <p className="text-sm text-[#686868] m-0 mb-0.5">Number of ticket(s)</p>
+                <p className="text-lg font-semibold text-black m-0">
+                  {booking.tickets?.reduce((acc: number, t: any) => acc + t.quantity, 0) || 0}
+                </p>
+              </div>
+
+              <div className="pb-3 border-b border-[#D9D9D9]">
+                <p className="text-sm text-[#686868] m-0 mb-0.5">Location</p>
+                <p className="text-lg font-semibold text-black m-0">{booking.city || 'Venue'}</p>
+              </div>
+
+              <div>
+                <p className="text-sm text-[#686868] m-0 mb-0.5">Total Amount</p>
+                <div className="flex justify-between items-center">
+                  <p className="text-lg font-bold text-[#5331EA] m-0">₹{booking.grand_total}</p>
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${getBookingStatusStyles(getBookingStatus(booking))}`}>
+                    {getBookingStatus(booking)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* QR Code Section */}
+          <div className="flex justify-center mb-4">
+            <div className="w-[215px] h-[215px] bg-[#5331EA1A] rounded-[8px] flex items-center justify-center border-2 border-dashed border-[#5331EA33]">
+              <div className="flex flex-col items-center gap-2">
+                <QrCode size={100} className="text-[#5331EA]" strokeWidth={1.5} />
+                <span className="text-sm text-black font-medium">{booking.booking_id}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Access Info */}
+          <p className="text-sm text-[#686868] mb-5">
+            To access your booking, please sign in to your <span className="text-[#5331EA] font-semibold">Ticpin</span> account with {booking.user_phone}
+          </p>
+
+          {/* Notes Section */}
+          <p className="text-lg font-bold text-black mb-3">Notes</p>
+          <div className="bg-white rounded-[10px] px-6 py-5">
+            <div className="space-y-3.5">
+              {[
+                "Please arrive at the venue at least 15 minutes before the event start time for smooth entry.",
+                "Carry your event booking confirmation or ticket (digital or printed) for verification.",
+                "Follow all venue rules and safety instructions during the event.",
+              ].map((note, i) => (
+                <div key={i} className="flex gap-3 items-start">
+                  <div className="w-2.5 h-2.5 border-2 border-[#5331EA] rotate-45 flex-shrink-0 mt-1" />
+                  <p className="text-sm text-[#686868] m-0">{note}</p>
+                </div>
+              ))}
+            </div>
+            <p className="text-[13px] text-[#686868] m-0 mt-4">
+              See you there!<br />
+              Team <span className="text-[#5331EA] font-semibold">Ticpin</span>
+            </p>
+          </div>
+        </div>
+
+        {/* Support Section */}
+        <div className="px-12 py-7 pt-4">
+          <p className="text-white font-bold text-[26px] m-0 mb-2 uppercase">Looking for help?</p>
+          <p className="text-white text-base m-0 mb-6">
+            Mail us at <span className="text-[#7C5CFC] underline font-medium">support@ticpin.in</span> (10AM-5PM), and we'll help you out.
+          </p>
+          <hr className="border-t border-white m-0 mb-6" />
+
+          {/* Social Links Placeholder */}
+          <div className="flex justify-center gap-6 mb-6">
+            {['FB', 'IG', 'X', 'YT'].map(s => (
+              <div key={s} className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center text-xs text-white font-bold hover:bg-white/10 transition-colors cursor-pointer">
+                {s}
+              </div>
+            ))}
+          </div>
+          <hr className="border-t border-white m-0 mb-0" />
         </div>
       </div>
 
-      {/* Content */}
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-          {/* Ticket Header */}
-          <div className="bg-gradient-to-r from-[#7c00e6] to-purple-600 p-8 text-white">
-            <div className="text-center">
-              <h1 className="text-3xl font-bold mb-2">EVENT TICKET</h1>
-              <div className="text-xl opacity-90">Booking ID: {booking.booking_id}</div>
-            </div>
-          </div>
-
-          {/* Ticket Details */}
-          <div className="p-8 space-y-6">
-            {/* Event Info */}
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-black mb-4">{booking.event_name}</h2>
-              <div className="flex justify-center gap-8 text-zinc-600">
-                <div className="flex items-center gap-2">
-                  <Calendar size={20} />
-                  <span>{booking.date}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Clock size={20} />
-                  <span>{booking.time || 'All Day'}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Ticket Categories */}
-            {booking.tickets && booking.tickets.length > 0 && (
-              <div className="bg-zinc-50 p-6 rounded-xl">
-                <h3 className="font-bold text-black mb-4 flex items-center gap-2">
-                  <Ticket size={20} />
-                  Ticket Details
-                </h3>
-                {booking.tickets.map((ticket: any, idx: number) => (
-                  <div key={idx} className="flex justify-between items-center py-2 border-b border-zinc-200 last:border-b-0">
-                    <div>
-                      <div className="font-medium text-black">{ticket.category}</div>
-                      <div className="text-sm text-zinc-600">₹{ticket.price} per ticket</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-bold text-black">{ticket.quantity}x</div>
-                      <div className="text-sm text-zinc-600">₹{ticket.price * ticket.quantity}</div>
-                    </div>
-                  </div>
-                ))}
-                <div className="flex justify-between items-center pt-4 mt-4 border-t-2 border-zinc-200">
-                  <span className="text-lg font-bold text-black">Total</span>
-                  <span className="text-lg font-bold text-[#7c00e6]">₹{booking.grand_total || booking.order_amount}</span>
-                </div>
-              </div>
-            )}
-
-            {/* Status */}
-            <div className="text-center">
-              <div className={`inline-flex items-center gap-2 px-6 py-3 rounded-full text-lg font-bold ${
-                getBookingStatusStyles(getBookingStatus(booking))
-              }`}>
-                {getBookingStatus(booking) === 'CANCELLED' ? (
-                  <>
-                    <XCircle size={20} />
-                    Cancelled
-                  </>
-                ) : getBookingStatus(booking) === 'EXPIRED' ? (
-                  <>
-                    <Clock size={20} />
-                    Expired
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle size={20} />
-                    Confirmed
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-4">
-              {getBookingStatus(booking) !== 'CANCELLED' && getBookingStatus(booking) !== 'EXPIRED' && (
-                <button
-                  onClick={handleCancel}
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors"
-                >
-                  <XCircle size={20} />
-                  Cancel Booking
-                </button>
-              )}
-              <button
-                onClick={() => downloadTicket('png')}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-colors"
-              >
-                <Download size={20} />
-                Download PNG
-              </button>
-              <button
-                onClick={() => downloadTicket('pdf')}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-green-50 text-green-600 rounded-xl font-bold hover:bg-green-100 transition-colors"
-              >
-                <FileText size={20} />
-                Download PDF
-              </button>
-              <button className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-zinc-100 text-zinc-700 rounded-xl font-bold hover:bg-zinc-200 transition-colors">
-                <Share2 size={20} />
-                Share
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Action Buttons (External to the ticket) */}
+      <div className="w-full max-w-[711px] mt-8 flex gap-4">
+          <button 
+            onClick={() => downloadTicket('pdf')}
+            className="flex-1 h-14 bg-white text-black rounded-[15px] font-bold flex items-center justify-center gap-2 hover:bg-zinc-100 transition-all active:scale-95"
+          >
+            <Download size={20} />
+            Download Ticket
+          </button>
+          {getBookingStatus(booking) === 'CONFIRMED' && (
+            <button 
+              onClick={handleCancel}
+              className="flex-1 h-14 bg-red-500/10 text-red-500 border border-red-500/20 rounded-[15px] font-bold flex items-center justify-center gap-2 hover:bg-red-500/20 transition-all active:scale-95"
+            >
+              <XCircle size={20} />
+              Cancel Booking
+            </button>
+          )}
       </div>
     </div>
   );

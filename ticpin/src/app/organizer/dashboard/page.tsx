@@ -11,6 +11,7 @@ function DashboardContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [activeTab, setActiveTab] = useState<'events' | 'play' | 'dining'>('events');
+    const [searchQuery, setSearchQuery] = useState('');
     // hasMounted prevents SSR/client HTML mismatch — session is only readable client-side
     const [hasMounted, setHasMounted] = useState(false);
     const [session, setSession] = useState<ReturnType<typeof getOrganizerSession>>(null);
@@ -154,28 +155,47 @@ function DashboardContent() {
 
                     <div className="flex flex-col md:flex-row md:items-end justify-between items-start mb-8">
                         <div className="space-y-1">
-                            <h1 className="text-[36px] font-medium text-black leading-tight" style={{ fontFamily: 'Anek Latin' }}>
-                                {activeTab === 'play' ? 'Your Turfs / Courts' : currentTheme.title}
+                            <h1 className="text-[40px] font-bold text-black leading-tight" style={{ fontFamily: 'Anek Latin' }}>
+                                {activeTab === 'play' ? 'Your plays' : activeTab === 'dining' ? 'Your dinings' : 'Your events'}
                             </h1>
-                            <p className="text-[24px] font-medium text-[#686868]" style={{ fontFamily: 'Anek Latin' }}>
-                                {activeTab === 'play' ? 'An overview of your Turf / Court' : currentTheme.subtitle}
+                            <p className="text-[20px] font-medium text-[#686868]" style={{ fontFamily: 'Anek Latin' }}>
+                                {activeTab === 'play' ? 'An overview of your play' : activeTab === 'dining' ? 'An overview of your dining' : 'An overview of your events'}
                             </p>
                         </div>
 
-                        {/* Create Button — shown only when category is approved */}
+                        {/* Create Button */}
                         {currentStatus === 'approved' && (
                             <button
                                 onClick={() => router.push(currentTheme.createPath)}
-                                className="mt-6 md:mt-0 bg-black text-white px-8 h-[56px] rounded-[15px] flex items-center gap-3 text-[18px] font-medium transition-all active:scale-95"
+                                className="mt-6 md:mt-0 bg-black text-white px-6 h-[48px] rounded-[10px] flex items-center gap-2 text-[16px] font-bold transition-all active:scale-95 shadow-sm"
                             >
-                                <Plus size={20} className="text-white" />
-                                <span style={{ fontFamily: 'Anek Latin' }}>{activeTab === 'play' ? 'List Play' : currentTheme.buttonLabel}</span>
+                                <Plus size={18} className="text-white" />
+                                <span style={{ fontFamily: 'Anek Latin' }}>
+                                    {activeTab === 'play' ? 'List Play' : activeTab === 'dining' ? 'List Dining' : 'List Event'}
+                                </span>
                             </button>
                         )}
                     </div>
 
                     {/* Horizontal Line Divider */}
                     <div className="w-full h-[1px] bg-black/10 mb-8" />
+
+                    {/* Search Bar */}
+                    <div className="mb-8 relative group">
+                        <input
+                            type="text"
+                            placeholder={`Search for an ${activeTab === 'dining' ? 'dining' : activeTab === 'play' ? 'play' : 'event'}`}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full h-[64px] bg-white rounded-[15px] border-2 border-transparent focus:border-[#5331EA] px-8 text-[20px] text-[#5331EA] placeholder:text-[#5331EA]/50 outline-none transition-all shadow-sm group-hover:shadow-md"
+                            style={{ fontFamily: 'Anek Latin' }}
+                        />
+                        <div className="absolute right-6 top-1/2 -translate-y-1/2">
+                            <svg className="w-7 h-7 text-[#5331EA]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                    </div>
 
                     {/* Content States */}
                     <div className="pt-4">
@@ -227,12 +247,13 @@ function DashboardContent() {
                             </div>
                         ) : currentStatus === 'approved' ? (
                             /* State 3: Approved — show listings grid */
-                            <ListingsGrid
+                             <ListingsGrid
                                 vertical={activeTab}
                                 createPath={currentTheme.createPath}
                                 createLabel={currentTheme.buttonLabel}
                                 accentColor={currentTheme.accent}
                                 Icon={currentTheme.icon}
+                                searchQuery={searchQuery}
                             />
                         ) : currentStatus === 'rejected' ? (
                             /* State 4: Rejected */

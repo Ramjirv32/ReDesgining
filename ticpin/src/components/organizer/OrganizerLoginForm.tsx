@@ -57,7 +57,14 @@ export default function OrganizerLoginForm({ vertical, api, setupPath, otpPath, 
         if (!email || !password) { setError('Email and password are required'); return; }
         setLoading(true); setError('');
         try {
-            await api.login(email, password);
+            const { getRemainingCooldown, setOTPSentAt } = await import('@/lib/utils/otp-state');
+            const remaining = getRemainingCooldown(email, vertical);
+            
+            if (remaining === 0) {
+                await api.login(email, password);
+                setOTPSentAt(email, vertical);
+            }
+            
             sessionStorage.setItem('otp_pending_email', email);
             setRememberedEmail(email);
             router.push(otpPath);

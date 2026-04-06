@@ -20,6 +20,7 @@ func PlayRoutes(app *fiber.App) {
 	play.Post("/submit-verification", middleware.RequireAuth, ctrl.SubmitVerification)
 	play.Post("/create", middleware.RequireAuth, middleware.RequireCategoryApproval("play"), ctrl.CreateOrganizerPlay)
 	play.Get("/list", middleware.RequireAuth, ctrl.GetOrganizerPlays)
+	play.Get("/:id", middleware.RequireAuth, ctrl.GetOrganizerPlayByID)
 	play.Put("/:id", middleware.RequireAuth, ctrl.UpdateOrganizerPlay)
 	play.Delete("/:id", middleware.RequireAuth, ctrl.DeleteOrganizerPlay)
 	play.Get("/organizer/:id", middleware.RequireAuth, middleware.RequireSelfOrAdmin, ctrl.GetOrganizer)

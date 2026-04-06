@@ -41,16 +41,23 @@ function OTPContent({ vertical, api, setupPath, loginPath }: Props) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [resent, setResent] = useState(false);
-    const [timeLeft, setTimeLeft] = useState(180);
+    const [timeLeft, setTimeLeft] = useState(0);
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
     useEffect(() => { inputRefs.current[0]?.focus(); }, []);
 
     useEffect(() => {
-        if (timeLeft <= 0) return;
-        const interval = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
+        if (!email) return;
+        const syncTimer = async () => {
+            const { getRemainingCooldown } = await import('@/lib/utils/otp-state');
+            setTimeLeft(getRemainingCooldown(email, vertical));
+        };
+        syncTimer();
+        const interval = setInterval(() => {
+            setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
+        }, 1000);
         return () => clearInterval(interval);
-    }, [timeLeft]);
+    }, [email, vertical]);
 
     const formatTime = (seconds: number) => {
         const m = Math.floor(seconds / 60);
@@ -95,7 +102,9 @@ function OTPContent({ vertical, api, setupPath, loginPath }: Props) {
             const session = { id, email, vertical, isAdmin, categoryStatus: catStatus };
             saveOrganizerSession(session);
             useIdentityStore.getState().loginOrganizer(session);
-            sessionStorage.removeItem('otp_pending_email');
+            const { clearOTPSentAt } = await import('@/lib/utils/otp-state');
+            clearOTPSentAt(email, vertical);
+            
             if (isAdmin) {
                 router.push('/admin');
             } else if (catStatus[vertical]) {
@@ -113,8 +122,10 @@ function OTPContent({ vertical, api, setupPath, loginPath }: Props) {
         setResent(false); setError('');
         try {
             await api.resendOTP(email);
+            const { setOTPSentAt } = await import('@/lib/utils/otp-state');
+            setOTPSentAt(email, vertical);
             setResent(true);
-            setTimeLeft(180); // Reset timer
+            setTimeLeft(180); // Reset local timer
         } catch {
             setError('Could not resend OTP. Try again later.');
         }

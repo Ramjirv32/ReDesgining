@@ -9,6 +9,7 @@ import (
 	"os"
 	"ticpin-backend/config"
 	"ticpin-backend/models"
+	bookingservice "ticpin-backend/services/booking"
 	passservice "ticpin-backend/services/pass"
 	"time"
 
@@ -150,6 +151,17 @@ func RazorpayWebhook(c *fiber.Ctx) error {
 			})
 			if err == nil && result.ModifiedCount > 0 {
 				fmt.Printf("DEBUG: Successfully updated booking status for Order/Payment ID: %s in collection: %s\n", orderID, col.Name())
+				
+				cat := "events"
+				if col.Name() == "play_bookings" {
+					cat = "play"
+				}
+				go func(id string, c string) {
+					err := bookingservice.SendConfirmationEmail(id, c)
+					if err != nil {
+						fmt.Printf("DEBUG: Error sending confirmation email via Razorpay: %v\n", err)
+					}
+				}(orderID, cat)
 				break
 			}
 		}

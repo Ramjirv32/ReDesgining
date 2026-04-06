@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Event Booking Confirmed</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Anek+Latin:wght@400;500;600;700;800;900&display=swap');
+    </style>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Anek Latin', 'Arial', sans-serif; background-color: #d1d5db;">
+    <table width="100%" border="0" cellspacing="0" cellpadding="0" bgcolor="#d1d5db" style="padding: 40px 0;">
+        <tr>
+            <td align="center">
+                <table width="711" border="0" cellspacing="0" cellpadding="0" bgcolor="#0A0132" style="border-radius: 15px; border: 1px solid #ffffff; overflow: hidden;">
+                    
+                    <!-- Purple Header -->
+                    <tr>
+                        <td bgcolor="#5331EA" style="padding: 24px 50px;">
+                            <span style="color: #ffffff; font-weight: 900; font-size: 36px; letter-spacing: 4px;">TIC<span style="font-style: italic;">P</span>IN</span>
+                        </td>
+                    </tr>
+
+                    <!-- Main Grey Content Box -->
+                    <tr>
+                        <td style="padding: 0 50px;">
+                            <table width="100%" border="0" cellspacing="0" cellpadding="0" bgcolor="#EBEBEB" style="border-radius: 0 0 15px 15px;">
+                                <tr>
+                                    <td style="padding: 30px 36px 36px 36px;">
+                                        
+                                        <!-- Title Row -->
+                                        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 6px;">
+                                            <tr>
+                                                <td style="font-size: 30px; font-weight: 700; color: #000000; vertical-align: middle;">
+                                                    Event booking confirmed
+                                                    <img src="https://res.cloudinary.com/dt9vkv9as/image/upload/v1741270000/check-circle.png" width="28" height="28" style="vertical-align: middle; margin-left: 8px;" alt="Check" />
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        
+                                        <p style="margin: 0 0 20px 0; font-size: 16px; color: #686868;">Booking Date : {{.Day}}, {{.Date}} {{.Month}}, {{.Time}}</p>
+
+                                        <div style="border-top: 1px solid #AEAEAE; margin-bottom: 20px;"></div>
+
+                                        <!-- Event Card -->
+                                        <table width="100%" border="0" cellspacing="0" cellpadding="20" bgcolor="#ffffff" style="border-radius: 10px; margin-bottom: 16px;">
+                                            <tr>
+                                                <td width="197">
+                                                    <img src="{{if .EventImageURL}}{{.EventImageURL}}{{else}}https://res.cloudinary.com/dt9vkv9as/image/upload/v1741270000/placeholder.png{{end}}" width="197" height="111" style="border-radius: 6px; display: block; object-fit: cover;" alt="Event" />
+                                                </td>
+                                                <td style="vertical-align: middle;">
+                                                    <p style="margin: 0 0 6px 0; font-weight: 700; font-size: 18px; color: #000000;">{{.EventName}}</p>
+                                                    <p style="margin: 0; font-size: 16px; color: #686868;">{{.Venue}}</p>
+                                                </td>
+                                            </tr>
+                                        </table>
+
+                                        <!-- Details Card -->
+                                        <table width="100%" border="0" cellspacing="0" cellpadding="20" bgcolor="#ffffff" style="border-radius: 10px; margin-bottom: 16px;">
+                                            <tr>
+                                                <td style="padding: 20px 24px;">
+                                                    <!-- Booking ID -->
+                                                    <p style="margin: 0 0 2px 0; font-size: 14px; color: #686868;">Booking ID</p>
+                                                    <p style="margin: 0 0 12px 0; font-size: 17px; font-weight: 600; color: #000000;">{{.BookingID}}</p>
+                                                    
+                                                    <div style="border-top: 1px solid #D9D9D9; margin: 12px 0;"></div>
+                                                    
+                                                    <!-- Date & Time -->
+                                                    <p style="margin: 0 0 2px 0; font-size: 14px; color: #686868;">Date & Time</p>
+                                                    <p style="margin: 0 0 12px 0; font-size: 17px; font-weight: 600; color: #000000;">{{.Day}} {{.Date}} {{.Month}} | {{.Time}}</p>
+                                                    
+                                                    <div style="border-top: 1px solid #D9D9D9; margin: 12px 0;"></div>
+                                                    
+                                                    <!-- Tickets -->
+                                                    <p style="margin: 0 0 2px 0; font-size: 14px; color: #686868;">Number of ticket(s)</p>
+                                                    <p style="margin: 0 0 12px 0; font-size: 17px; font-weight: 600; color: #000000;">{{.TicketCount}}</p>
+                                                    
+                                                    <div style="border-top: 1px solid #D9D9D9; margin: 12px 0;"></div>
+                                                    
+                                                    <!-- Location -->
+                                                    <p style="margin: 0 0 2px 0; font-size: 14px; color: #686868;">Location</p>
+                                                    <p style="margin: 0 0 12px 0; font-size: 17px; font-weight: 600; color: #000000;">{{.Location}}</p>
+                                                    
+                                                    <div style="border-top: 1px solid #D9D9D9; margin: 12px 0;"></div>
+                                                    
+                                                    <!-- Gate opening -->
+                                                    <p style="margin: 0 0 2px 0; font-size: 14px; color: #686868;">Gate opening time</p>
+                                                    <p style="margin: 0 0 12px 0; font-size: 17px; font-weight: 600; color: #000000;">{{.GateOpeningTime}}</p>
+                                                    
+                                                    {{if .Offer}}
+                                                    <div style="border-top: 1px solid #D9D9D9; margin: 12px 0;"></div>
+                                                    <p style="margin: 0 0 2px 0; font-size: 14px; color: #686868;">Offer</p>
+                                                    <p style="margin: 0; font-size: 17px; font-weight: 600; color: #000000;">{{.Offer}}</p>
+                                                    {{end}}
+                                                </td>
+                                            </tr>
+                                        </table>
+
+                                        <!-- QR Code Section -->
+                                        <div align="center" style="margin-bottom: 16px;">
+                                            <div style="width: 215px; height: 215px; background-color: rgba(83,49,234,0.15); border-radius: 8px; display: table-cell; vertical-align: middle;">
+                                                <span style="font-size: 16px; color: #000000; font-weight: 500;">{{.BookingID}}</span>
+                                            </div>
+                                        </div>
+
+                                        <p style="font-size: 14px; color: #686868; margin-bottom: 20px;">
+                                            To access your booking, please sign in to your <span style="color: #5331EA; font-weight: 600;">Ticpin</span> account with {{.UserPhone}}
+                                        </p>
+
+                                        <p style="font-weight: 700; font-size: 18px; color: #000000; margin-bottom: 12px;">Notes</p>
+                                        <table width="100%" border="0" cellspacing="0" cellpadding="24" bgcolor="#ffffff" style="border-radius: 10px;">
+                                            <tr>
+                                                <td>
+                                                    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                                        <tr>
+                                                            <td width="22" style="vertical-align: top; padding-top: 4px;">
+                                                                <div style="width: 8px; height: 8px; border: 2px solid #5331EA; transform: rotate(45deg);"></div>
+                                                            </td>
+                                                            <td style="font-size: 14px; color: #686868; padding-bottom: 14px;">
+                                                                Please arrive at the venue at least 15 minutes before the event start time for smooth entry.
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td width="22" style="vertical-align: top; padding-top: 4px;">
+                                                                <div style="width: 8px; height: 8px; border: 2px solid #5331EA; transform: rotate(45deg);"></div>
+                                                            </td>
+                                                            <td style="font-size: 14px; color: #686868; padding-bottom: 14px;">
+                                                                Carry your event booking confirmation or ticket (digital or printed) for verification.
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td width="22" style="vertical-align: top; padding-top: 4px;">
+                                                                <div style="width: 8px; height: 8px; border: 2px solid #5331EA; transform: rotate(45deg);"></div>
+                                                            </td>
+                                                            <td style="font-size: 14px; color: #686868;">
+                                                                Follow all venue rules and safety instructions during the event.
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                    <p style="margin: 16px 0 0 0; font-size: 13px; color: #686868;">
+                                                        See you there!<br />
+                                                        Team <span style="color: #5331EA; font-weight: 600;">Ticpin</span>
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Footer Section -->
+                    <tr>
+                        <td style="padding: 28px 50px 40px 50px;">
+                            <p style="color: #ffffff; font-weight: 700; font-size: 26px; margin: 0 0 8px 0;">LOOKING FOR HELP?</p>
+                            <p style="color: #ffffff; font-size: 16px; margin: 0 0 24px 0;">
+                                Mail us at <a href="mailto:support@ticpin.in" style="color: #7C5CFC; text-decoration: underline;">support@ticpin.in</a> (10AM-5PM), and we'll help you out.
+                            </p>
+                            <div style="border-top: 1px solid #ffffff; margin-bottom: 24px;"></div>
+
+                            <!-- Social Icons -->
+                            <div align="center">
+                                <table border="0" cellspacing="0" cellpadding="0">
+                                    <tr>
+                                        <!-- Simplified for email compatibility -->
+                                        <td style="padding: 0 12px; font-weight: bold; color: white;">FB</td>
+                                        <td style="padding: 0 12px; font-weight: bold; color: white;">IG</td>
+                                        <td style="padding: 0 12px; font-weight: bold; color: white;">X</td>
+                                        <td style="padding: 0 12px; font-weight: bold; color: white;">YT</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div style="border-top: 1px solid #ffffff; margin-top: 24px;"></div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

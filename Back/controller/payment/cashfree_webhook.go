@@ -10,6 +10,7 @@ import (
 	"strings"
 	"ticpin-backend/config"
 	"ticpin-backend/models"
+	bookingservice "ticpin-backend/services/booking"
 	passservice "ticpin-backend/services/pass"
 	"time"
 
@@ -130,6 +131,19 @@ func CashfreeWebhook(c *fiber.Ctx) error {
 		result, err := col.UpdateMany(ctx, filter, update)
 		if err == nil && result.ModifiedCount > 0 {
 			fmt.Printf("DEBUG: Cashfree Webhook processed successfully for col: %s\n", col.Name())
+			
+			if newStatus == "booked" {
+				cat := "events"
+				if col.Name() == "play_bookings" {
+					cat = "play"
+				}
+				go func(id string, c string) {
+					err := bookingservice.SendConfirmationEmail(id, c)
+					if err != nil {
+						fmt.Printf("DEBUG: Error sending confirmation email via Cashfree: %v\n", err)
+					}
+				}(orderID, cat)
+			}
 		}
 	}
 

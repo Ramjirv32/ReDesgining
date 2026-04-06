@@ -14,6 +14,7 @@ interface ListingsGridProps {
     createLabel: string;
     accentColor: string;
     Icon: React.ElementType;
+    searchQuery?: string;
 }
 
 const VERTICAL_APIS = {
@@ -22,7 +23,7 @@ const VERTICAL_APIS = {
     play: playApi,
 };
 
-export default function ListingsGrid({ vertical, createPath, createLabel, accentColor, Icon }: ListingsGridProps) {
+export default function ListingsGrid({ vertical, createPath, createLabel, accentColor, Icon, searchQuery = '' }: ListingsGridProps) {
     const router = useRouter();
     const [listings, setListings] = useState<Listing[]>([]);
     const [loadingListings, setLoadingListings] = useState(true);
@@ -76,20 +77,31 @@ export default function ListingsGrid({ vertical, createPath, createLabel, accent
         );
     }
 
-    if (listings.length === 0) {
+    const filteredListings = listings.filter(l => 
+        l.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (l.city && l.city.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+
+    if (filteredListings.length === 0) {
         return (
             <div className="text-center py-20 border-2 border-dashed border-black/10 rounded-[24px] w-full">
                 <Icon size={40} className="mx-auto mb-4 text-black/20" />
-                <p className="text-[18px] text-zinc-500">No listings found.</p>
-                <p className="text-[14px] text-zinc-400 mt-1">
-                    Click <strong>+</strong> above to create your first {vertical} listing.
+                <p className="text-[18px] text-zinc-500">
+                    {searchQuery ? `No matches for "${searchQuery}"` : 'No listings found.'}
                 </p>
-                <button
-                    onClick={() => router.push(createPath)}
-                    className="mt-6 bg-black text-white px-8 h-[44px] rounded-[12px] text-[15px] font-medium flex items-center gap-2 mx-auto"
-                >
-                    <Plus size={16} /> {createLabel}
-                </button>
+                {!searchQuery && (
+                    <>
+                        <p className="text-[14px] text-zinc-400 mt-1">
+                            Click <strong>+</strong> above to create your first {vertical} listing.
+                        </p>
+                        <button
+                            onClick={() => router.push(createPath)}
+                            className="mt-6 bg-black text-white px-8 h-[44px] rounded-[12px] text-[15px] font-medium flex items-center gap-2 mx-auto"
+                        >
+                            <Plus size={16} /> {createLabel}
+                        </button>
+                    </>
+                )}
             </div>
         );
     }
@@ -105,8 +117,8 @@ export default function ListingsGrid({ vertical, createPath, createLabel, accent
                     <RefreshCw size={13} /> Refresh
                 </button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {listings.map(listing => (
+            <div className="flex flex-col gap-6">
+                {filteredListings.map(listing => (
                     <ListingCard
                         key={listing.id}
                         listing={listing}

@@ -100,7 +100,7 @@ export default function EditPlayPage() {
             }
             setAuthChecked(true);
             try {
-                const d = await playApi.getOrganizer(id) as Record<string, unknown>;
+                const d = await playApi.getByID(id) as Record<string, unknown>;
                 // Store original data for change detection
                 setOriginalData(d);
                 
