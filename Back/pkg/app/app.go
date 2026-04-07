@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	stdlog "log"
 	"os"
 	"time"
