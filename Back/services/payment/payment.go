@@ -20,16 +20,33 @@ const (
 	GatewayRazorpay GatewayType = "razorpay"
 )
 
-var httpClient = &http.Client{
-	Timeout: 30 * time.Second,
-	Transport: &http.Transport{
-		MaxIdleConns:        100,
-		MaxIdleConnsPerHost: 10,
-		IdleConnTimeout:     90 * time.Second,
-	},
+var (
+	httpClient = &http.Client{
+		Timeout: 30 * time.Second,
+		Transport: &http.Transport{
+			MaxIdleConns:        100,
+			MaxIdleConnsPerHost: 10,
+			IdleConnTimeout:     90 * time.Second,
+		},
+	}
+	// Track last gateway for alternating pattern
+	lastGateway GatewayType = GatewayRazorpay
+)
+
+// GetPaymentGatewayAlternating returns alternating gateway: Razorpay -> Cashfree -> Razorpay -> Cashfree
+func GetPaymentGatewayAlternating() GatewayType {
+	if lastGateway == GatewayRazorpay {
+		lastGateway = GatewayCashfree
+		fmt.Println("DEBUG: [PAYMENT_GATEWAY] Alternating: CASHFREE")
+		return GatewayCashfree
+	}
+	lastGateway = GatewayRazorpay
+	fmt.Println("DEBUG: [PAYMENT_GATEWAY] Alternating: RAZORPAY")
+	return GatewayRazorpay
 }
 
-func GetPaymentGateway() GatewayType {
+// GetPaymentGatewayWeighted uses random weighting (original behavior)
+func GetPaymentGatewayWeighted() GatewayType {
 	weightStr := os.Getenv("PAYMENT_TRAFFIC_WEIGHT_CASHFREE")
 	weight := 0.5
 	if weightStr != "" {
@@ -43,13 +60,23 @@ func GetPaymentGateway() GatewayType {
 	rand.Seed(time.Now().UnixNano())
 	r := rand.Float64()
 	fmt.Printf("DEBUG: [PAYMENT_GATEWAY] Raw Weight Env: '%s', Parsed Weight: %.2f, Random: %.4f\n", weightStr, weight, r)
-	
+
 	if r < weight {
 		fmt.Println("DEBUG: [PAYMENT_GATEWAY] Decision: CASHFREE")
 		return GatewayCashfree
 	}
 	fmt.Println("DEBUG: [PAYMENT_GATEWAY] Decision: RAZORPAY")
 	return GatewayRazorpay
+}
+
+// GetPaymentGateway is the default selector - uses alternating for play, weighted for others
+func GetPaymentGateway() GatewayType {
+	return GetPaymentGatewayWeighted()
+}
+
+// GetPaymentGatewayForPlay uses alternating pattern: Razorpay -> Cashfree -> Razorpay -> Cashfree
+func GetPaymentGatewayForPlay() GatewayType {
+	return GetPaymentGatewayAlternating()
 }
 
 type OrderRequest struct {
@@ -212,6 +239,17 @@ func CreateOrder(req OrderRequest) (*OrderResponse, error) {
 		req.CustomerID = "user_" + req.CustomerPhone
 	}
 	gateway := GetPaymentGateway()
+	return CreateOrderWithGateway(req, gateway)
+}
+
+// CreateOrderWithGateway creates order with specified gateway
+func CreateOrderWithGateway(req OrderRequest, gateway GatewayType) (*OrderResponse, error) {
+	if req.Currency == "" {
+		req.Currency = "INR"
+	}
+	if req.CustomerID == "" {
+		req.CustomerID = "user_" + req.CustomerPhone
+	}
 	if gateway == GatewayCashfree {
 		return CreateOrderCashfree(req)
 	}

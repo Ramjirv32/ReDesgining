@@ -1,8 +1,9 @@
 package paymentctrl
+
 import (
 	"fmt"
-	"ticpin-backend/services/payment"
 	passservice "ticpin-backend/services/pass"
+	"ticpin-backend/services/payment"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -48,7 +49,7 @@ func CreateOrderHandler(c *fiber.Ctx) error {
 	}
 	orderID := fmt.Sprintf("%s_%d", bookingType, time.Now().UnixMilli())
 	if bookingType == "pass" && req.CustomerID != "" {
-		// Razorpay receipt limit is 40 chars. 
+		// Razorpay receipt limit is 40 chars.
 		// pass_ (5) + UserID (up to 30) + _ (1) + ShortTS (4) = 40
 		orderID = fmt.Sprintf("pass_%s_%d", req.CustomerID, time.Now().Unix()%10000)
 	}
@@ -61,7 +62,15 @@ func CreateOrderHandler(c *fiber.Ctx) error {
 		notes["booking_type"] = req.Type
 	}
 
-	result, err := payment.CreateOrder(payment.OrderRequest{
+	// Use alternating gateway for play bookings: Razorpay -> Cashfree -> Razorpay -> Cashfree
+	var gateway payment.GatewayType
+	if req.Type == "play" {
+		gateway = payment.GetPaymentGatewayForPlay()
+	} else {
+		gateway = payment.GetPaymentGateway()
+	}
+
+	result, err := payment.CreateOrderWithGateway(payment.OrderRequest{
 		OrderID:       orderID,
 		OrderAmount:   req.Amount,
 		Currency:      "INR",
@@ -70,7 +79,7 @@ func CreateOrderHandler(c *fiber.Ctx) error {
 		CustomerPhone: req.CustomerPhone,
 		ReturnURL:     req.ReturnURL,
 		Notes:         notes,
-	})
+	}, gateway)
 
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "payment order creation failed: " + err.Error()})
