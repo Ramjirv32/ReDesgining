@@ -29,6 +29,9 @@ function AccountSetupContent() {
     const [uploading, setUploading] = useState(false);
     const [uploadError, setUploadError] = useState('');
     const [prefilled, setPrefilled] = useState(false);
+    const [panVerified, setPanVerified] = useState(false);
+    const [verifying, setVerifying] = useState(false);
+    const [panVerifyError, setPanVerifyError] = useState('');
     const [pageLoading, setPageLoading] = useState(true);
     const [hasCheckedSession, setHasCheckedSession] = useState(false);
     const fileRef = useRef<HTMLInputElement>(null);
