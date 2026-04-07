@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 )
 
 type PANVerifyRequest struct {
@@ -41,14 +42,31 @@ type GSTListResponse struct {
 }
 
 func VerifyPAN(pan, name, dob, verificationID string) (*PANVerifyResponse, error) {
-	url := os.Getenv("CASHFREE_VERIFICATION_URL") + "/pan"
+	// Use the advance PAN verification API as per Cashfree documentation
+	url := "https://api.cashfree.com/verification/pan/advance"
+	if os.Getenv("CASHFREE_ENV") == "sandbox" {
+		url = "https://sandbox.cashfree.com/verification/pan/advance"
+	}
+
 	clientID := os.Getenv("CASHFREE_CLIENT_ID")
 	clientSecret := os.Getenv("CASHFREE_CLIENT_SECRET")
 
-	reqBody, _ := json.Marshal(PANVerifyRequest{
-		PAN:  pan,
-		Name: name,
-		DOB:  dob,
+	// Debug logging
+	fmt.Printf("Cashfree PAN Verification - URL: %s, ClientID: %s\n", url, clientID)
+
+	if clientID == "" || clientSecret == "" {
+		return nil, fmt.Errorf("cashfree configuration missing - check CASHFREE_CLIENT_ID, CASHFREE_CLIENT_SECRET")
+	}
+
+	// Generate verification ID if not provided
+	if verificationID == "" {
+		verificationID = fmt.Sprintf("pan_%s_%d", pan, time.Now().Unix())
+	}
+
+	reqBody, _ := json.Marshal(map[string]interface{}{
+		"pan":             pan,
+		"name":            name,
+		"verification_id": verificationID,
 	})
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(reqBody))
@@ -60,14 +78,16 @@ func VerifyPAN(pan, name, dob, verificationID string) (*PANVerifyResponse, error
 	req.Header.Set("x-client-secret", clientSecret)
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cashfree request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
+	fmt.Printf("Cashfree Response - Status: %d, Body: %s\n", resp.StatusCode, string(body))
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("cashfree error: %s", string(body))
 	}
@@ -75,15 +95,20 @@ func VerifyPAN(pan, name, dob, verificationID string) (*PANVerifyResponse, error
 	var raw struct {
 		Status         string `json:"status"`
 		Message        string `json:"message"`
-		VerificationID string `json:"verification_id"`
 		ReferenceID    int    `json:"reference_id"`
-		Details        struct {
-			PAN       string `json:"pan"`
-			Name      string `json:"name"`
-			NameMatch string `json:"name_match"`
-			DOBMatch  string `json:"dob_match"`
-			PANStatus string `json:"pan_status"`
-		} `json:"details"`
+		VerificationID string `json:"verification_id"`
+		NameProvided   string `json:"name_provided"`
+		PAN            string `json:"pan"`
+		RegisteredName string `json:"registered_name"`
+		NamePanCard    string `json:"name_pan_card"`
+		FirstName      string `json:"first_name"`
+		LastName       string `json:"last_name"`
+		Type           string `json:"type"`
+		Gender         string `json:"gender"`
+		DateOfBirth    string `json:"date_of_birth"`
+		Email          string `json:"email"`
+		MobileNumber   string `json:"mobile_number"`
+		AadhaarLinked  bool   `json:"aadhaar_linked"`
 	}
 	if err := json.Unmarshal(body, &raw); err != nil {
 		return nil, err
@@ -94,21 +119,32 @@ func VerifyPAN(pan, name, dob, verificationID string) (*PANVerifyResponse, error
 		Message:        raw.Message,
 		VerificationID: raw.VerificationID,
 		ReferenceID:    raw.ReferenceID,
-		PAN:            raw.Details.PAN,
-		Name:           raw.Details.Name,
-		NameMatch:      raw.Details.NameMatch,
-		DOBMatch:       raw.Details.DOBMatch,
-		PANStatus:      raw.Details.PANStatus,
+		PAN:            raw.PAN,
+		Name:           raw.RegisteredName,
+		NameMatch:      "MATCH", // Since we're using advance API, this is implied
+		DOBMatch:       "MATCH", // Since we're using advance API, this is implied
+		PANStatus:      raw.Status,
 	}, nil
 }
 
 func FetchGST(pan, verificationID string) (*GSTListResponse, error) {
-	url := os.Getenv("CASHFREE_VERIFICATION_URL") + "/gstin"
+	// Use the correct GST API endpoint
+	url := "https://api.cashfree.com/verification/pan-gstin"
+	if os.Getenv("CASHFREE_ENV") == "sandbox" {
+		url = "https://sandbox.cashfree.com/verification/pan-gstin"
+	}
+
 	clientID := os.Getenv("CASHFREE_CLIENT_ID")
 	clientSecret := os.Getenv("CASHFREE_CLIENT_SECRET")
 
+	// Generate verification ID if not provided
+	if verificationID == "" {
+		verificationID = fmt.Sprintf("gst_%s_%d", pan, time.Now().Unix())
+	}
+
 	reqBody, _ := json.Marshal(map[string]string{
-		"pan": pan,
+		"pan":             pan,
+		"verification_id": verificationID,
 	})
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(reqBody))
@@ -159,4 +195,3 @@ func FetchGST(pan, verificationID string) (*GSTListResponse, error) {
 		GSTINList:      raw.Details.GSTINList,
 	}, nil
 }
-

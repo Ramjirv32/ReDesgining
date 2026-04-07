@@ -42,6 +42,9 @@ func sendOTP(from, pass, to, subject, body string) error {
 
 	cleanPass := strings.ReplaceAll(pass, " ", "")
 
+	// Log configuration for debugging (remove sensitive data in production)
+	fmt.Printf("SMTP Config - Server: smtp.gmail.com:%d, From: %s, To: %s\n", port, from, to)
+
 	m := gomail.NewMessage()
 	m.SetHeader("From", from)
 	m.SetHeader("To", to)
@@ -50,20 +53,27 @@ func sendOTP(from, pass, to, subject, body string) error {
 
 	d := gomail.NewDialer("smtp.gmail.com", port, from, cleanPass)
 
-	// Add timeout settings for production environments
-	d.Timeout = 30 * time.Second // 30 seconds timeout
-
 	// Add retry logic for production
 	var lastErr error
 	for i := 0; i < 3; i++ { // Retry up to 3 times
+		fmt.Printf("SMTP attempt %d for email: %s\n", i+1, to)
 		err := d.DialAndSend(m)
 		if err == nil {
+			fmt.Printf("OTP sent successfully to: %s\n", to)
 			return nil
 		}
 		lastErr = err
 
-		// Log retry attempt
-		fmt.Printf("SMTP retry attempt %d: %v\n", i+1, err)
+		// Log retry attempt with more details
+		fmt.Printf("SMTP retry attempt %d failed: %v\n", i+1, err)
+
+		// Check for specific Gmail authentication errors
+		if strings.Contains(err.Error(), "535") || strings.Contains(err.Error(), "authentication") {
+			fmt.Printf("Gmail authentication failed. Check:\n")
+			fmt.Printf("1. App password is correct (not regular password)\n")
+			fmt.Printf("2. 2FA is enabled on Gmail account\n")
+			fmt.Printf("3. App password is generated for this app\n")
+		}
 
 		// Wait before retry (exponential backoff)
 		if i < 2 {

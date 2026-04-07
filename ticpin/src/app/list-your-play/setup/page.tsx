@@ -93,14 +93,9 @@ function AccountSetupContent() {
         } finally { setUploading(false); }
     };
 
-    const [verifying, setVerifying] = useState(false);
-    const [panVerifyError, setPanVerifyError] = useState('');
-
-    const handleContinue = async () => {
-        if (prefilled) {
-            const existing = JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? '{}');
-            sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...existing, orgType: selectedCategory, pan, panName, panDOB, panCardUrl, panFileName }));
-            router.push('/list-your-play/setup/gst');
+    const handleVerifyPAN = async () => {
+        if (!pan || !panName || !panDOB) {
+            setPanVerifyError('Please fill in PAN, Name, and Date of Birth first');
             return;
         }
 
@@ -108,9 +103,9 @@ function AccountSetupContent() {
         setVerifying(true);
         try {
             await organizerApi.verifyPAN(pan, panName, panDOB);
+            setPanVerified(true);
             const existing = JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? '{}');
-            sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...existing, orgType: selectedCategory, pan, panName, panDOB, panCardUrl, panFileName, panVerified: true }));
-            router.push('/list-your-play/setup/gst');
+            sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...existing, orgType: selectedCategory, pan, panName, panDOB, panVerified: true }));
         } catch (err: any) {
             setPanVerifyError(err.message || 'PAN verification failed. Please check your details.');
         } finally {
@@ -118,7 +113,22 @@ function AccountSetupContent() {
         }
     };
 
-    const canContinue = !!(pan && panName && panDOB && (panCardUrl || prefilled) && !uploading);
+    const handleContinue = () => {
+        if (!panVerified) {
+            setPanVerifyError('Please verify your PAN first');
+            return;
+        }
+        if (!panCardUrl && !prefilled) {
+            setPanVerifyError('Please upload your PAN card');
+            return;
+        }
+        const existing = JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? '{}');
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...existing, orgType: selectedCategory, pan, panName, panDOB, panCardUrl, panFileName, panVerified: true }));
+        router.push('/list-your-play/setup/gst');
+    };
+
+    const canVerifyPAN = !!(pan && panName && panDOB);
+    const canContinue = panVerified && (panCardUrl || prefilled);
 
     if (pageLoading) return <div className="h-[calc(100vh-80px)] animate-pulse bg-zinc-50" />;
 
@@ -171,51 +181,70 @@ function AccountSetupContent() {
                                     <div className="flex flex-col gap-3">
                                         <label className="text-[16px] font-medium text-[#686868]">PAN card number</label>
                                         <input type="text" placeholder="ABCDE1234F" value={pan}
-                                            onChange={e => setPan(e.target.value.toUpperCase())} disabled={prefilled}
-                                            onKeyDown={e => e.key === 'Enter' && canContinue && !verifying && handleContinue()}
-                                            className={`w-full h-12 px-4 border border-[#AEAEAE] rounded-[14px] text-[15px] font-medium focus:outline-none focus:border-zinc-500 transition-colors placeholder:text-zinc-400 ${prefilled ? 'bg-zinc-100 text-zinc-500 cursor-not-allowed' : 'text-zinc-800'}`} />
+                                            onChange={e => setPan(e.target.value.toUpperCase())} disabled={prefilled || panVerified}
+                                            className={`w-full h-12 px-4 border border-[#AEAEAE] rounded-[14px] text-[15px] font-medium focus:outline-none focus:border-zinc-500 transition-colors placeholder:text-zinc-400 ${(prefilled || panVerified) ? 'bg-zinc-100 text-zinc-500 cursor-not-allowed' : 'text-zinc-800'}`} />
                                     </div>
                                     <div className="flex flex-col gap-3">
                                         <label className="text-[16px] font-medium text-[#686868]">Name on PAN card</label>
                                         <input type="text" placeholder="Name as on PAN card" value={panName}
-                                            onChange={e => setPanName(e.target.value)} disabled={prefilled}
-                                            onKeyDown={e => e.key === 'Enter' && canContinue && !verifying && handleContinue()}
-                                            className={`w-full h-12 px-4 border border-[#AEAEAE] rounded-[14px] text-[15px] font-medium focus:outline-none focus:border-zinc-500 transition-colors placeholder:text-zinc-400 ${prefilled ? 'bg-zinc-100 text-zinc-500 cursor-not-allowed' : 'text-zinc-800'}`} />
+                                            onChange={e => setPanName(e.target.value)} disabled={prefilled || panVerified}
+                                            className={`w-full h-12 px-4 border border-[#AEAEAE] rounded-[14px] text-[15px] font-medium focus:outline-none focus:border-zinc-500 transition-colors placeholder:text-zinc-400 ${(prefilled || panVerified) ? 'bg-zinc-100 text-zinc-500 cursor-not-allowed' : 'text-zinc-800'}`} />
                                     </div>
                                     <div className="flex flex-col gap-3">
                                         <label className="text-[16px] font-medium text-[#686868]">Date of birth (as on PAN card)</label>
-                                        <input type="date" value={panDOB} onChange={e => setPanDOB(e.target.value)} disabled={prefilled}
-                                            onKeyDown={e => e.key === 'Enter' && canContinue && !verifying && handleContinue()}
-                                            className={`w-full h-12 px-4 border border-[#AEAEAE] rounded-[14px] text-[15px] font-medium focus:outline-none focus:border-zinc-500 transition-colors ${prefilled ? 'bg-zinc-100 text-zinc-500 cursor-not-allowed' : 'text-zinc-800'}`} />
+                                        <input type="date" value={panDOB} onChange={e => setPanDOB(e.target.value)} disabled={prefilled || panVerified}
+                                            className={`w-full h-12 px-4 border border-[#AEAEAE] rounded-[14px] text-[15px] font-medium focus:outline-none focus:border-zinc-500 transition-colors ${(prefilled || panVerified) ? 'bg-zinc-100 text-zinc-500 cursor-not-allowed' : 'text-zinc-800'}`} />
                                     </div>
                                 </div>
 
-                                {/* Upload PAN */}
-                                <div className="flex flex-col gap-3">
-                                    <label className="text-[16px] font-medium text-[#686868]">Upload your PAN card</label>
-                                    <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileChange} disabled={prefilled} />
-                                    <button type="button" onClick={() => !prefilled && !uploading && fileRef.current?.click()} disabled={uploading || prefilled}
-                                        className={`w-full max-w-sm h-[72px] border border-zinc-200 rounded-[20px] flex items-center px-6 gap-4 transition-colors ${prefilled ? 'opacity-60 cursor-not-allowed' : 'hover:border-zinc-500 cursor-pointer'}`}>
-                                        <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
-                                            {uploading ? <div className="w-5 h-5 border-2 border-zinc-400 border-t-black rounded-full animate-spin" />
-                                                : panCardUrl ? <Check size={22} className="text-green-600" />
-                                                    : <Image src="/list your events/doc icon.svg" alt="doc" width={24} height={24} className="object-contain" />}
+                                {/* Verify PAN Button */}
+                                {!prefilled && !panVerified && (
+                                    <div className="pt-4">
+                                        <button onClick={handleVerifyPAN} disabled={!canVerifyPAN || verifying}
+                                            className="bg-[#5331EA] text-white h-[48px] px-8 rounded-[15px] flex items-center justify-center gap-2 text-[15px] font-medium transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                                            {verifying ? 'Verifying...' : 'Verify PAN'}<Check size={18} />
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Verification Success Message */}
+                                {panVerified && (
+                                    <div className="pt-4">
+                                        <div className="bg-green-50 border border-green-200 rounded-[14px] px-5 py-3 flex items-center gap-3">
+                                            <Check size={16} className="text-green-600 flex-shrink-0" />
+                                            <p className="text-[14px] text-green-700 font-medium">PAN verified successfully! You can now upload your PAN card document.</p>
                                         </div>
-                                        <div className="text-left">
-                                            <p className="text-[15px] font-medium text-black truncate max-w-[220px]">{uploading ? 'Uploading…' : panFileName || 'Upload document'}</p>
-                                            <p className="text-[12px] text-[#686868]">Max 5MB • JPEG, JPG, PNG, PDF</p>
-                                        </div>
-                                    </button>
-                                    {uploadError && <p className="text-red-500 text-sm">{uploadError}</p>}
-                                </div>
+                                    </div>
+                                )}
+
+                                {/* Upload PAN - Only show after verification */}
+                                {(panVerified || prefilled) && (
+                                    <div className="flex flex-col gap-3 pt-4">
+                                        <label className="text-[16px] font-medium text-[#686868]">Upload your PAN card</label>
+                                        <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileChange} disabled={prefilled} />
+                                        <button type="button" onClick={() => !prefilled && !uploading && fileRef.current?.click()} disabled={uploading || prefilled}
+                                            className={`w-full max-w-sm h-[72px] border border-zinc-200 rounded-[20px] flex items-center px-6 gap-4 transition-colors ${prefilled ? 'opacity-60 cursor-not-allowed' : 'hover:border-zinc-500 cursor-pointer'}`}>
+                                            <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+                                                {uploading ? <div className="w-5 h-5 border-2 border-zinc-400 border-t-black rounded-full animate-spin" />
+                                                    : panCardUrl ? <Check size={22} className="text-green-600" />
+                                                        : <Image src="/list your events/doc icon.svg" alt="doc" width={24} height={24} className="object-contain" />}
+                                            </div>
+                                            <div className="text-left">
+                                                <p className="text-[15px] font-medium text-black truncate max-w-[220px]">{uploading ? 'Uploading…' : panFileName || 'Upload document'}</p>
+                                                <p className="text-[12px] text-[#686868]">Max 5MB • JPEG, JPG, PNG, PDF</p>
+                                            </div>
+                                        </button>
+                                        {uploadError && <p className="text-red-500 text-sm">{uploadError}</p>}
+                                    </div>
+                                )}
                             </div>
 
                             {panVerifyError && <p className="text-red-500 text-[14px] font-medium mt-2">{panVerifyError}</p>}
 
                             <div className="pt-2 flex justify-center md:justify-start">
-                                <button onClick={handleContinue} disabled={!canContinue || verifying}
+                                <button onClick={handleContinue} disabled={!canContinue}
                                     className="bg-black text-white h-[48px] px-8 rounded-[15px] flex items-center justify-center gap-2 text-[15px] font-medium transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
-                                    {verifying ? 'Verifying...' : 'Continue'}<ChevronRight size={18} />
+                                    Continue<ChevronRight size={18} />
                                 </button>
                             </div>
                         </div>
