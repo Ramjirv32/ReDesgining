@@ -47,6 +47,14 @@ export const metadata: Metadata = {
   description: "Your ultimate gateway to world-class sports, entertainment, and dining. Book events, find sports venues, and discover the best dining experiences on Ticpin.",
   keywords: ["Ticpin", "Dining", "Events", "Sports", "Booking", "Entertainment"],
   authors: [{ name: "Ticpin Team" }],
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon.jpg', type: 'image/jpeg' }
+    ],
+    shortcut: '/favicon.ico',
+    apple: '/favicon.jpg'
+  },
   openGraph: {
     title: "Ticpin | Explore Dining, Events, & Play Venues",
     description: "Your ultimate gateway to world-class sports, entertainment, and dining.",

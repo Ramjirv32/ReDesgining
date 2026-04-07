@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
-	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -35,16 +34,9 @@ type BookingEmailData struct {
 }
 
 func sendOTP(from, pass, to, subject, body string) error {
-	// Force port 465 for production - ignore env var
-	port := 465
-
-	// Debug: Log what env var says vs what we're using
-	envPort := os.Getenv("SMTP_PORT")
-	fmt.Printf("[SMTP DEBUG] Env SMTP_PORT=%s, Using port=%d (forced for production)\n", envPort, port)
-
 	cleanPass := strings.ReplaceAll(pass, " ", "")
 
-	fmt.Printf("[SMTP DEBUG] Server: smtp.gmail.com:%d, SSL: true, From: %s, To: %s\n", port, from, to)
+	fmt.Printf("[SMTP DEBUG] Gmail: %s -> %s\n", from, to)
 
 	m := gomail.NewMessage()
 	m.SetHeader("From", from)
@@ -52,18 +44,21 @@ func sendOTP(from, pass, to, subject, body string) error {
 	m.SetHeader("Subject", subject)
 	m.SetBody("text/html", body)
 
-	d := gomail.NewDialer("smtp.gmail.com", port, from, cleanPass)
+	// Use port 587 with STARTTLS (like Node.js nodemailer)
+	d := gomail.NewDialer("smtp.gmail.com", 587, from, cleanPass)
 
-	// Force SSL for port 465
-	d.SSL = true
-	d.LocalName = "ticpin.in" // Helps with SPF/DKIM
+	// Disable SSL (use STARTTLS like Node.js secure: false)
+	d.SSL = false
 
-	// Add retry logic with exponential backoff
+	// Set timeouts like Node.js
+	d.LocalName = "ticpin.in"
+
+	// Add retry logic
 	var lastErr error
 	maxRetries := 3
 
 	for i := 0; i < maxRetries; i++ {
-		fmt.Printf("SMTP attempt %d/%d for email: %s\n", i+1, maxRetries, to)
+		fmt.Printf("SMTP attempt %d/%d for: %s\n", i+1, maxRetries, to)
 
 		// Create a channel for timeout handling
 		done := make(chan error, 1)
@@ -72,42 +67,35 @@ func sendOTP(from, pass, to, subject, body string) error {
 			done <- d.DialAndSend(m)
 		}()
 
-		// Wait for result with 30 second timeout per attempt
+		// Wait with 15 second timeout per attempt (like Node.js socketTimeout)
 		select {
 		case err := <-done:
 			if err == nil {
-				fmt.Printf("OTP sent successfully to: %s\n", to)
+				fmt.Printf("✅ OTP sent successfully to: %s\n", to)
 				return nil
 			}
 			lastErr = err
-			fmt.Printf("SMTP attempt %d failed: %v\n", i+1, err)
+			fmt.Printf("❌ SMTP attempt %d failed: %v\n", i+1, err)
 
-			// Check for specific errors
 			if strings.Contains(err.Error(), "535") || strings.Contains(err.Error(), "authentication") {
-				fmt.Printf("Gmail authentication failed. Check app password.\n")
 				return fmt.Errorf("authentication failed: %w", err)
 			}
 
-			// Exponential backoff before retry
 			if i < maxRetries-1 {
-				sleepTime := time.Duration(math.Pow(2, float64(i))) * time.Second
-				fmt.Printf("Retrying in %v...\n", sleepTime)
-				time.Sleep(sleepTime)
+				time.Sleep(time.Duration(i+1) * time.Second)
 			}
 
-		case <-time.After(30 * time.Second):
-			lastErr = fmt.Errorf("connection timeout after 30 seconds")
-			fmt.Printf("SMTP attempt %d timed out\n", i+1)
+		case <-time.After(15 * time.Second):
+			lastErr = fmt.Errorf("connection timeout after 15 seconds")
+			fmt.Printf("⏱️ SMTP attempt %d timed out\n", i+1)
 
 			if i < maxRetries-1 {
-				sleepTime := time.Duration(math.Pow(2, float64(i))) * time.Second
-				fmt.Printf("Retrying in %v...\n", sleepTime)
-				time.Sleep(sleepTime)
+				time.Sleep(time.Duration(i+1) * time.Second)
 			}
 		}
 	}
 
-	return fmt.Errorf("failed to send OTP after %d attempts: %w", maxRetries, lastErr)
+	return fmt.Errorf("failed after %d attempts: %w", maxRetries, lastErr)
 }
 
 func renderOTPTemplate(category, otp string) (string, error) {
