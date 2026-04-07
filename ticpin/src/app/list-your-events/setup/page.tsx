@@ -93,10 +93,6 @@ function AccountSetupContent() {
         } finally { setUploading(false); }
     };
 
-    const [panVerified, setPanVerified] = useState(false);
-    const [verifying, setVerifying] = useState(false);
-    const [panVerifyError, setPanVerifyError] = useState('');
-
     const handleVerifyPAN = async () => {
         if (!pan || !panName || !panDOB) {
             setPanVerifyError('Please fill in PAN, Name, and Date of Birth first');
