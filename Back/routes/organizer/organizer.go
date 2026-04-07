@@ -7,7 +7,6 @@ import (
 	orgver "ticpin-backend/controller/organizer/verification"
 	orgotp "ticpin-backend/controller/otp"
 	"ticpin-backend/middleware"
-
 	"github.com/gofiber/fiber/v2"
 )
 
