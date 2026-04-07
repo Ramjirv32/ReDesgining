@@ -5,7 +5,7 @@ import { CreditCard, Calendar, Users } from 'lucide-react';
 import TicpassDiscount from './TicpassDiscount';
 import PriceBreakdown from './PriceBreakdown';
 import { CreateDiningPayload } from '@/lib/api/booking';
-
+// m
 export default function DiningBookingExample() {
   const [useTicpass, setUseTicpass] = useState(false);
   const [formData, setFormData] = useState<Partial<CreateDiningPayload>>({
