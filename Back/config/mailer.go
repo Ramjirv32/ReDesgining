@@ -8,7 +8,6 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -36,16 +35,16 @@ type BookingEmailData struct {
 }
 
 func sendOTP(from, pass, to, subject, body string) error {
-	port, _ := strconv.Atoi(os.Getenv("SMTP_PORT"))
-	if port == 0 {
-		port = 465 // Use SSL port by default for production
-	}
-	// Fallback to 587 if explicitly set, but 465 is more reliable
-	useSSL := port == 465
+	// Force port 465 for production - ignore env var
+	port := 465
+
+	// Debug: Log what env var says vs what we're using
+	envPort := os.Getenv("SMTP_PORT")
+	fmt.Printf("[SMTP DEBUG] Env SMTP_PORT=%s, Using port=%d (forced for production)\n", envPort, port)
 
 	cleanPass := strings.ReplaceAll(pass, " ", "")
 
-	fmt.Printf("SMTP Config - Server: smtp.gmail.com:%d, SSL: %v, From: %s, To: %s\n", port, useSSL, from, to)
+	fmt.Printf("[SMTP DEBUG] Server: smtp.gmail.com:%d, SSL: true, From: %s, To: %s\n", port, from, to)
 
 	m := gomail.NewMessage()
 	m.SetHeader("From", from)
@@ -55,12 +54,8 @@ func sendOTP(from, pass, to, subject, body string) error {
 
 	d := gomail.NewDialer("smtp.gmail.com", port, from, cleanPass)
 
-	// Use SSL for port 465 (more reliable in production)
-	if useSSL {
-		d.SSL = true
-	}
-
-	// Add timeouts for production environments
+	// Force SSL for port 465
+	d.SSL = true
 	d.LocalName = "ticpin.in" // Helps with SPF/DKIM
 
 	// Add retry logic with exponential backoff
