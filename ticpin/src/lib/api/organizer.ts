@@ -27,6 +27,8 @@ export interface ExistingSetup {
   gstNumber?: string;
   backupEmail?: string;
   backupPhone?: string;
+  panVerified?: boolean;
+  verifiedName?: string;
 }
 
 export interface GPS {

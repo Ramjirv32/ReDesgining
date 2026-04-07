@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -58,10 +59,8 @@ func VerifyPAN(pan, name, dob, verificationID string) (*PANVerifyResponse, error
 		return nil, fmt.Errorf("cashfree configuration missing - check CASHFREE_CLIENT_ID, CASHFREE_CLIENT_SECRET")
 	}
 
-	// Generate verification ID if not provided
-	if verificationID == "" {
-		verificationID = fmt.Sprintf("pan_%s_%d", pan, time.Now().Unix())
-	}
+	// Always ensure unique verification ID by appending unixnano
+	verificationID = fmt.Sprintf("%s_%d", verificationID, time.Now().UnixNano())
 
 	reqBody, _ := json.Marshal(map[string]interface{}{
 		"pan":             pan,
@@ -114,6 +113,32 @@ func VerifyPAN(pan, name, dob, verificationID string) (*PANVerifyResponse, error
 		return nil, err
 	}
 
+	// Validate PAN length
+	if len(strings.TrimSpace(pan)) != 10 {
+		return nil, fmt.Errorf("PAN must be exactly 10 characters long")
+	}
+
+	// Normalize name for comparison (remove extra spaces and case-insensitive)
+	nameProvided := strings.ToLower(strings.TrimSpace(name))
+	nameOnPan := strings.ToLower(strings.TrimSpace(raw.RegisteredName))
+	if nameOnPan == "" {
+		nameOnPan = strings.ToLower(strings.TrimSpace(raw.NamePanCard))
+	}
+
+	// 1. Name Match check
+	if nameProvided != nameOnPan {
+		return nil, fmt.Errorf("name not matched")
+	}
+
+	// 2. DOB Match check
+	if dob != "" && raw.DateOfBirth != "" {
+		normalizedProvided := normalizeDOB(dob)
+		normalizedRegistered := normalizeDOB(raw.DateOfBirth)
+		if normalizedProvided != normalizedRegistered {
+			return nil, fmt.Errorf("dob not matched")
+		}
+	}
+
 	return &PANVerifyResponse{
 		Status:         raw.Status,
 		Message:        raw.Message,
@@ -121,10 +146,23 @@ func VerifyPAN(pan, name, dob, verificationID string) (*PANVerifyResponse, error
 		ReferenceID:    raw.ReferenceID,
 		PAN:            raw.PAN,
 		Name:           raw.RegisteredName,
-		NameMatch:      "MATCH", // Since we're using advance API, this is implied
-		DOBMatch:       "MATCH", // Since we're using advance API, this is implied
+		NameMatch:      "MATCH",
+		DOBMatch:       "MATCH",
 		PANStatus:      raw.Status,
 	}, nil
+}
+
+func normalizeDOB(d string) string {
+	d = strings.TrimSpace(d)
+	// Try parsing YYYY-MM-DD
+	if t, err := time.Parse("2006-01-02", d); err == nil {
+		return t.Format("2006-01-02")
+	}
+	// Try parsing DD/MM/YYYY
+	if t, err := time.Parse("02/01/2006", d); err == nil {
+		return t.Format("2006-01-02")
+	}
+	return d
 }
 
 func FetchGST(pan, verificationID string) (*GSTListResponse, error) {

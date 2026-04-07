@@ -79,6 +79,9 @@ func CreateOrderCashfree(req OrderRequest) (*OrderResponse, error) {
 	}
 
 	fmt.Printf("DEBUG: Cashfree API - ClientID: %s, BaseURL: %s\n", clientID, baseURL)
+	if clientID == "" {
+		fmt.Println("DEBUG: WARNING - CASHFREE_CLIENT_ID is empty!")
+	}
 
 	expiry := time.Now().Add(30 * time.Minute).In(time.FixedZone("IST", 5*3600+30*60)).
 		Format("2006-01-02T15:04:05-07:00")
@@ -110,7 +113,7 @@ func CreateOrderCashfree(req OrderRequest) (*OrderResponse, error) {
 
 	httpReq.Header.Add("x-client-id", clientID)
 	httpReq.Header.Add("x-client-secret", clientSecret)
-	httpReq.Header.Add("x-api-version", "2022-01-01")
+	httpReq.Header.Add("x-api-version", "2023-08-01")
 	httpReq.Header.Add("Content-Type", "application/json")
 
 	fmt.Printf("DEBUG: Cashfree Request URL: %s\n", httpReq.URL.String())

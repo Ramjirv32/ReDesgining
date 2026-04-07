@@ -105,13 +105,14 @@ func EventsSetup(c *fiber.Ctx) error {
 		BankIfsc      string `json:"bankIfsc"`
 		BankName      string `json:"bankName"`
 		AccountHolder string `json:"accountHolder"`
-		GSTNumber     string `json:"gstNumber"`
-		PAN           string `json:"pan"`
-		PANName       string `json:"panName"`
-		PANDOB        string `json:"panDOB"`
-		PANCardURL    string `json:"panCardUrl"`
-		BackupEmail   string `json:"backupEmail"`
-		BackupPhone   string `json:"backupPhone"`
+		GSTNumber     string   `json:"gstNumber"`
+		GSTList       []string `json:"gstList"`
+		PAN           string   `json:"pan"`
+		PANName       string   `json:"panName"`
+		PANDOB        string   `json:"panDOB"`
+		PANCardURL    string   `json:"panCardUrl"`
+		BackupEmail   string   `json:"backupEmail"`
+		BackupPhone   string   `json:"backupPhone"`
 	}
 	if err := c.BodyParser(&payload); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
@@ -133,6 +134,7 @@ func EventsSetup(c *fiber.Ctx) error {
 		PANCardURL:    payload.PANCardURL,
 		BackupEmail:   payload.BackupEmail,
 		BackupPhone:   payload.BackupPhone,
+		GSTList:       payload.GSTList,
 	}
 	if err := organizersvc.CheckPANDuplicate(payload.PAN, authOrgID); err != nil {
 		if err.Error() == "pan_already_used" {

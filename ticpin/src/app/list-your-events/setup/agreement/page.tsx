@@ -33,6 +33,7 @@ export default function AgreementPage() {
                 gstNumber: data.gstNumber ?? '',
                 backupEmail: data.backupEmail,
                 backupPhone: data.backupPhone,
+                gstList: data.gstList ?? [],
             });
             updateSessionCategoryStatus('events', 'pending');
             sessionStorage.removeItem('setup_events');

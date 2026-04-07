@@ -11,7 +11,7 @@ func VerifyPAN(c *fiber.Ctx) error {
 		PAN  string `json:"pan" xml:"pan" form:"pan"`
 		Name string `json:"name" xml:"name" form:"name"`
 	}
-
+	
 	if err := c.BodyParser(&input); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -20,7 +20,7 @@ func VerifyPAN(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "PAN and Name are required"})
 	}
 
-	res, err := verification.VerifyPAN(input.PAN, input.Name)
+	res, err := verification.VerifyPANLegacy(input.PAN, input.Name)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Wrong name or PAN"})
 	}

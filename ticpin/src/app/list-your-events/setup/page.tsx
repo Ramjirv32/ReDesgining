@@ -66,7 +66,12 @@ function AccountSetupContent() {
                         setPan(setup.pan); setPanName(setup.panName ?? '');
                         setPanDOB(setup.panDOB ?? ''); setPanCardUrl(setup.panCardUrl ?? '');
                         setPanFileName('(pre-filled from existing verification)');
-                        setPrefilled(true);                        // Save all pre-fill data to sessionStorage so subsequent pages can read it
+                        setPrefilled(true);
+                        setPanVerified(setup.panVerified ?? false);
+                        if (setup.panVerified && setup.panCardUrl) {
+                            router.push('/list-your-events/setup/gst');
+                            return;
+                        }
                         sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
                             prefilled: true,
                             orgType: 'individual',
@@ -212,11 +217,14 @@ function AccountSetupContent() {
 
                                 {/* Verification Success Message */}
                                 {panVerified && (
-                                    <div className="pt-4">
-                                        <div className="bg-green-50 border border-green-200 rounded-[14px] px-5 py-3 flex items-center gap-3">
+                                    <div className="pt-4 flex items-center justify-between gap-4">
+                                        <div className="flex-1 bg-green-50 border border-green-200 rounded-[14px] px-5 py-3 flex items-center gap-3">
                                             <Check size={16} className="text-green-600 flex-shrink-0" />
                                             <p className="text-[14px] text-green-700 font-medium">PAN verified successfully! You can now upload your PAN card document.</p>
                                         </div>
+                                        {!prefilled && (
+                                            <button onClick={() => setPanVerified(false)} className="text-[14px] font-medium text-[#5331EA] hover:underline whitespace-nowrap">Edit details</button>
+                                        )}
                                     </div>
                                 )}
 

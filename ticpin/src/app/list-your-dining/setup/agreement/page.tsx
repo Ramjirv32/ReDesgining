@@ -35,6 +35,7 @@ function AgreementContent() {
                 gstNumber: data.gstNumber ?? '',
                 backupEmail: data.backupEmail,
                 backupPhone: data.backupPhone,
+                gstList: data.gstList ?? [],
             });
             updateSessionCategoryStatus('dining', 'pending');
             sessionStorage.removeItem('setup_dining');

@@ -65,6 +65,12 @@ function AccountSetupContent() {
                         setPanDOB(setup.panDOB ?? ''); setPanCardUrl(setup.panCardUrl ?? '');
                         setPanFileName('(pre-filled from existing verification)');
                         setPrefilled(true);
+                        setPanVerified(setup.panVerified ?? false);
+                        // Auto-redirect if already verified
+                        if (setup.panVerified && setup.panCardUrl) {
+                            router.push('/list-your-dining/setup/gst');
+                            return;
+                        }
                         // Write to sessionStorage so downstream pages (bank/backup/agreement) can read
                         sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
                             prefilled: true,
@@ -211,11 +217,14 @@ function AccountSetupContent() {
 
                                 {/* Verification Success Message */}
                                 {panVerified && (
-                                    <div className="pt-4">
-                                        <div className="bg-green-50 border border-green-200 rounded-[14px] px-5 py-3 flex items-center gap-3">
+                                    <div className="pt-4 flex items-center justify-between gap-4">
+                                        <div className="flex-1 bg-green-50 border border-green-200 rounded-[14px] px-5 py-3 flex items-center gap-3">
                                             <Check size={16} className="text-green-600 flex-shrink-0" />
                                             <p className="text-[14px] text-green-700 font-medium">PAN verified successfully! You can now upload your PAN card document.</p>
                                         </div>
+                                        {!prefilled && (
+                                            <button onClick={() => setPanVerified(false)} className="text-[14px] font-medium text-[#5331EA] hover:underline whitespace-nowrap">Edit details</button>
+                                        )}
                                     </div>
                                 )}
 

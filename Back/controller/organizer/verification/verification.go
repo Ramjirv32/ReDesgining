@@ -2,6 +2,8 @@ package verification
 
 import (
 	"context"
+	"time"
+
 	"ticpin-backend/config"
 	"ticpin-backend/models"
 	organizersvc "ticpin-backend/services/organizer"
@@ -10,6 +12,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func GetVerificationStatus(c *fiber.Ctx) error {
@@ -52,7 +55,6 @@ func GetExistingSetupHandler(c *fiber.Ctx) error {
 	}).Decode(&setup)
 
 	if err != nil && category != "" {
-
 		err = config.GetDB().Collection("organizer_setups").FindOne(context.Background(), bson.M{
 			"organizerId": objID,
 		}).Decode(&setup)
@@ -84,7 +86,6 @@ func GetMyExistingSetup(c *fiber.Ctx) error {
 	}).Decode(&setup)
 
 	if err != nil && category != "" {
-
 		err = config.GetDB().Collection("organizer_setups").FindOne(context.Background(), bson.M{
 			"organizerId": objID,
 		}).Decode(&setup)
@@ -178,10 +179,47 @@ func VerifyPANHandler(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
+	// Check if already verified with same PAN in the local DB
+	if existing, err := organizersvc.GetExistingSetup(organizerID); err == nil && existing != nil {
+		if existing.PAN == req.PAN && existing.PANVerified {
+			return c.JSON(fiber.Map{
+				"status":  "SUCCESS",
+				"message": "PAN already verified",
+				"data": fiber.Map{
+					"status":          "VALID",
+					"registered_name": existing.VerifiedName,
+				},
+			})
+		}
+	}
+
 	result, err := verification.VerifyPAN(req.PAN, req.Name, req.DOB, organizerID)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error(), "details": result})
 	}
+
+	// Persist the verification status in the database immediately
+	objID, _ := primitive.ObjectIDFromHex(organizerID)
+	collection := config.GetDB().Collection("organizer_setups")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{"organizerId": objID}
+	update := bson.M{
+		"$set": bson.M{
+			"pan":          req.PAN,
+			"panName":      req.Name,
+			"panDOB":       req.DOB,
+			"panVerified":  true,
+			"verifiedName": result.Name,
+			"updatedAt":    time.Now(),
+		},
+		"$setOnInsert": bson.M{
+			"createdAt": time.Now(),
+		},
+	}
+	opts := options.Update().SetUpsert(true)
+	_, _ = collection.UpdateOne(ctx, filter, update, opts)
 
 	return c.JSON(fiber.Map{"status": "SUCCESS", "message": "PAN verified successfully", "data": result})
 }

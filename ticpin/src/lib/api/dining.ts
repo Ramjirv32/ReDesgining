@@ -39,6 +39,7 @@ export interface SetupPayload {
   gstNumber?: string;
   backupEmail?: string;
   backupPhone?: string;
+  gstList?: string[];
 }
 
 export const diningApi = {
