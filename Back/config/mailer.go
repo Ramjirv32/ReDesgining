@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	gomail "gopkg.in/gomail.v2"
 )
@@ -48,7 +49,29 @@ func sendOTP(from, pass, to, subject, body string) error {
 	m.SetBody("text/html", body)
 
 	d := gomail.NewDialer("smtp.gmail.com", port, from, cleanPass)
-	return d.DialAndSend(m)
+
+	// Add timeout settings for production environments
+	d.Timeout = 30 * time.Second // 30 seconds timeout
+
+	// Add retry logic for production
+	var lastErr error
+	for i := 0; i < 3; i++ { // Retry up to 3 times
+		err := d.DialAndSend(m)
+		if err == nil {
+			return nil
+		}
+		lastErr = err
+
+		// Log retry attempt
+		fmt.Printf("SMTP retry attempt %d: %v\n", i+1, err)
+
+		// Wait before retry (exponential backoff)
+		if i < 2 {
+			time.Sleep(time.Duration(i+1) * time.Second)
+		}
+	}
+
+	return fmt.Errorf("failed to send OTP after 3 attempts: %w", lastErr)
 }
 
 func renderOTPTemplate(category, otp string) (string, error) {
