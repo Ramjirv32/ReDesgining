@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
+	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -37,13 +38,14 @@ type BookingEmailData struct {
 func sendOTP(from, pass, to, subject, body string) error {
 	port, _ := strconv.Atoi(os.Getenv("SMTP_PORT"))
 	if port == 0 {
-		port = 587
+		port = 465 // Use SSL port by default for production
 	}
+	// Fallback to 587 if explicitly set, but 465 is more reliable
+	useSSL := port == 465
 
 	cleanPass := strings.ReplaceAll(pass, " ", "")
 
-	// Log configuration for debugging (remove sensitive data in production)
-	fmt.Printf("SMTP Config - Server: smtp.gmail.com:%d, From: %s, To: %s\n", port, from, to)
+	fmt.Printf("SMTP Config - Server: smtp.gmail.com:%d, SSL: %v, From: %s, To: %s\n", port, useSSL, from, to)
 
 	m := gomail.NewMessage()
 	m.SetHeader("From", from)
@@ -53,35 +55,64 @@ func sendOTP(from, pass, to, subject, body string) error {
 
 	d := gomail.NewDialer("smtp.gmail.com", port, from, cleanPass)
 
-	// Add retry logic for production
+	// Use SSL for port 465 (more reliable in production)
+	if useSSL {
+		d.SSL = true
+	}
+
+	// Add timeouts for production environments
+	d.LocalName = "ticpin.in" // Helps with SPF/DKIM
+
+	// Add retry logic with exponential backoff
 	var lastErr error
-	for i := 0; i < 3; i++ { // Retry up to 3 times
-		fmt.Printf("SMTP attempt %d for email: %s\n", i+1, to)
-		err := d.DialAndSend(m)
-		if err == nil {
-			fmt.Printf("OTP sent successfully to: %s\n", to)
-			return nil
-		}
-		lastErr = err
+	maxRetries := 3
 
-		// Log retry attempt with more details
-		fmt.Printf("SMTP retry attempt %d failed: %v\n", i+1, err)
+	for i := 0; i < maxRetries; i++ {
+		fmt.Printf("SMTP attempt %d/%d for email: %s\n", i+1, maxRetries, to)
 
-		// Check for specific Gmail authentication errors
-		if strings.Contains(err.Error(), "535") || strings.Contains(err.Error(), "authentication") {
-			fmt.Printf("Gmail authentication failed. Check:\n")
-			fmt.Printf("1. App password is correct (not regular password)\n")
-			fmt.Printf("2. 2FA is enabled on Gmail account\n")
-			fmt.Printf("3. App password is generated for this app\n")
-		}
+		// Create a channel for timeout handling
+		done := make(chan error, 1)
 
-		// Wait before retry (exponential backoff)
-		if i < 2 {
-			time.Sleep(time.Duration(i+1) * time.Second)
+		go func() {
+			done <- d.DialAndSend(m)
+		}()
+
+		// Wait for result with 30 second timeout per attempt
+		select {
+		case err := <-done:
+			if err == nil {
+				fmt.Printf("OTP sent successfully to: %s\n", to)
+				return nil
+			}
+			lastErr = err
+			fmt.Printf("SMTP attempt %d failed: %v\n", i+1, err)
+
+			// Check for specific errors
+			if strings.Contains(err.Error(), "535") || strings.Contains(err.Error(), "authentication") {
+				fmt.Printf("Gmail authentication failed. Check app password.\n")
+				return fmt.Errorf("authentication failed: %w", err)
+			}
+
+			// Exponential backoff before retry
+			if i < maxRetries-1 {
+				sleepTime := time.Duration(math.Pow(2, float64(i))) * time.Second
+				fmt.Printf("Retrying in %v...\n", sleepTime)
+				time.Sleep(sleepTime)
+			}
+
+		case <-time.After(30 * time.Second):
+			lastErr = fmt.Errorf("connection timeout after 30 seconds")
+			fmt.Printf("SMTP attempt %d timed out\n", i+1)
+
+			if i < maxRetries-1 {
+				sleepTime := time.Duration(math.Pow(2, float64(i))) * time.Second
+				fmt.Printf("Retrying in %v...\n", sleepTime)
+				time.Sleep(sleepTime)
+			}
 		}
 	}
 
-	return fmt.Errorf("failed to send OTP after 3 attempts: %w", lastErr)
+	return fmt.Errorf("failed to send OTP after %d attempts: %w", maxRetries, lastErr)
 }
 
 func renderOTPTemplate(category, otp string) (string, error) {
