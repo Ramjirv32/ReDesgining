@@ -37,7 +37,7 @@ func SendOTP(email string) error {
 		return err
 	}
 
-	if err := config.SendPlayOTP(email, otp); err != nil {
+	if err := config.SendUnifiedOTP(email, otp); err != nil {
 		return err
 	}
 

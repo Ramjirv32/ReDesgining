@@ -109,6 +109,11 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 								},
 							}
 							_, _ = config.PlayBookingsCol.UpdateOne(ctx, bson.M{"_id": existing.ID}, updateWithTicpass)
+							// Trigger confirmation email in background
+							go func(id string) {
+								_ = bookingsvc.SendConfirmationEmail(id, "play")
+							}(existing.OrderID)
+
 							return c.Status(200).JSON(fiber.Map{
 								"message":         "play booking confirmed with Ticpass",
 								"booking_id":      existing.BookingID,
@@ -129,6 +134,12 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 					},
 				}
 				_, _ = config.PlayBookingsCol.UpdateOne(ctx, bson.M{"_id": existing.ID}, update)
+
+				// Trigger confirmation email in background
+				go func(id string) {
+					_ = bookingsvc.SendConfirmationEmail(id, "play")
+				}(existing.OrderID)
+
 				return c.Status(200).JSON(fiber.Map{
 					"message":         "play booking confirmed",
 					"booking_id":      existing.BookingID,
@@ -257,9 +268,13 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 
 	// Compare with tolerance for floating point
 	if req.OrderAmount < expectedSubtotal-1 || req.OrderAmount > expectedSubtotal+1 {
-		fmt.Printf("SECURITY ALERT: Price mismatch for user %s. Expected: %f, Got: %f\n",
-			req.UserEmail, expectedSubtotal, req.OrderAmount)
-		return c.Status(400).JSON(fiber.Map{"error": "invalid order amount"})
+		if !req.UseTicpass {
+			fmt.Printf("SECURITY ALERT: Price mismatch for user %s. Expected: %f, Got: %f\n",
+				req.UserEmail, expectedSubtotal, req.OrderAmount)
+			return c.Status(400).JSON(fiber.Map{"error": "invalid order amount"})
+		}
+		// For Ticpass, use the correct calculated amount from DB
+		req.OrderAmount = expectedSubtotal
 	}
 
 	// 3. Verify booking fee (10% standard)
@@ -418,6 +433,11 @@ func CreatePlayBooking(c *fiber.Ctx) error {
 	if !couponIDToIncrement.IsZero() {
 		_ = couponsvc.IncrementUsage(couponIDToIncrement, couponMaxUses, req.UserID, req.UserEmail, bookingID, grandTotal)
 	}
+
+	// Trigger confirmation email in background
+	go func(id string) {
+		_ = bookingsvc.SendConfirmationEmail(id, "play")
+	}(booking.OrderID)
 
 	return c.Status(201).JSON(fiber.Map{
 		"message":         "play booking confirmed",

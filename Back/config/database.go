@@ -104,6 +104,7 @@ func CreateIndexes() {
 
 	ProfilesCol.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{Keys: bson.D{{Key: "userId", Value: 1}}, Options: options.Index().SetUnique(true)},
+		{Keys: bson.D{{Key: "email", Value: 1}}, Options: options.Index().SetUnique(true)},
 		{Keys: bson.D{{Key: "phone", Value: 1}}},
 	})
 
@@ -242,4 +243,11 @@ func CreateIndexes() {
 	ChatMessagesCol.Indexes().CreateOne(ctx, mongo.IndexModel{
 		Keys: bson.D{{Key: "session_id", Value: 1}, {Key: "created_at", Value: 1}},
 	})
+}
+
+func IsDuplicateKeyError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return mongo.IsDuplicateKeyError(err)
 }

@@ -17,6 +17,7 @@ func CreatePass(c *fiber.Ctx) error {
 		PaymentID      string `json:"payment_id"`
 		Amount         int    `json:"amount"`
 		DurationMonths int    `json:"duration_months"`
+		Phone          string `json:"phone"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
@@ -60,7 +61,7 @@ func CreatePass(c *fiber.Ctx) error {
 		UpdatedAt: time.Now(),
 	}
 
-	p, err := passservice.Apply(passDetails.UserID.Hex(), req.PaymentID, models.TicpinPass{})
+	p, err := passservice.Apply(passDetails.UserID.Hex(), req.PaymentID, req.Phone, req.OrderID, passDetails)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -71,6 +72,8 @@ func ApplyPass(c *fiber.Ctx) error {
 	var req struct {
 		UserID    string `json:"user_id"`
 		PaymentID string `json:"payment_id"`
+		OrderID   string `json:"order_id"`
+		Phone     string `json:"phone"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
@@ -81,7 +84,7 @@ func ApplyPass(c *fiber.Ctx) error {
 
 	details := models.TicpinPass{}
 
-	p, err := passservice.Apply(req.UserID, req.PaymentID, details)
+	p, err := passservice.Apply(req.UserID, req.PaymentID, req.Phone, req.OrderID, details)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -109,6 +112,7 @@ func GetLatestPassByUser(c *fiber.Ctx) error {
 func RenewPass(c *fiber.Ctx) error {
 	var req struct {
 		PaymentID string `json:"payment_id"`
+		OrderID   string `json:"order_id"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})

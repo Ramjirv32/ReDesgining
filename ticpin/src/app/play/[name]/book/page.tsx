@@ -350,7 +350,7 @@ export default function PlayBookPage() {
             display_slot: displaySlot, // shown to user in review / confirmation
             duration: duration,       // in 30-min units; used by backend for index expansion
             tickets,
-            totalPrice: usePass ? 0 : totalPrice,
+            totalPrice,
             use_pass: usePass,
             pass_id: pass?.id
         };

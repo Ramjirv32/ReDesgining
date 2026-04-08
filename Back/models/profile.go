@@ -29,6 +29,7 @@ type Profile struct {
 	District                string                  `bson:"district" json:"district"`
 	State                   string                  `bson:"state" json:"state"`
 	Country                 string                  `bson:"country" json:"country"`
+	Pincode                 string                  `bson:"pincode" json:"pincode"`
 	GPS                     GPS                     `bson:"gps" json:"gps"`
 	ProfilePhoto            string                  `bson:"profilePhoto" json:"profilePhoto"`
 	DOB                     string                  `bson:"dob" json:"dob"`

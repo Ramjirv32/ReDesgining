@@ -135,7 +135,7 @@ export default function PlayReviewPage() {
         const savedStep = sessionStorage.getItem('ticpin_play_step');
         if (savedStep === 'billing') setStep('billing');
 
-        const urlParams = new URLSearchParams(window.location.search);
+        /* const urlParams = new URLSearchParams(window.location.search);
         const cfOrderId = urlParams.get('order_id');
         if (cfOrderId && cfOrderId.startsWith('TICPIN_')) {
             const pending = sessionStorage.getItem('ticpin_pending_play');
@@ -153,9 +153,9 @@ export default function PlayReviewPage() {
                                 p.orderAmount, p.bookingFee, p.appliedCoupon || '', p.offerId);
                         }, 200);
                     }
-                } catch { /* ignore */ }
+                } catch { / * ignore * / }
             }
-        }
+        } */
     }, []);
 
     useEffect(() => {
@@ -465,6 +465,16 @@ export default function PlayReviewPage() {
                 customer_id: session?.id || `phone_${billing.phone}`,
                 return_url: `${window.location.origin}${window.location.pathname}`,
                 type: 'play',
+                notes: {
+                    user_id: session?.id || '',
+                    billing_name: billing.name,
+                    billing_email: email || `user_${billing.phone}@ticpin.in`,
+                    billing_phone: billing.phone,
+                    billing_state: billing.state,
+                    billing_city: billing.city,
+                    billing_address: billing.address,
+                    billing_pincode: billing.pincode,
+                }
             });
 
             sessionStorage.setItem('ticpin_pending_play', JSON.stringify({
@@ -512,50 +522,40 @@ export default function PlayReviewPage() {
                 status: 'pending'
             });
 
-            if (orderRes.gateway === 'cashfree') {
-                await loadScript('https://sdk.cashfree.com/js/v3/cashfree.js');
-                const cashfree = (window as any).Cashfree({
-                    mode: process.env.NEXT_PUBLIC_CASHFREE_ENV === 'production' ? 'production' : 'sandbox',
-                });
-                cashfree.checkout({
-                    paymentSessionId: orderRes.payment_session_id,
-                    redirectTarget: '_self',
-                });
-            } else {
-                await loadScript('https://checkout.razorpay.com/v1/checkout.js');
-                const options = {
-                    key: orderRes.razorpay_key,
-                    amount: grandTotal * 100,
-                    currency: 'INR',
-                    order_id: orderRes.order_id,
-                    name: 'Ticpin',
-                    description: `${cart.eventName} — ${cart.slot}`,
-                    method: {
-                        upi: true,
-                        card: true,
-                        netbanking: true,
-                        wallet: true
+            // Use Razorpay only
+            await loadScript('https://checkout.razorpay.com/v1/checkout.js');
+            const options = {
+                key: orderRes.razorpay_key,
+                amount: grandTotal * 100,
+                currency: 'INR',
+                order_id: orderRes.order_id,
+                name: 'Ticpin',
+                description: `${cart.eventName} — ${cart.slot}`,
+                method: {
+                    upi: true,
+                    card: true,
+                    netbanking: true,
+                    wallet: true
+                },
+                prefill: { name: billing.name, email, contact: billing.phone },
+                theme: { color: '#000000' },
+                handler: async (response: { razorpay_payment_id: string }) => {
+                    await completeBooking(
+                        response.razorpay_payment_id, orderRes.order_id, 'razorpay',
+                        cart, email, session?.id || organizerSession?.id,
+                        orderAmount, bookingFee,
+                        appliedCoupon, appliedOffer?.id,
+                    );
+                },
+                modal: {
+                    ondismiss: () => {
+                        sessionStorage.removeItem('ticpin_pending_play');
+                        setBookingLoading(false);
+                        setBookingError('Payment was cancelled. You can resume it from your bookings.');
                     },
-                    prefill: { name: billing.name, email, contact: billing.phone },
-                    theme: { color: '#000000' },
-                    handler: async (response: { razorpay_payment_id: string }) => {
-                        await completeBooking(
-                            response.razorpay_payment_id, orderRes.order_id, 'razorpay',
-                            cart, email, session?.id || organizerSession?.id,
-                            orderAmount, bookingFee,
-                            appliedCoupon, appliedOffer?.id,
-                        );
-                    },
-                    modal: {
-                        ondismiss: () => {
-                            sessionStorage.removeItem('ticpin_pending_play');
-                            setBookingLoading(false);
-                            setBookingError('Payment was cancelled. You can resume it from your bookings.');
-                        },
-                    },
-                };
-                new (window as any).Razorpay(options).open();
-            }
+                },
+            };
+            new (window as any).Razorpay(options).open();
         } catch (err: unknown) {
             setBookingLoading(false);
             setBookingError(err instanceof Error ? err.message : 'Payment initiation failed. Please try again.');
@@ -945,7 +945,14 @@ export default function PlayReviewPage() {
                                 )}
                             </div>
 
-                            {totalDiscount > 0 && (
+                            {isPassApplied && (
+                                <div className="flex justify-between items-center text-[15px] text-[#5331EA] font-semibold">
+                                    <span>TicPin Pass Benefit</span>
+                                    <span>FREE</span>
+                                </div>
+                            )}
+
+                            {!isPassApplied && totalDiscount > 0 && (
                                 <div className="flex justify-between items-center text-[15px] text-green-600 font-semibold">
                                     <span>Total Discount</span>
                                     <span>-₹{totalDiscount}</span>
@@ -956,7 +963,9 @@ export default function PlayReviewPage() {
 
                             <div className="flex justify-between items-center">
                                 <span className="text-[16px] font-bold text-black">Grand total</span>
-                                <span className="text-[20px] font-bold text-black">₹{grandTotal}</span>
+                                <span className={`text-[20px] font-bold ${grandTotal === 0 ? 'text-[#5331EA]' : 'text-black'}`}>
+                                    {grandTotal === 0 ? 'FREE' : `₹${grandTotal}`}
+                                </span>
                             </div>
                         </div>
 

@@ -42,7 +42,7 @@ function UserProfileContent() {
             try {
                 const [data, passData] = await Promise.all([
                     profileApi.getProfile(userSession.id),
-                    passApi.getActivePass(userSession.id)
+                    passApi.getLatestPass(userSession.id)
                 ]);
 
                 if (data) {
@@ -106,7 +106,7 @@ function UserProfileContent() {
                             </div>
                             
                             <div className="flex items-center justify-center md:justify-start gap-3 mt-4">
-                                {pass ? (
+                                {pass && pass.status === 'active' ? (
                                     <Link 
                                         href="/profile/pass"
                                         className="px-4 py-1.5 bg-amber-50 text-amber-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-amber-100 flex items-center gap-2 hover:bg-amber-100 transition-colors"
@@ -134,7 +134,7 @@ function UserProfileContent() {
                                     <Edit3 size={18} />
                                     Edit Profile
                                 </Link>
-                                {pass && (
+                                {pass && pass.status === 'active' && (
                                     <Link 
                                         href="/profile/pass"
                                         className="inline-flex items-center gap-3 bg-amber-500 text-white px-8 h-12 rounded-2xl font-bold hover:bg-amber-600 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-amber-200"

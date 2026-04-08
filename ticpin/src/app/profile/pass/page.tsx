@@ -19,7 +19,7 @@ export default function PassUsagePage() {
 
     useEffect(() => {
         if (session?.id) {
-            passApi.getActivePass(session.id)
+            passApi.getLatestPass(session.id)
                 .then(setPass)
                 .finally(() => setLoading(false));
         } else if (session === null) {
@@ -35,7 +35,7 @@ export default function PassUsagePage() {
         );
     }
 
-    if (!pass) {
+    if (!pass || pass.status !== 'active') {
         return (
             <div className="min-h-screen bg-[#FDFCFE] flex flex-col items-center justify-center p-6 text-center">
                 <div className="w-20 h-20 bg-zinc-100 rounded-full flex items-center justify-center text-zinc-400 mb-6">

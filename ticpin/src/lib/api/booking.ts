@@ -90,6 +90,7 @@ export interface PaymentOrderRequest {
     customer_phone: string;
     return_url?: string;
     type?: string; // "event", "play", "dining"
+    notes?: Record<string, string>;
 }
 
 export interface PaymentOrderResponse {

@@ -73,6 +73,7 @@ export default function Navbar() {
         pathname === '/privacy' ||
         pathname === '/refund' ||
         pathname.startsWith('/admin') ||
+        pathname === '/pass/buy' ||
         pathname.endsWith('/book') ||
         pathname.endsWith('/book/tickets') ||
         pathname.endsWith('/book/review');

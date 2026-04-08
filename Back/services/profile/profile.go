@@ -14,21 +14,29 @@ import (
 )
 
 func Create(p *models.Profile) error {
+	if p.UserID.IsZero() {
+		return errors.New("invalid user identifier")
+	}
+
 
 	if p.Email != "" {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		var existingUser bson.M
-		err := config.UsersCol.FindOne(ctx, bson.M{"email": p.Email}).Decode(&existingUser)
-		if err == nil {
+		// Check Users
+		if err := config.UsersCol.FindOne(ctx, bson.M{"email": p.Email}).Err(); err == nil {
 			return errors.New("email already registered as a user")
 		}
 
-		var existingOrg bson.M
-		err = config.OrgsCol.FindOne(ctx, bson.M{"email": p.Email}).Decode(&existingOrg)
-		if err == nil {
+		// Check Organizers
+		if err := config.OrgsCol.FindOne(ctx, bson.M{"email": p.Email}).Err(); err == nil {
 			return errors.New("email already registered as an organizer")
+		}
+
+		// Check existing Profiles (other than this one)
+		var existingProf bson.M
+		if err := config.ProfilesCol.FindOne(ctx, bson.M{"email": p.Email}).Decode(&existingProf); err == nil {
+			return errors.New("email already registered in another profile")
 		}
 	}
 
@@ -41,7 +49,13 @@ func Create(p *models.Profile) error {
 	defer cancel()
 
 	_, err := collection.InsertOne(ctx, p)
-	return err
+	if err != nil {
+		if config.IsDuplicateKeyError(err) {
+			return errors.New("a profile for this user already exists")
+		}
+		return err
+	}
+	return nil
 }
 
 func GetByUserID(userID string) (*models.Profile, error) {
@@ -70,7 +84,7 @@ func GetByUserID(userID string) (*models.Profile, error) {
 		}
 	}
 
-	return nil, err
+	return nil, errors.New("profile not found")
 }
 
 func Update(userID string, p *models.Profile) error {
@@ -79,13 +93,53 @@ func Update(userID string, p *models.Profile) error {
 		return err
 	}
 
-	p.UpdatedAt = time.Now()
-
 	collection := config.GetDB().Collection("profiles")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	_, err = collection.UpdateOne(ctx, bson.M{"userId": objID}, bson.M{"$set": p})
+	// Check email uniqueness if email is provided
+	if p.Email != "" {
+		// Fetch current profile to see if email changed
+		var current models.Profile
+		if err := collection.FindOne(ctx, bson.M{"userId": objID}).Decode(&current); err == nil {
+			if current.Email != p.Email {
+				// Email changed, check uniqueness
+				if err := config.UsersCol.FindOne(ctx, bson.M{"email": p.Email}).Err(); err == nil {
+					return errors.New("email already registered as a user")
+				}
+				if err := config.OrgsCol.FindOne(ctx, bson.M{"email": p.Email}).Err(); err == nil {
+					return errors.New("email already registered as an organizer")
+				}
+				if err := collection.FindOne(ctx, bson.M{"email": p.Email, "userId": bson.M{"$ne": objID}}).Err(); err == nil {
+					return errors.New("email already registered in another profile")
+				}
+			}
+		}
+	}
+
+	updateData := bson.M{
+		"name":      p.Name,
+		"email":     p.Email,
+		"phone":     p.Phone,
+		"state":     p.State,
+		"updatedAt": time.Now(),
+	}
+
+	// Only add other fields if they are non-zero
+	if p.Address != "" {
+		updateData["address"] = p.Address
+	}
+	if p.City != "" {
+		updateData["city"] = p.City
+	}
+	if p.Gender != "" {
+		updateData["gender"] = p.Gender
+	}
+	if p.Pincode != "" {
+		updateData["pincode"] = p.Pincode
+	}
+
+	_, err = collection.UpdateOne(ctx, bson.M{"userId": objID}, bson.M{"$set": updateData})
 	return err
 }
 

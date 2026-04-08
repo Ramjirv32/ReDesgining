@@ -19,7 +19,9 @@ export interface PassBenefits {
 export interface TicpinPass {
     id: string;
     user_id: string;
+    phone: string;
     payment_id: string;
+    order_id: string;
     price: number;
     status: string;
     start_date: string;

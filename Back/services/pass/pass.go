@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	PassPrice          = 999.0
+	PassPrice          = 1.0
 	PassDurationMonths = 3
 )
 
@@ -94,7 +94,7 @@ func GetLatestByUserID(userID string) (*models.TicpinPass, error) {
 	return nil, errors.New("no pass found for user")
 }
 
-func Apply(userID, paymentID string, details models.TicpinPass) (*models.TicpinPass, error) {
+func Apply(userID, paymentID, phone, orderID string, details models.TicpinPass) (*models.TicpinPass, error) {
 	objID, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
 		return nil, err
@@ -122,7 +122,9 @@ func Apply(userID, paymentID string, details models.TicpinPass) (*models.TicpinP
 	p := &models.TicpinPass{
 		ID:        primitive.NewObjectID(),
 		UserID:    objID,
+		Phone:     phone,
 		PaymentID: paymentID,
+		OrderID:   orderID,
 		QRToken:   primitive.NewObjectID().Hex(),
 		Price:     price,
 		Status:    "active",

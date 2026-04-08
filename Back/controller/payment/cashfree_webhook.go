@@ -77,7 +77,7 @@ func CashfreeWebhook(c *fiber.Ctx) error {
 			parts := strings.Split(orderID, "_")
 			if len(parts) >= 2 {
 				userID := parts[1]
-				_, err := passservice.Apply(userID, orderID, models.TicpinPass{
+				_, err := passservice.Apply(userID, orderID, "", orderID, models.TicpinPass{
 					Status: "active",
 				})
 				if err != nil {
@@ -131,7 +131,7 @@ func CashfreeWebhook(c *fiber.Ctx) error {
 		result, err := col.UpdateMany(ctx, filter, update)
 		if err == nil && result.ModifiedCount > 0 {
 			fmt.Printf("DEBUG: Cashfree Webhook processed successfully for col: %s\n", col.Name())
-			
+
 			if newStatus == "booked" {
 				cat := "events"
 				if col.Name() == "play_bookings" {

@@ -186,6 +186,14 @@ export default function EditPlayPage() {
         load();
     }, [id, router, hasCheckedSession]);
 
+    // Separate effect to handle editor innerHTML once data is loaded and ref is available
+    useEffect(() => {
+        if (!loadingData && editorRef.current && originalData.description) {
+            editorRef.current.innerHTML = originalData.description;
+            setHasContent(true);
+        }
+    }, [loadingData, originalData.description]);
+
     // Check if any changes have been made
     const checkChanges = useCallback(() => {
         if (!originalData || Object.keys(originalData).length === 0) return;

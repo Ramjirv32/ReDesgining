@@ -965,10 +965,16 @@ export default function ReviewBookingPage() {
                                             </div>
                                         )}
                                     </div>
-                                    {totalDiscount > 0 && (
+                                    {passDiscount > 0 && (
+                                        <div className="flex justify-between items-center" style={{ color: '#5331EA', fontSize: '18px', fontFamily: 'var(--font-anek-latin)', fontWeight: 600 }}>
+                                            <span>TicPin Pass Member Discount (10%)</span>
+                                            <span>-₹{passDiscount.toLocaleString('en-IN')}</span>
+                                        </div>
+                                    )}
+                                    {totalDiscount - passDiscount > 0 && (
                                         <div className="flex justify-between items-center" style={{ color: '#16a34a', fontSize: '18px', fontFamily: 'var(--font-anek-latin)', fontWeight: 500 }}>
-                                            <span>Discount applied</span>
-                                            <span>-₹{totalDiscount.toLocaleString('en-IN')}</span>
+                                            <span>Other Discounts applied</span>
+                                            <span>-₹{(totalDiscount - passDiscount).toLocaleString('en-IN')}</span>
                                         </div>
                                     )}
                                     <div className="h-[0.5px] bg-[#AEAEAE] mt-2" />

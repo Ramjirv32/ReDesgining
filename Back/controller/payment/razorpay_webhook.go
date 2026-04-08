@@ -11,6 +11,7 @@ import (
 	"ticpin-backend/models"
 	bookingservice "ticpin-backend/services/booking"
 	passservice "ticpin-backend/services/pass"
+	profileservice "ticpin-backend/services/profile"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -86,6 +87,12 @@ func RazorpayWebhook(c *fiber.Ctx) error {
 
 		fmt.Printf("DEBUG: Processing order.paid for Order ID: %s, Booking Type: %s\n", orderID, bookingType)
 
+		// Sync profile from notes if available
+		userIDForSync, _ := notes["user_id"].(string)
+		if userIDForSync != "" {
+			go syncProfileFromNotes(userIDForSync, notes)
+		}
+
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
@@ -101,6 +108,7 @@ func RazorpayWebhook(c *fiber.Ctx) error {
 		case "pass":
 			userID, _ := notes["user_id"].(string)
 			passID, _ := notes["pass_id"].(string)
+			customerPhone, _ := notes["customer_phone"].(string)
 			amountVal, _ := entity["amount"].(float64)
 			amount := amountVal / 100.0
 
@@ -113,7 +121,7 @@ func RazorpayWebhook(c *fiber.Ctx) error {
 						fmt.Printf("DEBUG: Successfully renewed pass %s for User: %s via Razorpay\n", passID, userID)
 					}
 				} else {
-					_, err := passservice.Apply(userID, orderID, models.TicpinPass{
+					_, err := passservice.Apply(userID, orderID, customerPhone, orderID, models.TicpinPass{
 						Status: "active",
 						Price:  amount,
 					})
@@ -151,7 +159,7 @@ func RazorpayWebhook(c *fiber.Ctx) error {
 			})
 			if err == nil && result.ModifiedCount > 0 {
 				fmt.Printf("DEBUG: Successfully updated booking status for Order/Payment ID: %s in collection: %s\n", orderID, col.Name())
-				
+
 				cat := "events"
 				if col.Name() == "play_bookings" {
 					cat = "play"
@@ -338,4 +346,54 @@ func RazorpayWebhook(c *fiber.Ctx) error {
 		"status":  "received",
 		"message": "webhook processed",
 	})
+}
+
+func syncProfileFromNotes(userID string, notes map[string]interface{}) {
+	if userID == "" {
+		return
+	}
+	name, _ := notes["billing_name"].(string)
+	email, _ := notes["billing_email"].(string)
+	phone, _ := notes["billing_phone"].(string)
+	state, _ := notes["billing_state"].(string)
+	city, _ := notes["billing_city"].(string)
+	address, _ := notes["billing_address"].(string)
+	pincode, _ := notes["billing_pincode"].(string)
+
+	if name == "" && email == "" && phone == "" {
+		return
+	}
+
+	p := &models.Profile{
+		Name:    name,
+		Email:   email,
+		Phone:   phone,
+		State:   state,
+		City:    city,
+		Address: address,
+		Pincode: pincode,
+	}
+
+	// Try to get profile first
+	existing, err := profileservice.GetByUserID(userID)
+	if err != nil {
+		objID, oerr := primitive.ObjectIDFromHex(userID)
+		if oerr == nil {
+			p.UserID = objID
+			err = profileservice.Create(p)
+			if err != nil {
+				fmt.Printf("DEBUG: Webhook failed to create profile for user %s: %v\n", userID, err)
+			} else {
+				fmt.Printf("DEBUG: Webhook created profile for user %s from payment notes\n", userID)
+			}
+		}
+	} else if existing != nil {
+		// Update existing
+		err = profileservice.Update(userID, p)
+		if err != nil {
+			fmt.Printf("DEBUG: Webhook failed to update profile for user %s: %v\n", userID, err)
+		} else {
+			fmt.Printf("DEBUG: Webhook updated profile for user %s from payment notes\n", userID)
+		}
+	}
 }

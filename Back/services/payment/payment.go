@@ -71,12 +71,12 @@ func GetPaymentGatewayWeighted() GatewayType {
 
 // GetPaymentGateway is the default selector - uses alternating for play, weighted for others
 func GetPaymentGateway() GatewayType {
-	return GetPaymentGatewayWeighted()
+	return GatewayRazorpay
 }
 
 // GetPaymentGatewayForPlay uses alternating pattern: Razorpay -> Cashfree -> Razorpay -> Cashfree
 func GetPaymentGatewayForPlay() GatewayType {
-	return GetPaymentGatewayAlternating()
+	return GatewayRazorpay
 }
 
 type OrderRequest struct {

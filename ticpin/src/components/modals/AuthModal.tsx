@@ -95,6 +95,13 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialView = 'n
         }
     }, [userSession?.id, view]);
 
+    // Auto-close modal after successful login
+    useEffect(() => {
+        if (userSession && isOpen && initialView !== 'profile' && initialView !== 'bookings') {
+            onClose();
+        }
+    }, [userSession, isOpen, initialView, onClose]);
+
     const handleUpdateProfile = async () => {
         if (!userSession?.id) return;
         updateProfileMutation.mutate({

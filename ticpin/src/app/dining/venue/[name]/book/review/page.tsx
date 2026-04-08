@@ -456,10 +456,17 @@ export default function DiningReviewPage() {
                                         <span className="text-black">₹{orderAmount.toLocaleString('en-IN')}</span>
                                     </div>
 
-                                    {totalDiscount > 0 && (
+                                    {cart?.use_pass && pass && (
+                                        <div className="flex justify-between items-center" style={{ color: '#5331EA', fontSize: '18px', fontWeight: 700, fontFamily: 'var(--font-anek-latin)' }}>
+                                            <span className="uppercase">TicPin Pass Dining Voucher</span>
+                                            <span>-₹{(pass.benefits.dining_vouchers.value_each || 250).toLocaleString('en-IN')}</span>
+                                        </div>
+                                    )}
+
+                                    {totalDiscount - (cart?.use_pass ? (pass?.benefits.dining_vouchers.value_each || 250) : 0) > 0 && (
                                         <div className="flex justify-between items-center" style={{ color: '#16a34a', fontSize: '18px', fontWeight: 700, fontFamily: 'var(--font-anek-latin)' }}>
-                                            <span className="uppercase">Total Discount</span>
-                                            <span>-₹{totalDiscount.toLocaleString('en-IN')}</span>
+                                            <span className="uppercase">Other Discounts</span>
+                                            <span>-₹{(totalDiscount - (cart?.use_pass ? (pass?.benefits.dining_vouchers.value_each || 250) : 0)).toLocaleString('en-IN')}</span>
                                         </div>
                                     )}
 
