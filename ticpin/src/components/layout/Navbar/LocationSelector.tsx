@@ -3,9 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { X } from 'lucide-react';
-
 import { LocationData } from '@/lib/hooks/useGeolocation';
-
 interface LocationSelectorProps {
     location: LocationData | null;
     onOpenModal: () => void;

@@ -18,6 +18,7 @@ func BookingRoutes(app *fiber.App) {
 	app.Get("/api/bookings/user/history", middleware.RequireUserAuth, bookinguser.GetBookingHistory)
 	app.Get("/api/bookings/user/:email", middleware.RequireUserAuth, bookinguser.GetBookingsByEmail)
 	app.Get("/api/bookings/:id", middleware.RequireUserAuth, bookingctrl.GetBookingDetails)
+	app.Get("/api/bookings/public/:id", bookingctrl.GetPublicBookingDetails)
 	app.Put("/api/bookings/:id/cancel", middleware.RequireUserAuth, bookinguser.CancelBooking)
 	app.Get("/api/events/:id/availability", bookingctrl.GetEventAvailability)
 	app.Get("/api/play/:id/booked-slots", bookingctrl.GetPlaySlotAvailability)

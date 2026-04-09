@@ -77,8 +77,66 @@ func GetBookingDetails(c *fiber.Ctx) error {
 		return c.Status(403).JSON(fiber.Map{"error": "access denied: you do not own this booking"})
 	}
 
+	response := buildBookingResponse(booking, bookingType)
+	fmt.Printf("DEBUG: Returning booking details response\n")
+	return c.JSON(response)
+}
+
+func GetPublicBookingDetails(c *fiber.Ctx) error {
+	bookingID := c.Params("id")
+	fmt.Printf("DEBUG: GetPublicBookingDetails called - ID: %s\n", bookingID)
+
+	if bookingID == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "booking ID is required"})
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var booking interface{}
+	var bookingType string
+
+	eventBooking := &models.Booking{}
+	err := config.EventBookingsCol.FindOne(ctx, bson.M{"booking_id": bookingID}).Decode(eventBooking)
+	if err == nil {
+		booking = eventBooking
+		bookingType = "event"
+	}
+
+	if booking == nil {
+		playBooking := &models.PlayBooking{}
+		err = config.PlayBookingsCol.FindOne(ctx, bson.M{"booking_id": bookingID}).Decode(playBooking)
+		if err == nil {
+			booking = playBooking
+			bookingType = "play"
+		}
+	}
+
+	if booking == nil {
+		diningBooking := &models.DiningBooking{}
+		err = config.DiningBookingsCol.FindOne(ctx, bson.M{"booking_id": bookingID}).Decode(diningBooking)
+		if err == nil {
+			booking = diningBooking
+			bookingType = "dining"
+		}
+	}
+
+	if booking == nil {
+		return c.Status(404).JSON(fiber.Map{"error": "booking not found"})
+	}
+
+	response := buildBookingResponse(booking, bookingType)
+	// Remove potentially sensitive info for public view if needed, but for now return all as requested
+	fmt.Printf("DEBUG: Returning public booking details response\n")
+	return c.JSON(response)
+}
+
+func buildBookingResponse(booking interface{}, bookingType string) fiber.Map {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	response := fiber.Map{
-		"id":        bookingID,
+		"id":        "",
 		"type":      bookingType,
 		"status":    "booked",
 		"booked_at": time.Now(),
@@ -90,12 +148,12 @@ func GetBookingDetails(c *fiber.Ctx) error {
 		var event models.Event
 		config.EventsCol.FindOne(ctx, bson.M{"_id": b.EventID}).Decode(&event)
 
-		// FIX BUG1: Ensure consistent date format (YYYY-MM-DD)
-		var formattedDate string
+		formattedDate := ""
 		if !event.Date.IsZero() {
 			formattedDate = event.Date.Format("2006-01-02")
 		}
 
+		response["id"] = b.BookingID
 		response["event_name"] = event.Name
 		response["event_image_url"] = event.PortraitImageURL
 		response["venue_name"] = event.VenueName
@@ -119,12 +177,14 @@ func GetBookingDetails(c *fiber.Ctx) error {
 		var play models.Play
 		config.PlaysCol.FindOne(ctx, bson.M{"_id": b.PlayID}).Decode(&play)
 
+		response["id"] = b.BookingID
 		response["event_name"] = play.Name
 		response["event_image_url"] = play.PortraitImageURL
 		response["venue_name"] = b.VenueName
 		response["venue_address"] = b.VenueName
 		response["date"] = b.Date
 		response["time"] = b.Slot
+		response["duration"] = b.Duration
 		response["user_name"] = "User"
 		response["user_email"] = b.UserEmail
 		response["user_phone"] = b.UserPhone
@@ -142,6 +202,7 @@ func GetBookingDetails(c *fiber.Ctx) error {
 		var dining models.Dining
 		config.DiningsCol.FindOne(ctx, bson.M{"_id": b.DiningID}).Decode(&dining)
 
+		response["id"] = b.BookingID
 		response["event_name"] = dining.Name
 		response["event_image_url"] = dining.PortraitImageURL
 		response["venue_name"] = dining.VenueName
@@ -163,6 +224,5 @@ func GetBookingDetails(c *fiber.Ctx) error {
 		response["status"] = b.Status
 	}
 
-	fmt.Printf("DEBUG: Returning booking details response\n")
-	return c.JSON(response)
+	return response
 }

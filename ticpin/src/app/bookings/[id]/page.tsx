@@ -24,6 +24,7 @@ import { bookingApi } from '@/lib/api/booking';
 import { getBookingStatus, getBookingStatusStyles } from '@/lib/utils/booking-status';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { QRCodeCanvas } from 'qrcode.react';
 
 export default function BookingDetailsPage() {
   const router = useRouter();
@@ -117,9 +118,15 @@ export default function BookingDetailsPage() {
         logging: false,
         backgroundColor: '#F5F5F5',
         width: 800,
-        height: 1100, // Explicit height to ensure QR code capture
         windowWidth: 800,
-        windowHeight: 1100
+        scrollX: 0,
+        scrollY: 0,
+        onclone: (clonedDoc) => {
+          // Ensure any hidden elements for capture are shown in the clone if needed
+          const el = clonedDoc.getElementById('hidden-ticket-capture');
+          if (el) el.style.position = 'relative';
+          if (el) el.style.left = '0';
+        }
       });
       
       const imgData = canvas.toDataURL('image/png');
@@ -417,12 +424,12 @@ export default function BookingDetailsPage() {
       </div>
 
       {/* HIDDEN PREMIUM TICKET */}
-      <div ref={ticketRef} style={{ 
+      <div ref={ticketRef} id="hidden-ticket-capture" style={{ 
         position: 'absolute', 
         left: '-9999px', 
         top: 0, 
         width: '800px', 
-        minHeight: '1100px', // Tall enough for A4 aspect ratio
+        height: 'auto',
         background: '#F5F5F5', 
         padding: '60px 40px',
         display: 'flex',
@@ -460,10 +467,15 @@ export default function BookingDetailsPage() {
               </div>
             </div>
             <div style={{ textAlign: 'center', margin: '35px 0', background: '#ffffff', borderRadius: '12px', padding: '30px' }}>
-              <div style={{ display: 'inline-block', border: '5px solid #000000', padding: '15px', borderRadius: '15px' }}>
-                <QrCode size={160} />
+              <div style={{ display: 'inline-block', border: '5px solid #000000', padding: '15px', borderRadius: '15px', background: '#ffffff' }}>
+                <QRCodeCanvas 
+                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}/ticket/${booking.booking_id || bookingId}`} 
+                  size={160} 
+                  includeMargin={false}
+                />
               </div>
-              <p style={{ color: 'black', fontWeight: 800, marginTop: '15px', fontSize: '18px', letterSpacing: '2px' }}>VERIFIED TICKPIN PASS</p>
+              <p style={{ color: 'black', fontWeight: 800, marginTop: '20px', fontSize: '18px', letterSpacing: '2px' }}>VERIFIED TICKPIN PASS</p>
+              <p style={{ color: '#686868', fontSize: '11px', marginTop: '5px', fontWeight: 500 }}>Scan to verify booking authenticity</p>
             </div>
             <p style={{ fontWeight: 700, fontSize: '18px', color: '#000000', marginBottom: '12px' }}>Important Notes</p>
             <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px' }}>

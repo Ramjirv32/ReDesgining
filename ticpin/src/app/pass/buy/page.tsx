@@ -11,7 +11,7 @@ import { Loader2, LogOut, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 
-const price = 1;
+const price = 799;
 
 const STATES = [
   "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa",
@@ -32,6 +32,8 @@ export default function BuyPassPage() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [latestPass, setLatestPass] = useState<TicpinPass | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [hasCheckedSession, setHasCheckedSession] = useState(false);
   
   const [billing, setBilling] = useState({
     name: '',
@@ -41,34 +43,89 @@ export default function BuyPassPage() {
   });
 
   useEffect(() => {
+    const timer = setTimeout(() => setHasCheckedSession(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!hasCheckedSession) return;
+    
+    // Check for Cashfree redirect return
+    const urlParams = new URLSearchParams(window.location.search);
+    const orderId = urlParams.get('order_id');
+    if (orderId && user?.id) {
+      const pending = sessionStorage.getItem('ticpin_pending_pass');
+      if (pending) {
+        try {
+          const p = JSON.parse(pending);
+          if (p.userId === user.id) {
+            setBuying(true);
+            const endpoint = p.latestPassId ? `/backend/api/pass/${p.latestPassId}/renew` : '/backend/api/pass/apply';
+            fetch(endpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                user_id: user.id,
+                payment_id: orderId,
+                order_id: orderId,
+                phone: p.phone
+              })
+            }).then(res => {
+              if (res.ok) {
+                toast.success('Pass activated successfully!');
+                sessionStorage.removeItem('ticpin_pending_pass');
+                router.push('/profile');
+              } else {
+                toast.error('Activation failed. Please contact support.');
+              }
+            }).catch(err => {
+              console.error('Activation error:', err);
+              toast.error('Something went wrong during activation.');
+            }).finally(() => {
+              setBuying(false);
+              // Clean URL
+              window.history.replaceState(null, '', window.location.pathname);
+            });
+          }
+        } catch (e) {
+          console.error('Error parsing pending pass data:', e);
+        }
+      }
+    }
+
     if (user?.id) {
-      Promise.all([
-        passApi.getLatestPass(user.id),
-        profileApi.getProfile(user.id)
-      ]).then(([pass, prof]) => {
-        setLatestPass(pass);
-        setProfile(prof);
-        if (prof) {
+      passApi.getLatestPass(user.id)
+        .then(pass => {
+          setLatestPass(pass);
+          setInitialLoading(false);
+        })
+        .catch(err => {
+          console.error('Latest pass fetch failed:', err);
+          setInitialLoading(false);
+        });
+      
+      profileApi.getProfile(user.id)
+        .then(prof => {
+          setProfile(prof);
           setBilling({
-            name: prof.name || user.name || '',
+            name: prof.name || '',
             phone: prof.phone || user.phone || '',
-            email: prof.email || user.email || '',
+            email: prof.email || '',
             state: prof.state || 'Tamil Nadu'
           });
-        }
-        setInitialLoading(false);
-      }).catch(err => {
-        console.error('Fetch failed:', err);
-        setInitialLoading(false);
-      });
+        })
+        .catch(err => {
+          console.error('Profile fetch failed:', err);
+          setInitialLoading(false);
+        });
     } else {
       setInitialLoading(false);
     }
-  }, [user]);
+  }, [user, user?.id, hasCheckedSession]);
 
   const handleBuy = async () => {
     if (organizer) {
-      toast.error('Please logout from organizer account first');
+      setShowLogoutModal(true);
       return;
     }
 
@@ -78,73 +135,44 @@ export default function BuyPassPage() {
       return;
     }
 
-    if (!acceptedTerms) {
-      toast.error('Please accept the terms and conditions');
-      return;
-    }
-
     if (latestPass?.status === 'active') {
       router.push('/profile');
       return;
     }
 
+    if (!acceptedTerms) {
+      toast.error('Please accept the terms and conditions');
+      return;
+    }
+
     setBuying(true);
     try {
-      // Save/Update profile details in backend
-      if (user?.id) {
-        try {
-          if (profile) {
-            await profileApi.updateProfile(user.id, {
-              name: billing.name,
-              email: billing.email,
-              state: billing.state,
-              phone: billing.phone || user.phone
-            });
-          } else {
-            await profileApi.createProfile({
-              userId: user.id,
-              name: billing.name,
-              email: billing.email,
-              state: billing.state,
-              phone: billing.phone || user.phone
-            });
-          }
-        } catch (profileErr: any) {
-          console.error('Profile Sync Error:', profileErr);
-          // If it's a conflict or already exists, we can still proceed to payment
-          if (profileErr.message?.includes('already exists') || profileErr.message?.includes('conflict')) {
-            console.log('Profile already exists, proceeding to order creation');
-          } else {
-             throw new Error('Unable to save your billing details. Please try again or contact support.');
-          }
-        }
-      } else {
-        throw new Error('User session not found. Please login again.');
-      }
-
       const res = await fetch('/backend/api/payment/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: price,
           customer_id: user.id,
-          customer_phone: billing.phone || user.phone,
-          customer_email: billing.email || user.email || '',
+          customer_phone: user.phone,
+          customer_email: user.email || '',
           type: 'pass',
           notes: {
             user_id: user.id,
             booking_type: 'pass',
-            pass_id: latestPass?.id || '',
-            billing_name: billing.name,
-            billing_email: billing.email || user.email || '',
-            billing_phone: billing.phone || user.phone || '',
-            billing_state: billing.state
+            pass_id: latestPass?.id || ''
           }
         })
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create order');
+
+      // Store pending pass data for post-payment activation
+      sessionStorage.setItem('ticpin_pending_pass', JSON.stringify({
+        userId: user.id,
+        phone: user.phone,
+        latestPassId: latestPass?.id || ''
+      }));
 
       if (data.gateway === 'razorpay') {
         const options = {
@@ -175,6 +203,7 @@ export default function BuyPassPage() {
               }
 
               toast.success('Payment Successful! Your pass is active.');
+              sessionStorage.removeItem('ticpin_pending_pass');
               router.push('/profile');
             } catch (err: any) {
               console.error('Activation Error:', err);
@@ -184,186 +213,211 @@ export default function BuyPassPage() {
             }
           },
           prefill: {
-            name: billing.name || user.name || '',
-            email: billing.email || user.email || '',
-            contact: billing.phone || user.phone || ''
+            name: user.name || '',
+            email: user.email || '',
+            contact: user.phone || ''
           },
-          theme: { color: '#000000' }
+          theme: {
+            color: '#000000'
+          }
         };
-        const rzp = (window as any).Razorpay(options);
-        rzp.open();
-      /* } else if (data.gateway === 'cashfree') {
-        if (!(window as any).Cashfree) {
-          await new Promise<void>((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
-            script.onload = () => resolve();
-            script.onerror = () => reject(new Error('Failed to load Cashfree SDK'));
-            document.head.appendChild(script);
-          });
-        }
 
-        const cashfree = (window as any).Cashfree({
-          mode: process.env.NEXT_PUBLIC_CASHFREE_ENV === 'production' ? 'production' : 'sandbox',
+        const rzp = new (window as any).Razorpay(options);
+        rzp.on('payment.failed', function (response: any) {
+          toast.error('Payment failed. Please try again.');
+          setBuying(false);
         });
-
-        // Store pending activation data
-        sessionStorage.setItem('ticpin_pending_pass', JSON.stringify({
-          userId: user.id,
-          phone: billing.phone || user.phone,
-          latestPassId: latestPass?.id || ''
-        }));
-
-        cashfree.checkout({
-          paymentSessionId: data.payment_session_id,
-          redirectTarget: '_self',
-        }); */
+        rzp.open();
+      } else if (data.gateway === 'cashfree') {
+        // Redirect to Cashfree payment page
+        window.location.href = data.payment_link;
       }
-    } catch (error: any) {
-      console.error('Payment Error:', error);
-      toast.error(error.message || 'Something went wrong');
-    } finally {
+    } catch (err: any) {
+      console.error('Payment Error:', err);
+      toast.error(err.message || 'Payment failed. Please try again.');
       setBuying(false);
     }
   };
 
+  const handleLogout = () => {
+    clearOrganizerSession();
+    setShowLogoutModal(false);
+    toast.success('Logged out successfully. You can now buy the pass as a user.');
+  };
+
   if (initialLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <Loader2 className="animate-spin text-zinc-800" size={32} />
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white font-anek-latin relative overflow-x-hidden">
+    <div className="min-h-screen bg-white" style={{ fontFamily: 'Anek Latin, sans-serif' }}>
       {/* Header */}
-      <header className="w-full h-[114px] flex items-center justify-between px-10 border-b border-zinc-200 sticky top-0 bg-white z-50">
-        <div className="flex items-center gap-4 cursor-pointer" onClick={() => router.push('/')}>
-           <Image src="/ticpin-logo-black.png" alt="TICPIN" width={110} height={24} className="h-6 w-auto object-contain" />
+      <div className="relative h-[114px] bg-white border-b border-gray-300">
+        <div className="absolute left-[37px] top-[37px]">
+          <Image src="/WORDMARK PNG 1.png" alt="Ticpin" width={159} height={40} />
         </div>
         
-        <h1 className="text-[30px] font-semibold text-black absolute left-1/2 -translate-x-1/2">
-          Review your Ticpin Pass
-        </h1>
-
-        <div 
-          className="w-[51px] h-[51px] bg-[#E1E1E1] rounded-full flex items-center justify-center overflow-hidden cursor-pointer"
-          onClick={() => router.push('/profile')}
-        >
-          {profile?.profilePhoto ? (
-            <Image src={profile.profilePhoto} alt="Profile" width={51} height={51} className="object-cover" />
-          ) : (
-            <div className="text-black font-semibold text-sm">Profile</div>
-          )}
+        <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+          <h1 className="text-black font-semibold" style={{ fontSize: '30px', lineHeight: '33px' }}>
+            Review your Ticpin Pass
+          </h1>
         </div>
-      </header>
 
-      <main className="max-w-[1366px] mx-auto pt-[50px] pb-20 px-4">
-        {/* Billing Card */}
-        <div className="w-full border-2 border-[#AEAEAE] rounded-[15px] bg-white overflow-hidden mb-10">
-          <div className="px-10 py-6 border-b border-zinc-200">
-            <h2 className="text-[30px] font-semibold text-black">Billing Details</h2>
-          </div>
+        <div className="absolute right-[37px] top-[31px]">
+          <div className="w-[51px] h-[51px] bg-gray-200 rounded-full"></div>
+        </div>
+      </div>
 
-          <div className="px-10 py-8 space-y-8">
-            <p className="text-[20px] font-medium text-[#686868]">
+      {/* Main Content */}
+      <div className="relative pt-[164px] pb-8 px-4">
+        <div className="max-w-[1366px] mx-auto">
+          {/* Billing Details */}
+          <div className="mb-8">
+            <h2 className="text-black font-semibold mb-4" style={{ fontSize: '30px', lineHeight: '33px' }}>
+              Billing Details
+            </h2>
+            <div className="w-full h-[0.5px] bg-gray-300 mb-6"></div>
+            <p className="text-gray-500 mb-6" style={{ fontSize: '20px', lineHeight: '22px' }}>
               These details will be shown on your invoice *
             </p>
+          </div>
 
-            {/* Form Fields */}
-            <div className="space-y-6">
-              <div className="w-full h-[51px] border border-[#AEAEAE] rounded-[10px] flex items-center px-4">
-                <input 
-                  type="text" 
-                  value={billing.name} 
-                  onChange={e => setBilling({...billing, name: e.target.value})}
-                  className="w-full bg-transparent text-[20px] font-medium text-black outline-none placeholder-[#AEAEAE]"
-                  placeholder="Full Name"
-                />
-              </div>
-
-              <div className="w-full h-[51px] bg-[#F0F0F0] rounded-[10px] flex items-center px-4">
-                <input 
-                  type="text" 
-                  value={billing.phone} 
-                  disabled
-                  className="w-full bg-transparent text-[20px] font-medium text-black outline-none placeholder-[#686868] cursor-not-allowed opacity-70"
-                  placeholder="Contact Number"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[20px] font-medium text-[#686868] ml-1">Select State</label>
-                <div className="w-full h-[72px] bg-[#F0F0F0] rounded-[15px] flex items-center px-6 relative">
-                  <select 
-                    value={billing.state}
-                    onChange={e => setBilling({...billing, state: e.target.value})}
-                    className="w-full bg-transparent text-[20px] font-medium text-black outline-none appearance-none cursor-pointer"
-                  >
-                    <option value="" disabled>Select State</option>
-                    {STATES.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                  <ChevronDown className="absolute right-6 text-[#686868]" size={24} />
-                </div>
-              </div>
-
-              <div className="w-full h-[51px] border border-[#AEAEAE] rounded-[10px] flex items-center px-4">
-                <input 
-                  type="email" 
-                  value={billing.email} 
-                  onChange={e => setBilling({...billing, email: e.target.value})}
-                  className="w-full bg-transparent text-[20px] font-medium text-black outline-none placeholder-[#AEAEAE]"
-                  placeholder="Email Address"
-                />
-              </div>
-
-              <p className="text-[20px] font-medium text-[#686868]">
-                We'll mail you pass confirmation and invoices
-              </p>
+          {/* Form Fields */}
+          <div className="space-y-4 mb-8">
+            {/* Name */}
+            <div 
+              className="bg-white border border-gray-300 rounded-[10px] h-[51px] flex items-center px-4"
+              style={{ width: '1306px' }}
+            >
+              <span className="text-black" style={{ fontSize: '20px', lineHeight: '22px' }}>
+                {profile?.name || ''}
+              </span>
             </div>
 
-            {/* Divider */}
-            <div className="h-[0.5px] bg-[#AEAEAE] w-full mt-10"></div>
+            {/* Phone */}
+            <div 
+              className="bg-gray-100 border border-gray-300 rounded-[10px] h-[51px] flex items-center px-4"
+              style={{ width: '1306px' }}
+            >
+              <span className="text-black" style={{ fontSize: '20px', lineHeight: '22px' }}>
+                {profile?.phone || user?.phone || ''}
+              </span>
+            </div>
 
-            {/* Terms and Buy */}
-            <div className="flex items-center justify-between pt-6">
-              <div className="flex items-center gap-3">
-                <input 
-                  type="checkbox" 
-                  id="terms"
-                  checked={acceptedTerms}
-                  onChange={e => setAcceptedTerms(e.target.checked)}
-                  className="w-[22px] h-[22px] border border-[#686868] rounded-[8px] cursor-pointer accent-black"
-                />
-                <label htmlFor="terms" className="text-[20px] font-medium text-[#686868] cursor-pointer">
-                  I have read and accepted the <span className="text-[#3B2B9E] underline">terms and conditions</span>
-                </label>
+            {/* Email */}
+            <div 
+              className="bg-white border border-gray-300 rounded-[10px] h-[51px] flex items-center px-4"
+              style={{ width: '1306px' }}
+            >
+              <span className="text-black" style={{ fontSize: '20px', lineHeight: '22px' }}>
+                {profile?.email || ''}
+              </span>
+            </div>
+
+            {/* State */}
+            <div className="mb-6">
+              <label className="text-gray-500 mb-2 block" style={{ fontSize: '20px', lineHeight: '22px' }}>
+                Select State
+              </label>
+              <div 
+                className="bg-gray-100 border border-gray-300 rounded-[15px] h-[72px] flex items-center px-4 justify-between"
+                style={{ width: '1305px' }}
+              >
+                <span className="text-black" style={{ fontSize: '20px', lineHeight: '22px' }}>
+                  {profile?.state || 'Tamil Nadu'} ( AUTO FETCH FROM PROFILE)
+                </span>
+                <ChevronDown className="w-5 h-5 text-gray-400" />
               </div>
+            </div>
 
-              <div className="flex items-center gap-10">
-                <div className="text-right">
-                  <div className="text-[15px] font-normal text-[#686868]">TOTAL</div>
-                  <div className="text-[30px] font-semibold text-black">₹{price}</div>
-                </div>
+            <p className="text-gray-500 mb-6" style={{ fontSize: '20px', lineHeight: '22px' }}>
+              We'll mail you pass confirmation and invoices
+            </p>
+          </div>
 
-                <button
-                  onClick={handleBuy}
-                  disabled={buying}
-                  className="w-[263px] h-[58px] bg-black text-white rounded-[7px] font-medium text-[32px] flex items-center justify-center gap-4 hover:bg-zinc-800 transition-colors disabled:opacity-70"
+          {/* Terms and Buy Button */}
+          <div className="w-full h-[0.5px] bg-gray-300 mb-6" style={{ width: '1268px' }}></div>
+          
+          <div className="flex items-center justify-between mb-8" style={{ width: '1306px' }}>
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="terms"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="w-[22px] h-[22px] border border-gray-400 rounded-[8px]"
+              />
+              <label htmlFor="terms" className="text-gray-500" style={{ fontSize: '20px', lineHeight: '22px' }}>
+                I have read and accepted the terms and conditions
+              </label>
+            </div>
+            
+            <button
+              onClick={handleBuy}
+              disabled={buying || !acceptedTerms}
+              className="bg-black text-white font-medium rounded-[7px] hover:scale-105 transition-all duration-200 flex items-center justify-center gap-4"
+              style={{ 
+                width: '263px', 
+                height: '58px',
+                fontSize: '32px',
+                lineHeight: '64px',
+                fontFamily: 'Anek Tamil Condensed, sans-serif'
+              }}
+            >
+              {buying ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <>
+                  <span>Buy</span>
+                  <span>₹799</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          <div className="text-center">
+            <p className="text-white text-sm">TOTAL</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Logout Modal for Organizers */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)' }}>
+          <div 
+            className="relative bg-gray-900 border border-white/15 rounded-3xl p-8 max-w-md w-full"
+            style={{ background: '#0d0630', borderRadius: '40px' }}
+          >
+            <div className="text-center">
+              <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <LogOut size={40} className="text-white" />
+              </div>
+              <h2 className="text-white font-bold text-2xl mb-4">Organizer Account</h2>
+              <p className="text-white/60 mb-8 leading-relaxed">
+                Ticpin Pass is only available for users. Please logout from your organizer account and login as a user to continue.
+              </p>
+              <div className="flex flex-col gap-3">
+                <button 
+                  onClick={handleLogout}
+                  className="w-full py-4 bg-white text-black rounded-full font-bold hover:bg-gray-100 transition-colors"
                 >
-                  {buying ? <Loader2 className="animate-spin" /> : (
-                    <>
-                      <span>Buy</span>
-                      <ChevronDown className="-rotate-90" size={24} />
-                    </>
-                  )}
+                  Logout & Continue
+                </button>
+                <button 
+                  onClick={() => setShowLogoutModal(false)}
+                  className="w-full py-4 bg-transparent text-white/40 rounded-full font-bold hover:text-white/60 transition-colors"
+                >
+                  Cancel
                 </button>
               </div>
             </div>
           </div>
         </div>
-      </main>
+      )}
     </div>
   );
 }

@@ -68,11 +68,13 @@ export default function Navbar() {
     }, [syncAuth, currentLocation]);
 
     const hideNavbar =
+        pathname?.startsWith('/organizer') ||
+        pathname?.startsWith('/ticket') ||
+        pathname?.startsWith('/admin') ||
         pathname === '/contact' ||
         pathname === '/terms' ||
         pathname === '/privacy' ||
         pathname === '/refund' ||
-        pathname.startsWith('/admin') ||
         pathname === '/pass/buy' ||
         pathname.endsWith('/book') ||
         pathname.endsWith('/book/tickets') ||
@@ -204,7 +206,7 @@ export default function Navbar() {
                             onToggleMenu={handleProfileClick}
                             onUserLogout={handleUserLogout}
                             onOrganizerLogout={handleOrganizerLogout}
-                            onOpenProfile={() => {}} // No longer used - direct navigation instead
+                            onOpenProfile={() => { }} // No longer used - direct navigation instead
                         />
                     </div>
                 </div>

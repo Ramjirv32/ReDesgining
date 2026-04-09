@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Plus, Utensils, Ticket, Gamepad2, Clock, ChevronRight, XCircle, RefreshCw, User } from 'lucide-react';
+import { Plus, Utensils, Ticket, Gamepad2, Clock, ChevronRight, XCircle, RefreshCw } from 'lucide-react';
 import { getOrganizerSession, saveOrganizerSession } from '@/lib/auth/organizer';
 import { organizerApi } from '@/lib/api/organizer';
 import ListingsGrid from '@/components/organizer/ListingsGrid';
+import OrganizerHeader from '@/components/organizer/OrganizerHeader';
 
 function DashboardContent() {
     const router = useRouter();
@@ -16,6 +17,7 @@ function DashboardContent() {
     const [hasMounted, setHasMounted] = useState(false);
     const [session, setSession] = useState<ReturnType<typeof getOrganizerSession>>(null);
     const [loading, setLoading] = useState(true);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     // Set activeTab from URL parameter
     useEffect(() => {
@@ -125,29 +127,7 @@ function DashboardContent() {
             className="flex flex-col font-[family-name:var(--font-anek-latin)] transition-colors duration-500 overflow-y-auto"
             style={{ background: currentTheme.bg, minHeight: 'calc(100vh - 80px)' }}
         >
-            {/* Top Switcher */}
-            <div className="w-full flex justify-start px-10 py-6">
-                <div className="flex gap-4 items-center">
-                    {switcherItems.map((item) => (
-                        <button
-                            key={item.id}
-                            title={item.label}
-                            onClick={() => router.push(`?category=${item.id}`)}
-                            className={`w-12 h-12 flex items-center justify-center rounded-[12px] transition-all group ${activeTab === item.id ? 'bg-black text-white shadow-md' : 'text-[#686868] hover:bg-black/5'}`}
-                        >
-                            <item.icon size={22} className={activeTab === item.id ? 'text-white' : 'text-[#686868] group-hover:text-black'} />
-                        </button>
-                    ))}
-                    <div className="w-[1px] h-8 bg-black/10 mx-2" />
-                    <button
-                        title="Profile"
-                        onClick={() => router.push('/organizer/profile')}
-                        className="w-12 h-12 flex items-center justify-center rounded-[12px] text-[#686868] hover:bg-black/5 transition-all group"
-                    >
-                        <User size={22} className="group-hover:text-black" />
-                    </button>
-                </div>
-            </div>
+            <OrganizerHeader activeTab={activeTab} />
 
             {/* Main Content Area */}
             <main className="flex-1 px-8 md:px-14 lg:px-20 pb-16 flex flex-col justify-start">
