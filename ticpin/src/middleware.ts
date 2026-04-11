@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 
 const PROTECTED_ROUTES = [
     '/profile',
-    '/my-pass',
+    '/pass/buy',
     '/bookings',
     '/logout',
 ];
@@ -68,5 +68,5 @@ export function middleware(request: NextRequest) {
 
 export const config = {
     // Only apply middleware to relevant routes
-    matcher: ['/profile/:path*', '/admin/:path*', '/my-pass/:path*', '/logout/:path*'],
+    matcher: ['/profile/:path*', '/admin/:path*', '/pass/buy/:path*', '/logout/:path*'],
 };

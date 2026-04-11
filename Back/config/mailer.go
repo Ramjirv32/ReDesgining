@@ -178,15 +178,34 @@ func SendBookingConfirmation(toEmail string, category string, data BookingEmailD
 	return sendOTP(from, pass, toEmail, subject, body)
 }
 
-func SendUnifiedOTP(toEmail, otp string) error {
-	from := os.Getenv("ADMIN_EMAIL")
-	if from == "" {
+func SendUnifiedOTP(toEmail, otp string, category string) error {
+	var from, pass string
+
+	switch strings.ToLower(category) {
+	case "play":
 		from = os.Getenv("PLAY_EMAIL")
-	}
-	pass := os.Getenv("ADMIN_APP_PASSWORD")
-	if pass == "" {
+		pass = os.Getenv("PLAY_APP_PASSWORD")
+	case "events", "event":
+		from = os.Getenv("EVENTS_EMAIL")
+		pass = os.Getenv("EVENTS_APP_PASSWORD")
+	case "dining":
+		from = os.Getenv("DINING_EMAIL")
+		pass = os.Getenv("DINING_APP_PASSWORD")
+	case "admin":
+		from = os.Getenv("ADMIN_EMAIL")
+		pass = os.Getenv("ADMIN_APP_PASSWORD")
+	default:
+		// Default to Play for general user OTP
+		from = os.Getenv("PLAY_EMAIL")
 		pass = os.Getenv("PLAY_APP_PASSWORD")
 	}
+
+	// Final fallback to Admin if module specific is empty
+	if from == "" || pass == "" {
+		from = os.Getenv("ADMIN_EMAIL")
+		pass = os.Getenv("ADMIN_APP_PASSWORD")
+	}
+
 	body, err := renderOTPTemplate("Ticpin", otp)
 	if err != nil {
 		body = fmt.Sprintf("<h2>Your Ticpin OTP: <b>%s</b></h2><p>Valid for 5 minutes.</p>", otp)
@@ -195,15 +214,15 @@ func SendUnifiedOTP(toEmail, otp string) error {
 }
 
 func SendPlayOTP(toEmail, otp string) error {
-	return SendUnifiedOTP(toEmail, otp)
+	return SendUnifiedOTP(toEmail, otp, "play")
 }
 
 func SendEventsOTP(toEmail, otp string) error {
-	return SendUnifiedOTP(toEmail, otp)
+	return SendUnifiedOTP(toEmail, otp, "events")
 }
 
 func SendDiningOTP(toEmail, otp string) error {
-	return SendUnifiedOTP(toEmail, otp)
+	return SendUnifiedOTP(toEmail, otp, "dining")
 }
 
 func GenerateOTP() string {
@@ -211,11 +230,27 @@ func GenerateOTP() string {
 }
 
 func SendStatusEmail(toEmail, vertical, status, reason string) error {
-	from := os.Getenv("ADMIN_EMAIL")
-	if from == "" {
-		from = "23cs139@kpriet.ac.in"
+	var from, pass string
+
+	switch strings.ToLower(vertical) {
+	case "play":
+		from = os.Getenv("PLAY_EMAIL")
+		pass = os.Getenv("PLAY_APP_PASSWORD")
+	case "events", "event":
+		from = os.Getenv("EVENTS_EMAIL")
+		pass = os.Getenv("EVENTS_APP_PASSWORD")
+	case "dining":
+		from = os.Getenv("DINING_EMAIL")
+		pass = os.Getenv("DINING_APP_PASSWORD")
+	default:
+		from = os.Getenv("ADMIN_EMAIL")
+		pass = os.Getenv("ADMIN_APP_PASSWORD")
 	}
-	pass := os.Getenv("ADMIN_APP_PASSWORD")
+
+	if from == "" || pass == "" {
+		from = os.Getenv("ADMIN_EMAIL")
+		pass = os.Getenv("ADMIN_APP_PASSWORD")
+	}
 
 	subject := fmt.Sprintf("Ticpin Organizer Application: %s", status)
 	var body string
@@ -338,4 +373,26 @@ func SendCancellationEmail(toEmail, bookingID, category, venueName, date, grandT
 </body></html>`, categoryLabel, bookingID, categoryLabel, venueName, date, grandTotal)
 
 	return sendOTP(from, pass, toEmail, subject, body)
+}
+func SendPassConfirmationEmail(toEmail string) error {
+	from := os.Getenv("ADMIN_EMAIL")
+	pass := os.Getenv("ADMIN_APP_PASSWORD")
+	subject := "Welcome to Ticpin Pass!"
+
+	tmplPath := filepath.Join("templates", "pass_confirmation.html")
+	if _, err := os.Stat(tmplPath); os.IsNotExist(err) {
+		tmplPath = filepath.Join("Back", "templates", "pass_confirmation.html")
+	}
+
+	tmpl, err := template.ParseFiles(tmplPath)
+	if err != nil {
+		return fmt.Errorf("failed to parse pass template: %v", err)
+	}
+
+	var body bytes.Buffer
+	if err := tmpl.Execute(&body, nil); err != nil {
+		return fmt.Errorf("failed to render pass template: %v", err)
+	}
+
+	return sendOTP(from, pass, toEmail, subject, body.String())
 }

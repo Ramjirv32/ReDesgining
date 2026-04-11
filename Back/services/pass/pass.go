@@ -214,8 +214,13 @@ func useBenefitWithTransaction(passID, benefitType string) (*models.TicpinPass, 
 	defer cancel()
 
 	var p models.TicpinPass
-	if err := col.FindOne(ctx, bson.M{"_id": objID, "status": "active"}).Decode(&p); err != nil {
-		return nil, errors.New("active pass not found")
+	now := time.Now()
+	if err := col.FindOne(ctx, bson.M{
+		"_id":      objID,
+		"status":   "active",
+		"end_date": bson.M{"$gt": now},
+	}).Decode(&p); err != nil {
+		return nil, errors.New("active, unexpired pass not found")
 	}
 
 	var updateFields bson.M
@@ -263,8 +268,13 @@ func useBenefit(passID, benefitType string) (*models.TicpinPass, error) {
 	defer cancel()
 
 	var p models.TicpinPass
-	if err := col.FindOne(ctx, bson.M{"_id": objID, "status": "active"}).Decode(&p); err != nil {
-		return nil, errors.New("active pass not found")
+	now := time.Now()
+	if err := col.FindOne(ctx, bson.M{
+		"_id":      objID,
+		"status":   "active",
+		"end_date": bson.M{"$gt": now},
+	}).Decode(&p); err != nil {
+		return nil, errors.New("active, unexpired pass not found")
 	}
 
 	var updateFields bson.M
@@ -325,8 +335,13 @@ func refundBenefit(passID, benefitType string) (*models.TicpinPass, error) {
 	defer cancel()
 
 	var p models.TicpinPass
-	if err := col.FindOne(ctx, bson.M{"_id": objID, "status": "active"}).Decode(&p); err != nil {
-		return nil, errors.New("active pass not found")
+	now := time.Now()
+	if err := col.FindOne(ctx, bson.M{
+		"_id":      objID,
+		"status":   "active",
+		"end_date": bson.M{"$gt": now},
+	}).Decode(&p); err != nil {
+		return nil, errors.New("active, unexpired pass not found")
 	}
 
 	var updateFields bson.M
@@ -371,8 +386,13 @@ func restoreBenefit(passID, benefitType string) (*models.TicpinPass, error) {
 	defer cancel()
 
 	var p models.TicpinPass
-	if err := col.FindOne(ctx, bson.M{"_id": objID, "status": "active"}).Decode(&p); err != nil {
-		return nil, errors.New("active pass not found")
+	now := time.Now()
+	if err := col.FindOne(ctx, bson.M{
+		"_id":      objID,
+		"status":   "active",
+		"end_date": bson.M{"$gt": now},
+	}).Decode(&p); err != nil {
+		return nil, errors.New("active, unexpired pass not found")
 	}
 
 	var updateFields bson.M

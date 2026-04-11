@@ -185,7 +185,7 @@ export default function MobileProfile() {
                     <div className="w-5 h-5 border-2 border-[#866BFF] border-t-transparent rounded-full animate-spin" />
                 </div>
             ) : pass ? (
-                <div onClick={() => router.push('/my-pass')} className="w-full h-[57px] bg-gradient-to-r from-[#7B2FF7] to-[#3A1A8C] rounded-[15px] flex items-center justify-between px-4 mb-5 cursor-pointer shadow-md">
+                <div onClick={() => router.push('/pass')} className="w-full h-[57px] bg-gradient-to-r from-[#7B2FF7] to-[#3A1A8C] rounded-[15px] flex items-center justify-between px-4 mb-5 cursor-pointer shadow-md">
                     <div className="flex items-center gap-2">
                         {pass.status === 'active' ? <CheckCircle size={20} className="text-green-300" /> : <XCircle size={20} className="text-red-300" />}
                         <span className="text-[15px] font-medium text-white">Ticpin Pass {pass.status === 'active' ? 'Active' : 'Expired'}</span>

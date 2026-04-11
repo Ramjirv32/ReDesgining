@@ -2,6 +2,9 @@ package payment
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -317,4 +320,19 @@ func CreateRefund(paymentID string, amount float64, notes map[string]string) (st
 		return "", fmt.Errorf("cashfree refunds not yet implemented")
 	}
 	return CreateRefundRazorpay(paymentID, amount, notes)
+}
+// VerifyRazorpaySignature verifies the authenticity of Razorpay payment
+func VerifyRazorpaySignature(orderID, paymentID, signature string) bool {
+	secret := os.Getenv("RAZORPAY_KEY_SECRET")
+	if secret == "" {
+		fmt.Println("DEBUG: RAZORPAY_KEY_SECRET is empty!")
+		return false
+	}
+
+	payload := orderID + "|" + paymentID
+	h := hmac.New(sha256.New, []byte(secret))
+	h.Write([]byte(payload))
+	expectedSignature := hex.EncodeToString(h.Sum(nil))
+
+	return expectedSignature == signature
 }

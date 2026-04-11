@@ -19,7 +19,7 @@ interface ProfileInfoProps {
     setIsEditing: (val: boolean) => void;
     handleUpdate: () => void;
     handlePhotoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-    photoInputRef: React.RefObject<HTMLInputElement | null>;
+    photoInputRef: React.RefObject<HTMLInputElement>;
 }
 
 const ProfileInfo: React.FC<ProfileInfoProps> = ({

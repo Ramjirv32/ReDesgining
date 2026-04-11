@@ -87,5 +87,40 @@ export const passApi = {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to use dining benefit');
         return data;
+    },
+
+    createPassOrder: async (userId: string, phone: string): Promise<any> => {
+        const res = await fetch('/backend/api/payment/create-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                customer_id: userId,
+                customer_phone: phone,
+                type: 'pass',
+                amount: 1 // Test price: ₹1
+            })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to create order');
+        return data;
+    },
+
+    verifyPassPayment: async (verificationData: { 
+        razorpay_payment_id: string, 
+        razorpay_order_id: string, 
+        razorpay_signature: string, 
+        user_id: string,
+        email: string,
+        phone: string
+    }): Promise<{ success: boolean }> => {
+        const res = await fetch('/backend/api/payment/verify-pass', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(verificationData)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Verification failed');
+        return data;
     }
 };

@@ -120,7 +120,7 @@ const PERIODS = [
     { id: 'twilight', label: 'Twilight', min: 21 * 60, max: 25 * 60 },
 ] as const;
 
-const PERIOD_ICONS: Record<string, React.FC<{ size?: number; strokeWidth?: number }>> = {
+const PERIOD_ICONS: Record<string, React.FC<{ size?: string | number; strokeWidth?: string | number }>> = {
     morning: Sunrise,
     noon: Sun,
     evening: Sunset,

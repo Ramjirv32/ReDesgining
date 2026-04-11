@@ -32,7 +32,7 @@
                                             <tr>
                                                 <td style="font-size: 30px; font-weight: 700; color: #000000; vertical-align: middle;">
                                                     Play booking confirmed
-                                                    <img src="https://res.cloudinary.com/dt9vkv9as/image/upload/v1741270000/check-circle-premium.png" width="28" height="28" style="vertical-align: middle; margin-left: 8px;" alt="Check" />
+                                                    <span style="color: #22C55E; font-size: 28px; margin-left: 8px; vertical-align: middle;">✓</span>
                                                 </td>
                                             </tr>
                                         </table>
@@ -45,7 +45,11 @@
                                         <table width="100%" border="0" cellspacing="0" cellpadding="20" bgcolor="#ffffff" style="border-radius: 10px; margin-bottom: 16px;">
                                             <tr>
                                                 <td width="197">
-                                                    <img src="{{if .PlayImageURL}}{{.PlayImageURL}}{{else}}https://res.cloudinary.com/dt9vkv9as/image/upload/v1741270000/placeholder-yellow.png{{end}}" width="197" height="111" style="border-radius: 6px; display: block; object-fit: cover;" alt="Play" />
+                                                    {{if .PlayImageURL}}
+                                                    <img src="{{.PlayImageURL}}" width="197" height="111" style="border-radius: 6px; display: block; object-fit: cover;" alt="Play" />
+                                                {{else}}
+                                                    <div width="197" height="111" style="width: 197px; height: 111px; border-radius: 6px; display: block; background-color: #E7C200; background-image: linear-gradient(45deg, #E7C200 25%, #F4D03F 25%, #F4D03F 50%, #E7C200 50%, #E7C200 75%, #F4D03F 75%, #F4D03F); background-size: 20px 20px; text-align: center; line-height: 111px; color: #000; font-weight: bold; font-size: 16px;">PLAY</div>
+                                                {{end}}
                                                 </td>
                                                 <td style="vertical-align: middle;">
                                                     <p style="margin: 0 0 6px 0; font-weight: 700; font-size: 18px; color: #000000;">{{.PlayName}}</p>

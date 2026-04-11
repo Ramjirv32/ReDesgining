@@ -2,8 +2,10 @@ package paymentctrl
 
 import (
 	"fmt"
+	"ticpin-backend/config"
 	passservice "ticpin-backend/services/pass"
 	"ticpin-backend/services/payment"
+	"ticpin-backend/models"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -86,4 +88,49 @@ func CreateOrderHandler(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(result)
+}
+func VerifyPassHandler(c *fiber.Ctx) error {
+	var req struct {
+		RazorpayPaymentID string `json:"razorpay_payment_id"`
+		RazorpayOrderID   string `json:"razorpay_order_id"`
+		RazorpaySignature string `json:"razorpay_signature"`
+		UserID            string `json:"user_id"`
+		Email             string `json:"email"`
+		Phone             string `json:"phone"`
+	}
+
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
+	}
+
+	// 1. Verify Razorpay Signature
+	isValid := payment.VerifyRazorpaySignature(req.RazorpayOrderID, req.RazorpayPaymentID, req.RazorpaySignature)
+	if !isValid {
+		fmt.Printf("DEBUG: Invalid signature - order:%s payment:%s\n", req.RazorpayOrderID, req.RazorpayPaymentID)
+		return c.Status(400).JSON(fiber.Map{"error": "invalid payment signature"})
+	}
+
+	// 2. Store pass in DB immediately (payment already collected by Razorpay)
+	p, err := passservice.Apply(req.UserID, req.RazorpayPaymentID, req.Phone, req.RazorpayOrderID, models.TicpinPass{
+		Price: 1, // Test price: ₹1
+	})
+	if err != nil {
+		fmt.Printf("DEBUG: Failed to activate pass for user %s: %v\n", req.UserID, err)
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to activate pass: " + err.Error()})
+	}
+
+	// 3. Send confirmation email in background (non-blocking — payment already done)
+	emailTo := req.Email
+	go func() {
+		if err := config.SendPassConfirmationEmail(emailTo); err != nil {
+			fmt.Printf("DEBUG: Pass confirmation email failed for %s: %v (pass already activated)\n", emailTo, err)
+		} else {
+			fmt.Printf("DEBUG: Pass confirmation email sent to %s\n", emailTo)
+		}
+	}()
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"pass":    p,
+	})
 }

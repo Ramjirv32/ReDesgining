@@ -1,423 +1,392 @@
 'use client';
 
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
 import { useUserSession } from '@/lib/auth/user';
 import { useOrganizerSession, clearOrganizerSession } from '@/lib/auth/organizer';
 import { toast } from '@/components/ui/Toast';
 import { passApi, type TicpinPass } from '@/lib/api/pass';
 import { profileApi, UserProfile } from '@/lib/api/profile';
-import { Loader2, LogOut, ChevronDown } from 'lucide-react';
+import { 
+    Loader2,
+    LogOut,
+    ChevronDown,
+    ArrowRight,
+    CheckCircle2,
+    Search
+} from 'lucide-react';
+import Script from 'next/script';
 import Image from 'next/image';
-import Link from 'next/link';
 
-const price = 799;
+const RAZORPAY_KEY_ID = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_live_S4cSv1Z2KjpNpt';
 
-const STATES = [
-  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa",
-  "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala",
-  "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland",
-  "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura",
-  "Uttar Pradesh", "Uttarakhand", "West Bengal", "Andaman and Nicobar Islands",
-  "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Jammu and Kashmir",
-  "Ladakh", "Lakshadweep", "Puducherry"
+const INDIAN_STATES = [
+    "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", 
+    "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", 
+    "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", 
+    "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", 
+    "Uttarakhand", "West Bengal", "Andaman and Nicobar Islands", "Chandigarh", 
+    "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Jammu and Kashmir", 
+    "Ladakh", "Lakshadweep", "Puducherry"
 ];
 
 export default function BuyPassPage() {
-  const router = useRouter();
-  const user = useUserSession();
-  const organizer = useOrganizerSession();
-  const [buying, setBuying] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [latestPass, setLatestPass] = useState<TicpinPass | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [hasCheckedSession, setHasCheckedSession] = useState(false);
-  
-  const [billing, setBilling] = useState({
-    name: '',
-    phone: '',
-    email: '',
-    state: 'Tamil Nadu'
-  });
+    const router = useRouter();
+    const user = useUserSession();
+    const organizer = useOrganizerSession();
 
-  useEffect(() => {
-    const timer = setTimeout(() => setHasCheckedSession(true), 100);
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    if (!hasCheckedSession) return;
+    const [loading, setLoading] = useState(false);
+    const [initialLoading, setInitialLoading] = useState(true);
+    const [agreeTerms, setAgreeTerms] = useState(false);
+    const [isRazorpayLoaded, setIsRazorpayLoaded] = useState(false);
+    const [latestPass, setLatestPass] = useState<TicpinPass | null>(null);
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
     
-    // Check for Cashfree redirect return
-    const urlParams = new URLSearchParams(window.location.search);
-    const orderId = urlParams.get('order_id');
-    if (orderId && user?.id) {
-      const pending = sessionStorage.getItem('ticpin_pending_pass');
-      if (pending) {
-        try {
-          const p = JSON.parse(pending);
-          if (p.userId === user.id) {
-            setBuying(true);
-            const endpoint = p.latestPassId ? `/backend/api/pass/${p.latestPassId}/renew` : '/backend/api/pass/apply';
-            fetch(endpoint, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                user_id: user.id,
-                payment_id: orderId,
-                order_id: orderId,
-                phone: p.phone
-              })
-            }).then(res => {
-              if (res.ok) {
-                toast.success('Pass activated successfully!');
-                sessionStorage.removeItem('ticpin_pending_pass');
-                router.push('/profile');
-              } else {
-                toast.error('Activation failed. Please contact support.');
-              }
+    // Form States
+    const [formData, setFormData] = useState({
+        name: '',
+        phone: '',
+        email: '',
+        state: ''
+    });
+    const [stateSearch, setStateSearch] = useState('');
+    const [showStateDropdown, setShowStateDropdown] = useState(false);
+    const [hasExistingProfile, setHasExistingProfile] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (user?.id) {
+            Promise.all([
+                passApi.getLatestPass(user.id),
+                profileApi.getProfile(user.id)
+            ]).then(([pass, prof]) => {
+                setLatestPass(pass);
+                if (prof) {
+                    setFormData({
+                        name: prof.name || user.name || '',
+                        phone: prof.phone || user.phone || '',
+                        email: prof.email || user.email || '',
+                        state: prof.state || ''
+                    });
+                    setStateSearch(prof.state || '');
+                    setHasExistingProfile(true);
+                } else {
+                    setFormData({
+                        name: user.name || '',
+                        phone: user.phone || '',
+                        email: user.email || '',
+                        state: ''
+                    });
+                    setHasExistingProfile(false);
+                }
+                setInitialLoading(false);
             }).catch(err => {
-              console.error('Activation error:', err);
-              toast.error('Something went wrong during activation.');
-            }).finally(() => {
-              setBuying(false);
-              // Clean URL
-              window.history.replaceState(null, '', window.location.pathname);
+                console.error('Fetch failed:', err);
+                setInitialLoading(false);
             });
-          }
-        } catch (e) {
-          console.error('Error parsing pending pass data:', e);
+        } else {
+            const timer = setTimeout(() => {
+                if (!user) setInitialLoading(false);
+            }, 1000);
+            return () => clearTimeout(timer);
         }
-      }
-    }
+    }, [user, user?.id]);
 
-    if (user?.id) {
-      passApi.getLatestPass(user.id)
-        .then(pass => {
-          setLatestPass(pass);
-          setInitialLoading(false);
-        })
-        .catch(err => {
-          console.error('Latest pass fetch failed:', err);
-          setInitialLoading(false);
-        });
-      
-      profileApi.getProfile(user.id)
-        .then(prof => {
-          setProfile(prof);
-          setBilling({
-            name: prof.name || '',
-            phone: prof.phone || user.phone || '',
-            email: prof.email || '',
-            state: prof.state || 'Tamil Nadu'
-          });
-        })
-        .catch(err => {
-          console.error('Profile fetch failed:', err);
-          setInitialLoading(false);
-        });
-    } else {
-      setInitialLoading(false);
-    }
-  }, [user, user?.id, hasCheckedSession]);
-
-  const handleBuy = async () => {
-    if (organizer) {
-      setShowLogoutModal(true);
-      return;
-    }
-
-    if (!user) {
-      toast.error('Please login to buy Ticpin Pass');
-      router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
-      return;
-    }
-
-    if (latestPass?.status === 'active') {
-      router.push('/profile');
-      return;
-    }
-
-    if (!acceptedTerms) {
-      toast.error('Please accept the terms and conditions');
-      return;
-    }
-
-    setBuying(true);
-    try {
-      const res = await fetch('/backend/api/payment/create-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: price,
-          customer_id: user.id,
-          customer_phone: user.phone,
-          customer_email: user.email || '',
-          type: 'pass',
-          notes: {
-            user_id: user.id,
-            booking_type: 'pass',
-            pass_id: latestPass?.id || ''
-          }
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to create order');
-
-      // Store pending pass data for post-payment activation
-      sessionStorage.setItem('ticpin_pending_pass', JSON.stringify({
-        userId: user.id,
-        phone: user.phone,
-        latestPassId: latestPass?.id || ''
-      }));
-
-      if (data.gateway === 'razorpay') {
-        const options = {
-          key: data.razorpay_key,
-          amount: price * 100,
-          currency: 'INR',
-          name: 'Ticpin',
-          description: '3 Months Ticpin Pass',
-          order_id: data.order_id,
-          handler: async function (response: any) {
-            try {
-              setBuying(true);
-              const endpoint = latestPass ? `/backend/api/pass/${latestPass.id}/renew` : '/backend/api/pass/apply';
-              const activateRes = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  user_id: user.id,
-                  payment_id: response.razorpay_payment_id || response.razorpay_order_id,
-                  order_id: response.razorpay_order_id,
-                  phone: user.phone
-                })
-              });
-
-              if (!activateRes.ok) {
-                const errData = await activateRes.json();
-                throw new Error(errData.error || 'Failed to activate pass');
-              }
-
-              toast.success('Payment Successful! Your pass is active.');
-              sessionStorage.removeItem('ticpin_pending_pass');
-              router.push('/profile');
-            } catch (err: any) {
-              console.error('Activation Error:', err);
-              toast.error('Payment succeeded but activation failed. Contact support.');
-            } finally {
-              setBuying(false);
+    // Close dropdown on click outside
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setShowStateDropdown(false);
             }
-          },
-          prefill: {
-            name: user.name || '',
-            email: user.email || '',
-            contact: user.phone || ''
-          },
-          theme: {
-            color: '#000000'
-          }
-        };
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
-        const rzp = new (window as any).Razorpay(options);
-        rzp.on('payment.failed', function (response: any) {
-          toast.error('Payment failed. Please try again.');
-          setBuying(false);
-        });
-        rzp.open();
-      } else if (data.gateway === 'cashfree') {
-        // Redirect to Cashfree payment page
-        window.location.href = data.payment_link;
-      }
-    } catch (err: any) {
-      console.error('Payment Error:', err);
-      toast.error(err.message || 'Payment failed. Please try again.');
-      setBuying(false);
-    }
-  };
-
-  const handleLogout = () => {
-    clearOrganizerSession();
-    setShowLogoutModal(false);
-    toast.success('Logged out successfully. You can now buy the pass as a user.');
-  };
-
-  if (initialLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black"></div>
-      </div>
+    const filteredStates = INDIAN_STATES.filter(s => 
+        s.toLowerCase().includes(stateSearch.toLowerCase())
     );
-  }
 
-  return (
-    <div className="min-h-screen bg-white" style={{ fontFamily: 'Anek Latin, sans-serif' }}>
-      {/* Header */}
-      <div className="relative h-[114px] bg-white border-b border-gray-300">
-        <div className="absolute left-[37px] top-[37px]">
-          <Image src="/WORDMARK PNG 1.png" alt="Ticpin" width={159} height={40} />
+    const syncProfile = async () => {
+        if (!user?.id) return;
+        try {
+            const payload = {
+                name: formData.name,
+                phone: formData.phone,
+                email: formData.email,
+                state: formData.state
+            };
+            if (hasExistingProfile) {
+                await profileApi.updateProfile(user.id, payload);
+            } else {
+                await profileApi.createProfile({
+                    userId: user.id,
+                    ...payload
+                } as UserProfile);
+            }
+        } catch (err: any) {
+            console.error('Profile sync failed:', err);
+            const msg = err.message || 'Profile synchronization failed';
+            toast.error(msg);
+            throw err; // Re-throw to stop handlePayment
+        }
+    };
+
+    const handlePayment = async () => {
+        if (organizer) {
+            setShowLogoutModal(true);
+            return;
+        }
+
+        if (!user) {
+            toast.error('Please login to continue');
+            router.push(`/login?redirect=${encodeURIComponent('/pass/buy')}`);
+            return;
+        }
+
+        if (!formData.name || !formData.phone || !formData.email || !formData.state) {
+            toast.error('Please fill all billing details');
+            return;
+        }
+
+        if (!agreeTerms) {
+            toast.error('Please agree to the Terms & Conditions');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await syncProfile();
+        } catch (err) {
+            setLoading(false);
+            return;
+        }
+
+        try {
+            // Pre-check: ensure no active pass before opening payment modal
+            const activePass = await passApi.getActivePass(user.id);
+            if (activePass && activePass.status === 'active') {
+                toast.error('You already have an active Ticpin Pass!');
+                router.push('/pass');
+                setLoading(false);
+                return;
+            }
+
+            const order = await passApi.createPassOrder(user.id, formData.phone);
+            const options = {
+                key: RAZORPAY_KEY_ID,
+                amount: order.amount,
+                currency: "INR",
+                name: "Ticpin Pass",
+                description: "3 Months Ticpin Pass Subscription",
+                image: "https://res.cloudinary.com/dk4oxsddy/image/upload/v1741701358/pass-logo-gold.png",
+                order_id: order.order_id,
+                handler: async function (response: any) {
+                    setLoading(true);
+                    try {
+                        console.log('Razorpay response:', response);
+                        
+                        // Ensure we have the correct order_id from the order creation
+                        const verificationData = {
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_order_id: order.order_id, // Use the order_id from backend response
+                            razorpay_signature: response.razorpay_signature,
+                            user_id: user.id,
+                            email: formData.email,
+                            phone: formData.phone
+                        };
+                        
+                        console.log('Verification data:', verificationData);
+                        
+                        const result = await passApi.verifyPassPayment(verificationData);
+
+                        if (result.success) {
+                            toast.success('Your Ticpin Pass is now active!');
+                            router.push('/pass');
+                        } else {
+                            toast.error('Payment verification failed.');
+                        }
+                    } catch (err: any) {
+                        console.error('Verification error:', err);
+                        toast.error(err.message || 'Verification failed');
+                    } finally {
+                        setLoading(false);
+                    }
+                },
+                prefill: {
+                    name: formData.name,
+                    email: formData.email,
+                    contact: formData.phone
+                },
+                theme: { color: "#000000" }
+            };
+
+            const rzp = (window as any).Razorpay(options);
+            rzp.open();
+
+        } catch (err: any) {
+            toast.error('Failed to initialize payment: ' + (err.message || 'Unknown error'));
+            setLoading(false);
+        }
+    };
+    const handleLogout = () => {
+        clearOrganizerSession();
+        setShowLogoutModal(false);
+        toast.success('Logged out successfully.');
+    };
+
+    if (initialLoading) {
+        return (
+            <div className="min-h-screen bg-white flex items-center justify-center">
+                <Loader2 className="w-12 h-12 text-black animate-spin" />
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-white text-black font-['Anek_Latin']" style={{ height: '100vh' }}>
+            <Script src="https://checkout.razorpay.com/v1/checkout.js" onLoad={() => setIsRazorpayLoaded(true)} />
+
+            {/* Header */}
+            <header className="fixed top-0 left-0 right-0 z-[100] bg-white border-b border-gray-200 px-10 py-6">
+                <div className="max-w-[1440px] mx-auto flex items-center justify-between">
+                    <div className="flex-shrink-0 cursor-pointer" onClick={() => router.push('/')}>
+                        <Image 
+                            src="/ticpin-logo-black.png" 
+                            alt="Ticpin" 
+                            width={120} 
+                            height={30} 
+                            priority 
+                            className="object-contain" 
+                        />
+                    </div>
+                    <h1 className="text-[28px] font-semibold text-black absolute left-1/2 -translate-x-1/2">Review your Ticpin Pass</h1>
+                    <div className="w-12 h-12 rounded-full bg-gray-100 flex-shrink-0 border border-gray-200" />
+                </div>
+            </header>
+
+            <main className="pt-32 pb-12 px-10 flex flex-col items-center justify-center min-h-[calc(100vh-80px)]">
+                <div className="w-full max-w-[1200px] bg-white border-[0.5px] border-gray-300 rounded-[20px] shadow-sm p-12 relative overflow-visible">
+                    <h2 className="text-[32px] font-bold mb-6">Billing Details</h2>
+                    <div className="w-full h-[0.5px] bg-gray-300 mb-8" />
+
+                    <div className="space-y-6">
+                        <p className="text-[18px] text-gray-500 mb-6">These details will be shown on your invoice *</p>
+                        
+                        <input 
+                            type="text"
+                            value={formData.name}
+                            onChange={(e) => setFormData({...formData, name: e.target.value})}
+                            placeholder="Enter your full name"
+                            className="w-full h-[60px] border border-gray-200 rounded-[12px] px-6 text-[18px] focus:border-black outline-none transition-colors"
+                        />
+
+                        <input 
+                            type="tel"
+                            value={formData.phone}
+                            onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                            placeholder="Enter contact number"
+                            className="w-full h-[60px] border border-gray-200 rounded-[12px] px-6 text-[18px] bg-[#F2F2F2] focus:border-black outline-none transition-colors"
+                        />
+
+                        {/* Searchable State Selector */}
+                        <div className="space-y-2 relative" ref={dropdownRef}>
+                            <label className="text-[20px] text-black/60 font-medium ml-1">Select State</label>
+                            <div className="relative">
+                                <input 
+                                    type="text"
+                                    value={stateSearch}
+                                    onChange={(e) => {
+                                        setStateSearch(e.target.value);
+                                        setShowStateDropdown(true);
+                                    }}
+                                    onFocus={() => setShowStateDropdown(true)}
+                                    placeholder="Type to search state..."
+                                    className="w-full h-[72px] border border-gray-200 rounded-[15px] px-6 pr-14 text-[20px] bg-[#F2F2F2] focus:border-black outline-none transition-colors"
+                                />
+                                <ChevronDown className={`absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 transition-transform ${showStateDropdown ? 'rotate-180' : ''}`} />
+                            </div>
+
+                            {showStateDropdown && (
+                                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-[15px] shadow-2xl z-[110] max-h-[250px] overflow-y-auto">
+                                    {filteredStates.length > 0 ? filteredStates.map(st => (
+                                        <div 
+                                            key={st}
+                                            onClick={() => {
+                                                setFormData({...formData, state: st});
+                                                setStateSearch(st);
+                                                setShowStateDropdown(false);
+                                            }}
+                                            className="px-6 py-4 hover:bg-black hover:text-white cursor-pointer text-[18px] transition-all"
+                                        >
+                                            {st}
+                                        </div>
+                                    )) : (
+                                        <div className="px-6 py-4 text-gray-400 italic">No states found</div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        <input 
+                            type="email"
+                            value={formData.email}
+                            onChange={(e) => setFormData({...formData, email: e.target.value})}
+                            placeholder="Enter your email"
+                            className="w-full h-[60px] border border-gray-200 rounded-[12px] px-6 text-[18px] focus:border-black outline-none transition-colors"
+                        />
+
+                        <p className="text-[18px] text-gray-500 mt-4">We'll mail you pass confirmation and invoices</p>
+                    </div>
+
+                    <div className="mt-12 flex items-center justify-between">
+                        <label className="flex items-center gap-4 cursor-pointer">
+                            <input 
+                                type="checkbox"
+                                checked={agreeTerms}
+                                onChange={(e) => setAgreeTerms(e.target.checked)}
+                                className="h-6 w-6 rounded border-gray-300 accent-black cursor-pointer"
+                            />
+                            <span className="text-[18px] text-gray-500">
+                                I have read and accepted the <a href="/terms" className="text-[#5331EA] hover:underline">terms and conditions</a>
+                            </span>
+                        </label>
+
+                        <button 
+                            onClick={handlePayment}
+                            disabled={loading || !agreeTerms}
+                            className="w-[280px] h-[72px] bg-black rounded-[10px] flex items-center active:scale-95 disabled:opacity-40 transition-all overflow-hidden"
+                        >
+                            <div className="flex-1 px-6 border-r border-white/20 text-left">
+                                <div className="text-white font-bold text-[24px]">₹799</div>
+                                <div className="text-white/40 text-[10px] font-bold">TOTAL</div>
+                            </div>
+                            <div className="w-[100px] flex items-center justify-center gap-2">
+                                {loading ? <Loader2 className="animate-spin text-white" /> : (
+                                    <>
+                                        <span className="text-white font-bold text-[20px]">Buy</span>
+                                        <ArrowRight className="w-5 h-5 text-white" />
+                                    </>
+                                )}
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </main>
+
+            {showLogoutModal && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-white border border-gray-200 rounded-[32px] p-8 max-w-md w-full shadow-2xl text-center">
+                        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <LogOut size={40} className="text-black" />
+                        </div>
+                        <h2 className="text-2xl font-bold mb-4">Organizer Account</h2>
+                        <p className="text-gray-500 mb-8">Ticpin Pass is only available for users. Please logout to continue.</p>
+                        <button onClick={handleLogout} className="w-full py-4 bg-black text-white rounded-full font-bold mb-3">Logout & Continue</button>
+                        <button onClick={() => setShowLogoutModal(false)} className="w-full py-4 text-gray-400 font-bold">Cancel</button>
+                    </div>
+                </div>
+            )}
         </div>
-        
-        <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
-          <h1 className="text-black font-semibold" style={{ fontSize: '30px', lineHeight: '33px' }}>
-            Review your Ticpin Pass
-          </h1>
-        </div>
-
-        <div className="absolute right-[37px] top-[31px]">
-          <div className="w-[51px] h-[51px] bg-gray-200 rounded-full"></div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="relative pt-[164px] pb-8 px-4">
-        <div className="max-w-[1366px] mx-auto">
-          {/* Billing Details */}
-          <div className="mb-8">
-            <h2 className="text-black font-semibold mb-4" style={{ fontSize: '30px', lineHeight: '33px' }}>
-              Billing Details
-            </h2>
-            <div className="w-full h-[0.5px] bg-gray-300 mb-6"></div>
-            <p className="text-gray-500 mb-6" style={{ fontSize: '20px', lineHeight: '22px' }}>
-              These details will be shown on your invoice *
-            </p>
-          </div>
-
-          {/* Form Fields */}
-          <div className="space-y-4 mb-8">
-            {/* Name */}
-            <div 
-              className="bg-white border border-gray-300 rounded-[10px] h-[51px] flex items-center px-4"
-              style={{ width: '1306px' }}
-            >
-              <span className="text-black" style={{ fontSize: '20px', lineHeight: '22px' }}>
-                {profile?.name || ''}
-              </span>
-            </div>
-
-            {/* Phone */}
-            <div 
-              className="bg-gray-100 border border-gray-300 rounded-[10px] h-[51px] flex items-center px-4"
-              style={{ width: '1306px' }}
-            >
-              <span className="text-black" style={{ fontSize: '20px', lineHeight: '22px' }}>
-                {profile?.phone || user?.phone || ''}
-              </span>
-            </div>
-
-            {/* Email */}
-            <div 
-              className="bg-white border border-gray-300 rounded-[10px] h-[51px] flex items-center px-4"
-              style={{ width: '1306px' }}
-            >
-              <span className="text-black" style={{ fontSize: '20px', lineHeight: '22px' }}>
-                {profile?.email || ''}
-              </span>
-            </div>
-
-            {/* State */}
-            <div className="mb-6">
-              <label className="text-gray-500 mb-2 block" style={{ fontSize: '20px', lineHeight: '22px' }}>
-                Select State
-              </label>
-              <div 
-                className="bg-gray-100 border border-gray-300 rounded-[15px] h-[72px] flex items-center px-4 justify-between"
-                style={{ width: '1305px' }}
-              >
-                <span className="text-black" style={{ fontSize: '20px', lineHeight: '22px' }}>
-                  {profile?.state || 'Tamil Nadu'} ( AUTO FETCH FROM PROFILE)
-                </span>
-                <ChevronDown className="w-5 h-5 text-gray-400" />
-              </div>
-            </div>
-
-            <p className="text-gray-500 mb-6" style={{ fontSize: '20px', lineHeight: '22px' }}>
-              We'll mail you pass confirmation and invoices
-            </p>
-          </div>
-
-          {/* Terms and Buy Button */}
-          <div className="w-full h-[0.5px] bg-gray-300 mb-6" style={{ width: '1268px' }}></div>
-          
-          <div className="flex items-center justify-between mb-8" style={{ width: '1306px' }}>
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="terms"
-                checked={acceptedTerms}
-                onChange={(e) => setAcceptedTerms(e.target.checked)}
-                className="w-[22px] h-[22px] border border-gray-400 rounded-[8px]"
-              />
-              <label htmlFor="terms" className="text-gray-500" style={{ fontSize: '20px', lineHeight: '22px' }}>
-                I have read and accepted the terms and conditions
-              </label>
-            </div>
-            
-            <button
-              onClick={handleBuy}
-              disabled={buying || !acceptedTerms}
-              className="bg-black text-white font-medium rounded-[7px] hover:scale-105 transition-all duration-200 flex items-center justify-center gap-4"
-              style={{ 
-                width: '263px', 
-                height: '58px',
-                fontSize: '32px',
-                lineHeight: '64px',
-                fontFamily: 'Anek Tamil Condensed, sans-serif'
-              }}
-            >
-              {buying ? (
-                <Loader2 className="animate-spin" />
-              ) : (
-                <>
-                  <span>Buy</span>
-                  <span>₹799</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          <div className="text-center">
-            <p className="text-white text-sm">TOTAL</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Logout Modal for Organizers */}
-      {showLogoutModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)' }}>
-          <div 
-            className="relative bg-gray-900 border border-white/15 rounded-3xl p-8 max-w-md w-full"
-            style={{ background: '#0d0630', borderRadius: '40px' }}
-          >
-            <div className="text-center">
-              <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                <LogOut size={40} className="text-white" />
-              </div>
-              <h2 className="text-white font-bold text-2xl mb-4">Organizer Account</h2>
-              <p className="text-white/60 mb-8 leading-relaxed">
-                Ticpin Pass is only available for users. Please logout from your organizer account and login as a user to continue.
-              </p>
-              <div className="flex flex-col gap-3">
-                <button 
-                  onClick={handleLogout}
-                  className="w-full py-4 bg-white text-black rounded-full font-bold hover:bg-gray-100 transition-colors"
-                >
-                  Logout & Continue
-                </button>
-                <button 
-                  onClick={() => setShowLogoutModal(false)}
-                  className="w-full py-4 bg-transparent text-white/40 rounded-full font-bold hover:text-white/60 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+    );
 }

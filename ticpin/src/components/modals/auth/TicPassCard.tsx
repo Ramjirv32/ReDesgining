@@ -32,7 +32,7 @@ const TicPassCard: React.FC<TicPassCardProps> = ({ pass, onClose }) => {
                     <span className="text-[12px] font-black uppercase tracking-widest leading-none mt-0.5">Active Member</span>
                 </div>
                 <button
-                    onClick={() => { router.push('/my-pass'); onClose(); }}
+                    onClick={() => { router.push('/pass'); onClose(); }}
                     className="text-[13px] font-black uppercase tracking-wider bg-white text-[#7B2FF7] hover:bg-zinc-100 px-6 py-3 rounded-2xl transition-all shadow-lg active:scale-95"
                 >
                     Manage Pass

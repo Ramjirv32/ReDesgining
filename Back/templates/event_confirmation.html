@@ -75,10 +75,13 @@
                                                 <td width="197" style="padding: 20px;">
                                                     <div
                                                         style="width: 197px; height: 111px; background: #AC9BF7; border-radius: 6px;">
-                                                        <img src="{{if .EventImageURL}}{{.EventImageURL}}{{else}}https://res.cloudinary.com/dt9vkv9as/image/upload/v1741270000/placeholder.png{{end}}"
-                                                            width="197" height="111"
+                                                        {{if .EventImageURL}}
+                                                        <img src="{{.EventImageURL}}" width="197" height="111"
                                                             style="border-radius: 6px; display: block; object-fit: cover;"
                                                             alt="Event" />
+                                                    {{else}}
+                                                        <div style="width: 197px; height: 111px; border-radius: 6px; display: block; background: linear-gradient(135deg, #AC9BF7, #8B5CF6); text-align: center; line-height: 111px; color: white; font-weight: bold; font-size: 16px;">EVENT</div>
+                                                    {{end}}
                                                     </div>
                                                 </td>
                                                 <td style="vertical-align: middle; padding: 20px 20px 20px 0;">

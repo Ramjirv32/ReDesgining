@@ -39,6 +39,18 @@ func SendConfirmationEmail(orderID string, category string) error {
 			return err
 		}
 
+		// Fetch Play details for image
+		var play models.Play
+		var playImageURL string
+		err = config.PlaysCol.FindOne(ctx, bson.M{"_id": b.PlayID}).Decode(&play)
+		if err == nil {
+			if play.LandscapeImageURL != "" {
+				playImageURL = play.LandscapeImageURL
+			} else {
+				playImageURL = play.PortraitImageURL
+			}
+		}
+
 		// Format data for email
 		data := config.BookingEmailData{
 			Day:          b.BookedAt.Format("Monday"),
@@ -51,6 +63,7 @@ func SendConfirmationEmail(orderID string, category string) error {
 			BookingID:    b.BookingID,
 			Duration:     b.Duration,
 			UserPhone:    b.UserPhone,
+			PlayImageURL: playImageURL,
 		}
 
 		return config.SendBookingConfirmation(b.UserEmail, "play", data)
@@ -61,7 +74,7 @@ func SendConfirmationEmail(orderID string, category string) error {
 			return err
 		}
 
-		// Fetch Event details for Venue and Time
+		// Fetch Event details for Venue, Time and Image
 		var event models.Event
 		err = config.EventsCol.FindOne(ctx, bson.M{"_id": b.EventID}).Decode(&event)
 		if err != nil {
@@ -70,18 +83,24 @@ func SendConfirmationEmail(orderID string, category string) error {
 			event.Time = "All Day"
 		}
 
+		eventImageURL := event.PortraitImageURL
+		if eventImageURL == "" {
+			eventImageURL = event.LandscapeImageURL
+		}
+
 		// Format data for email
 		data := config.BookingEmailData{
-			Day:         b.BookedAt.Format("Monday"),
-			Date:        b.BookedAt.Format("02"),
-			Month:       b.BookedAt.Format("January"),
-			Time:        event.Time,
-			EventName:   b.EventName,
-			Venue:       event.VenueName,
-			Location:    b.City,
-			BookingID:   b.BookingID,
-			TicketCount: 0,
-			UserPhone:   b.UserPhone,
+			Day:           b.BookedAt.Format("Monday"),
+			Date:          b.BookedAt.Format("02"),
+			Month:         b.BookedAt.Format("January"),
+			Time:          event.Time,
+			EventName:     b.EventName,
+			Venue:         event.VenueName,
+			Location:      b.City,
+			BookingID:     b.BookingID,
+			TicketCount:   0,
+			UserPhone:     b.UserPhone,
+			EventImageURL: eventImageURL,
 		}
 		for _, t := range b.Tickets {
 			data.TicketCount += t.Quantity
