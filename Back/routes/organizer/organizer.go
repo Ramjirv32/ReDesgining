@@ -5,8 +5,11 @@ import (
 	orgmedia "ticpin-backend/controller/organizer/media"
 	orgprofile "ticpin-backend/controller/organizer/profile"
 	orgver "ticpin-backend/controller/organizer/verification"
+	morganalytics "ticpin-backend/controller/organizer/analytics"
+	morgpayouts "ticpin-backend/controller/organizer/payouts"
 	orgotp "ticpin-backend/controller/otp"
 	"ticpin-backend/middleware"
+
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -39,4 +42,9 @@ func OrganizerRoutes(app *fiber.App) {
 	app.Post("/api/organizer/send-backup-otp", middleware.RequireAuth, orgver.SendBackupOTPHandler)
 	app.Post("/api/organizer/verify-backup-otp", middleware.RequireAuth, orgver.VerifyBackupOTPHandler)
 	app.Post("/api/organizer/logout", orgauth.Logout)
+
+	// Analytics & Payouts
+	app.Get("/api/organizer/analytics", middleware.RequireAuth, morganalytics.GetOrganizerAnalytics)
+	app.Get("/api/organizer/payouts", middleware.RequireAuth, morgpayouts.GetPayoutsList)
+	app.Post("/api/organizer/payouts/trigger", middleware.RequireAuth, morgpayouts.TriggerPayout)
 }

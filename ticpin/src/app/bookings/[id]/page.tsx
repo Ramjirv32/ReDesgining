@@ -222,12 +222,15 @@ export default function BookingDetailsPage() {
               <div className="bg-red-50 border border-red-200 rounded-[14px] p-6">
                 <h3 className="text-lg font-semibold text-red-800 mb-3">Cancellation Confirmed</h3>
                 <p className="text-red-700 mb-4">
-                  This booking has been cancelled and a refund will be processed to your original payment method.
+                  {booking.refund_amount > 0 
+                    ? `This booking has been cancelled and a refund of ${formatCurrency(booking.refund_amount)} will be processed to your original payment method.`
+                    : 'This booking has been cancelled. No refund was applicable according to the cancellation policy.'}
                 </p>
                 <div className="space-y-2 text-sm text-red-600">
                   <p>• Booking ID: {booking.booking_id || booking.id?.slice(-8).toUpperCase()}</p>
-                  <p>• Refund Amount: {formatCurrency(booking.grand_total || 0)}</p>
-                  <p>• Processing Time: 5-7 business days</p>
+                  <p>• Refund Amount: {formatCurrency(booking.refund_amount || 0)}</p>
+                  {booking.penalty_amount > 0 && <p>• Cancellation Fee: {formatCurrency(booking.penalty_amount)}</p>}
+                  {booking.refund_amount > 0 && <p>• Processing Time: 5-7 business days</p>}
                 </div>
               </div>
 
@@ -397,7 +400,9 @@ export default function BookingDetailsPage() {
             </section>
 
             <section className="space-y-3 pt-6 border-t border-zinc-100">
-              {booking.status !== 'cancelled' && (
+              {booking.status !== 'cancelled' && 
+               booking.date && 
+               (new Date(booking.date).getTime() >= new Date().setHours(0,0,0,0)) && (
                 <button
                   onClick={() => router.push(`/bookings/${booking.id}/cancel?category=${booking.type}`)}
                   className="w-full h-[52px] bg-red-600 text-white rounded-[14px] font-bold flex items-center justify-center gap-2 hover:bg-red-700 transition-colors"

@@ -261,51 +261,48 @@ func CreateOrderWithGateway(req OrderRequest, gateway GatewayType) (*OrderRespon
 
 // CreateRefundRazorpay initiates a refund for a Razorpay payment
 func CreateRefundRazorpay(paymentID string, amount float64, notes map[string]string) (string, error) {
-	keyID := os.Getenv("NEXT_PUBLIC_RAZORPAY_KEY_ID")
-	keySecret := os.Getenv("RAZORPAY_KEY_SECRET")
+	url := fmt.Sprintf("https://api.razorpay.com/v1/payments/%s/refund", paymentID)
 
 	payload := map[string]interface{}{
-		"receipt": paymentID,
+		"amount": int(amount * 100), // paise
 	}
-	if amount > 0 {
-		amountPaise := int64(amount * 100)
-		payload["amount"] = amountPaise
-	}
+	
 	if len(notes) > 0 {
 		payload["notes"] = notes
 	}
 
-	jsonPayload, _ := json.Marshal(payload)
-	httpReq, err := http.NewRequest("POST", "https://api.razorpay.com/v1/refunds", bytes.NewBuffer(jsonPayload))
+	body, _ := json.Marshal(payload)
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
 	if err != nil {
-		return "", fmt.Errorf("failed to create refund request: %v", err)
+		return "", err
 	}
 
-	auth := base64.StdEncoding.EncodeToString([]byte(keyID + ":" + keySecret))
-	httpReq.Header.Add("Authorization", "Basic "+auth)
-	httpReq.Header.Add("Content-Type", "application/json")
+	keyID := os.Getenv("NEXT_PUBLIC_RAZORPAY_KEY_ID")
+	keySecret := os.Getenv("RAZORPAY_KEY_SECRET")
 
-	fmt.Printf("DEBUG: Creating Razorpay refund for Payment ID: %s\n", paymentID)
+	req.SetBasicAuth(keyID, keySecret)
+	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := httpClient.Do(httpReq)
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("failed to call razorpay refund API: %v", err)
+		return "", err
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
-	var result map[string]interface{}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return "", fmt.Errorf("razorpay refund response parse error: %s", string(body))
+	respBody, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode >= 400 {
+		return "", fmt.Errorf("razorpay refund API error (status %d): %s", resp.StatusCode, string(respBody))
 	}
 
-	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("razorpay refund API error (status %d): %s", resp.StatusCode, string(body))
-	}
+	var result map[string]interface{}
+	json.Unmarshal(respBody, &result)
 
 	refundID, _ := result["id"].(string)
 	if refundID == "" {
-		return "", fmt.Errorf("razorpay did not return refund ID: %s", string(body))
+		return "", fmt.Errorf("razorpay did not return refund ID: %s", string(respBody))
 	}
 
 	fmt.Printf("DEBUG: Successfully created Razorpay refund - Refund ID: %s, Payment ID: %s\n", refundID, paymentID)

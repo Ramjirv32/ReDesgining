@@ -1,4 +1,6 @@
-package scripts
+// +build ignore
+
+package main
 
 import (
 	"context"

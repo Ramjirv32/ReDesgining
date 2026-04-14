@@ -182,89 +182,102 @@ func CancelBooking(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "cannot cancel an expired booking"})
 	}
 
+	// REFUND SYNC: We now process refund FIRST, then update status only if refund succeeds (or no refund needed)
+	// Calculate refund details first
+	paymentID := ""
+	grandTotal := 0.0
+	switch b := bookingFound.(type) {
+	case *models.Booking:
+		paymentID = b.PaymentID
+		grandTotal = b.GrandTotal
+	case *models.PlayBooking:
+		paymentID = b.PaymentID
+		grandTotal = b.GrandTotal
+	case *models.DiningBooking:
+		paymentID = b.PaymentID
+		grandTotal = b.GrandTotal
+	}
+
+	now := time.Now()
+	timeLeft := bTime.Sub(now)
+	refundAmount := 0.0
+	penaltyAmount := grandTotal
+
+	// Tiered Refund Logic
+	if timeLeft > 24*time.Hour {
+		refundAmount = grandTotal // 100% refund
+		penaltyAmount = 0.0
+	} else if timeLeft > 12*time.Hour {
+		refundAmount = grandTotal * 0.5 // 50% refund
+		penaltyAmount = grandTotal * 0.5
+	}
+	// else: timeLeft <= 12h, refundAmount remains 0.0, penaltyAmount remains grandTotal
+
+	fmt.Printf("DEBUG: Refund Calculation - Total: %.2f, Refund: %.2f, Penalty: %.2f, TimeLeft: %v\n", 
+		grandTotal, refundAmount, penaltyAmount, timeLeft)
+
+	refundID := ""
+
+	// Free booking or fully discounted booking edge case
+	if grandTotal == 0 {
+		fmt.Printf("INFO: Free booking %s cancelled, skipping Razorpay refund.\n", bookingIDStr)
+		refundAmount = 0 // Enforce 0 for safety
+	} else {
+		if paymentID == "" {
+			fmt.Printf("ERROR: PaymentID missing for booking %s\n", bookingIDStr)
+			refundAmount = 0
+		}
+	}
+
+	if paymentID != "" && grandTotal > 0 && refundAmount > 0 {
+		refundNotes := map[string]string{
+			"booking_id":   bookingIDStr,
+			"booking_type": category,
+			"reason":       "booking_cancelled",
+			"penalty":      fmt.Sprintf("%.2f", penaltyAmount),
+			"cancelled_at": time.Now().Format(time.RFC3339),
+		}
+
+		rid, err := paymentsvc.CreateRefund(paymentID, refundAmount, refundNotes)
+		if err != nil {
+			fmt.Printf("ERROR: Refund failed for booking %s: %v\n", bookingIDStr, err)
+
+			return c.Status(500).JSON(fiber.Map{
+				"error": "refund failed: " + err.Error(),
+			})
+		}
+
+		refundID = rid
+		fmt.Printf("SUCCESS: Refund created: %s\n", refundID)
+	}
+
+	// Now update status to cancelled
 	update := bson.M{
 		"$set": bson.M{
-			"status":       "cancelled",
-			"cancelled_at": time.Now(),
+			"status":         "cancelled",
+			"cancelled_at":   time.Now(),
+			"refund_id":      refundID,
+			"refund_amount":  refundAmount,
+			"penalty_amount": penaltyAmount,
+			"refund_date":    time.Now(),
 		},
 	}
 
-	// FIX RC2: Use atomic update to prevent concurrent payment+cancel race
-	// Only update if status is NOT already paid/confirmed (prevents payment webhook race)
 	result, err := col.UpdateOne(ctx, bson.M{
 		"_id": bookingPrimitiveID,
 		"status": bson.M{
-			"$nin": []string{"booked", "confirmed", "paid"},
+			"$nin": []string{"cancelled", "failed", "refunded"},
 		},
 	}, update)
 
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "failed to cancel booking: database error"})
+		return c.Status(500).JSON(fiber.Map{"error": "failed to update booking status: database error"})
 	}
 
 	if result.MatchedCount == 0 {
-		return c.Status(400).JSON(fiber.Map{"error": "booking cannot be cancelled (already confirmed or paid)"})
+		return c.Status(400).JSON(fiber.Map{"error": "booking already cancelled or unavailable"})
 	}
-
-	// Extract payment details for refund
-	var paymentID string
-	var grandTotal float64
-	switch b := bookingFound.(type) {
-	case *models.Booking:
-		paymentID = b.PaymentID
-		if paymentID == "" {
-			paymentID = b.OrderID
-		}
-		grandTotal = b.GrandTotal
-	case *models.PlayBooking:
-		paymentID = b.PaymentID
-		if paymentID == "" {
-			paymentID = b.OrderID
-		}
-		grandTotal = b.GrandTotal
-	case *models.DiningBooking:
-		paymentID = b.PaymentID
-		if paymentID == "" {
-			paymentID = b.OrderID
-		}
-		grandTotal = b.GrandTotal
-	}
-
-	// Process refund if payment exists
-	if paymentID != "" && grandTotal > 0 {
-		go func() {
-			refundCtx, refundCancel := context.WithTimeout(context.Background(), 10*time.Second)
-			defer refundCancel()
-
-			refundNotes := map[string]string{
-				"booking_id":   bookingIDStr,
-				"booking_type": category,
-				"reason":       "booking_cancelled",
-				"cancelled_at": time.Now().Format("2006-01-02T15:04:05Z07:00"),
-			}
-
-			refundID, err := paymentsvc.CreateRefund(paymentID, grandTotal, refundNotes)
-			if err != nil {
-				fmt.Printf("ERROR: Failed to create refund for booking %s (Payment ID: %s): %v\n", bookingIDStr, paymentID, err)
-			} else {
-				fmt.Printf("SUCCESS: Refund initiated for booking %s - Refund ID: %s, Payment ID: %s, Amount: %.2f\n", bookingIDStr, refundID, paymentID, grandTotal)
-				// Update booking with refund ID for tracking
-				_, updateErr := col.UpdateOne(refundCtx, bson.M{"_id": bookingPrimitiveID}, bson.M{
-					"$set": bson.M{
-						"refund_id":     refundID,
-						"refund_date":   time.Now(),
-						"refund_amount": grandTotal,
-					},
-				})
-				if updateErr != nil {
-					fmt.Printf("ERROR: Failed to update refund ID in booking %s: %v\n", bookingIDStr, updateErr)
-				}
-			}
-
-			_ = refundCtx
-		}()
-	}
-
+	
 	if category == "play" || category == "dining" {
 		// FIX RC3 & BUG4: Properly handle lock cleanup with error tracking + context timeout
 		go func() {

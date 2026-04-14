@@ -112,7 +112,7 @@ func VerifyPassHandler(c *fiber.Ctx) error {
 
 	// 2. Store pass in DB immediately (payment already collected by Razorpay)
 	p, err := passservice.Apply(req.UserID, req.RazorpayPaymentID, req.Phone, req.RazorpayOrderID, models.TicpinPass{
-		Price: 1, // Test price: ₹1
+		Price: 799, // Updated from test price 1 to 799
 	})
 	if err != nil {
 		fmt.Printf("DEBUG: Failed to activate pass for user %s: %v\n", req.UserID, err)
