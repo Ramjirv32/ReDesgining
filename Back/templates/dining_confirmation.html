@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Dining Voucher Confirmed</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Anek+Latin:wght@400;500;600;700;800;900&display=swap');
+    </style>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Anek Latin', 'Arial', sans-serif; background-color: #f5f5f5;">
+    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="padding: 10px 0;">
+        <tr>
+            <td align="center">
+                <!-- Wrapper Box -->
+                <table width="500" border="0" cellspacing="0" cellpadding="0" bgcolor="#0A0132" style="border-radius: 15px; border: 1px solid #ffffff; overflow: hidden; margin: 0 auto;">
+                    
+                    <!-- Inner Gray Container (With Yellow Header) -->
+                    <tr>
+                        <td align="center" style="padding: 20px 20px 0 20px;">
+                            <table width="100%" border="0" cellspacing="0" cellpadding="0" bgcolor="#EBEBEB" style="border-radius: 15px; overflow: hidden; display: block; margin: 0 auto;">
+                                
+                                <!-- Yellow Header inside grey block -->
+                                <tr>
+                                    <td align="left" bgcolor="#E7C200" style="padding: 12px 16px;">
+                                        <img src="https://raw.githubusercontent.com/velronatechnologies/Ticpin-website/main/ticpin-logo-black.png" alt="TICPIN" height="20" style="display: block; margin: 0; outline: none; text-decoration: none;" oncontextmenu="return false;" ondragstart="return false;" />
+                                    </td>
+                                </tr>
+
+                                <!-- Gray Content Body -->
+                                <tr>
+                                    <td align="left" style="padding: 16px;">
+                                        
+                                        <!-- Heading -->
+                                        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 6px;">
+                                            <tr>
+                                                <td style="font-size: 20px; font-weight: 600; font-family: 'Anek Latin'; color: #000000; vertical-align: middle; line-height: 24px;">
+                                                    Dining voucher confirmed
+                                                    <span style="display: inline-block; width: 18px; height: 18px; background: #0AC655; border-radius: 50%; color: #fff; text-align: center; line-height: 18px; font-size: 12px; margin-left: 8px; vertical-align: middle;">✓</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        
+                                        <p style="margin: 0 0 12px 0; font-family: 'Anek Latin'; font-size: 12px; font-weight: 500; color: #686868; line-height: 16px;">Redemption Date : {{.Day}}, {{.Date}} {{.Month}}, {{.Time}}</p>
+
+                                        <!-- Restaurant Card Box -->
+                                        <table width="100%" border="0" cellspacing="0" cellpadding="10" bgcolor="#ffffff" style="border-radius: 10px; margin-bottom: 12px;">
+                                            <tr>
+                                                <td width="120" style="padding-right: 0;">
+                                                    {{if .EventImageURL}}
+                                                    <img src="{{.EventImageURL}}" width="120" height="68" style="border-radius: 6px; display: block; object-fit: cover;" alt="Restaurant" oncontextmenu="return false;" ondragstart="return false;" />
+                                                    {{else}}
+                                                    <div style="width: 120px; height: 68px; border-radius: 6px; display: block; background-color: #FFEF9A;"></div>
+                                                    {{end}}
+                                                </td>
+                                                <td style="vertical-align: middle; padding-left: 10px;">
+                                                    <p style="margin: 0 0 6px 0; font-family: 'Anek Latin'; font-weight: 600; font-size: 14px; color: #000000; line-height: 18px;">{{.RestaurantName}}</p>
+                                                    <p style="margin: 0; font-family: 'Anek Latin'; font-size: 12px; font-weight: 500; color: #686868; line-height: 16px;">{{.RestaurantAddress}}</p>
+                                                </td>
+                                            </tr>
+                                        </table>
+
+                                        <!-- Details Card Box -->
+                                        <table width="100%" border="0" cellspacing="0" cellpadding="14" bgcolor="#ffffff" style="border-radius: 10px; margin-bottom: 12px;">
+                                            <tr>
+                                                <td align="left">
+                                                    <!-- Voucher ID -->
+                                                    <p style="margin: 0 0 2px 0; font-family: 'Anek Latin'; font-size: 11px; font-weight: 500; color: #686868; line-height: 14px;">Voucher ID</p>
+                                                    <p style="margin: 0 0 8px 0; font-family: 'Anek Latin'; font-size: 13px; font-weight: 500; color: #000000; line-height: 16px;">{{.VoucherID}}</p>
+                                                    
+                                                    <div style="border-top: 1px solid #D9D9D9; margin: 8px 0 12px 0;"></div>
+                                                    
+                                                    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                                        <!-- Date & Time -->
+                                                        <tr>
+                                                            <td style="padding-bottom: 10px;">
+                                                                <p style="margin: 0 0 2px 0; font-family: 'Anek Latin'; font-size: 11px; font-weight: 500; color: #686868; line-height: 14px;">Date & Time</p>
+                                                                <p style="margin: 0; font-family: 'Anek Latin'; font-size: 13px; font-weight: 500; color: #000000; line-height: 16px;">{{.Day}} {{.Date}} {{.Month}} | {{.Time}}</p>
+                                                            </td>
+                                                        </tr>
+                                                        
+                                                        <!-- Voucher Value -->
+                                                        <tr>
+                                                            <td style="padding-bottom: 10px;">
+                                                                <p style="margin: 0 0 2px 0; font-family: 'Anek Latin'; font-size: 11px; font-weight: 500; color: #686868; line-height: 14px;">Voucher Value</p>
+                                                                <p style="margin: 0; font-family: 'Anek Latin'; font-size: 13px; font-weight: 500; color: #000000; line-height: 16px;">{{.VoucherValue}}</p>
+                                                            </td>
+                                                        </tr>
+                                                        
+                                                        <!-- Party Size -->
+                                                        <tr>
+                                                            <td style="padding-bottom: 10px;">
+                                                                <p style="margin: 0 0 2px 0; font-family: 'Anek Latin'; font-size: 11px; font-weight: 500; color: #686868; line-height: 14px;">Party Size</p>
+                                                                <p style="margin: 0; font-family: 'Anek Latin'; font-size: 13px; font-weight: 500; color: #000000; line-height: 16px;">{{.PartySize}} persons</p>
+                                                            </td>
+                                                        </tr>
+                                                        
+                                                        {{if .Offer}}
+                                                        <!-- Offer -->
+                                                        <tr>
+                                                            <td>
+                                                                <p style="margin: 0 0 2px 0; font-family: 'Anek Latin'; font-size: 11px; font-weight: 500; color: #686868; line-height: 14px;">Offer</p>
+                                                                <p style="margin: 0; font-family: 'Anek Latin'; font-size: 13px; font-weight: 500; color: #000000; line-height: 16px;">{{.Offer}}</p>
+                                                            </td>
+                                                        </tr>
+                                                        {{end}}
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </table>
+
+                                        <p style="font-family: 'Anek Latin'; font-size: 11px; font-weight: 500; color: #686868; margin: 12px 0 12px 0; line-height: 14px;">
+                                            To access your voucher, please sign in to your <span style="color: #5331EA; font-weight: 600;">Ticpin</span> account with {{.UserPhone}}
+                                        </p>
+
+                                        <p style="font-family: 'Anek Latin'; font-weight: 600; font-size: 14px; color: #000000; margin-bottom: 8px; line-height: 18px;">Notes</p>
+                                        
+                                        <!-- Notes Box -->
+                                        <table width="100%" border="0" cellspacing="0" cellpadding="12" bgcolor="#ffffff" style="border-radius: 10px;">
+                                            <tr>
+                                                <td align="left">
+                                                    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                                        <tr>
+                                                            <td width="18" style="vertical-align: top; padding-top: 2px;">
+                                                                <div style="width: 6px; height: 6px; border: 2px solid #E7C200; box-sizing: border-box; transform: rotate(-45deg);"></div>
+                                                            </td>
+                                                            <td style="font-family: 'Anek Latin'; font-size: 11px; font-weight: 500; color: #686868; padding-bottom: 8px; line-height: 14px;">
+                                                                Please show your voucher code to the restaurant staff before ordering.
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td width="18" style="vertical-align: top; padding-top: 2px;">
+                                                                <div style="width: 6px; height: 6px; border: 2px solid #E7C200; box-sizing: border-box; transform: rotate(-45deg);"></div>
+                                                            </td>
+                                                            <td style="font-family: 'Anek Latin'; font-size: 11px; font-weight: 500; color: #686868; padding-bottom: 8px; line-height: 14px;">
+                                                                This voucher is valid only on the specified date and time.
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td width="18" style="vertical-align: top; padding-top: 2px;">
+                                                                <div style="width: 6px; height: 6px; border: 2px solid #E7C200; box-sizing: border-box; transform: rotate(-45deg);"></div>
+                                                            </td>
+                                                            <td style="font-family: 'Anek Latin'; font-size: 11px; font-weight: 500; color: #686868; line-height: 14px;">
+                                                                Cannot be combined with other offers or promotions.
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                    <p style="margin: 12px 0 0 0; font-family: 'Anek Latin'; font-size: 10px; font-weight: 500; color: #686868; line-height: 14px;">
+                                                        Enjoy your dining experience!<br />
+                                                        Team <span style="color: #5331EA; font-weight: 600;">Ticpin</span>
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Help Section (directly on #0A0132) -->
+                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="padding: 20px 0 15px 0;">
+                        <tr>
+                            <td align="center">
+                                <p style="font-family: 'Anek Latin'; color: #ffffff; font-weight: 600; font-size: 16px; margin: 0 0 8px 0; line-height: 20px;">LOOKING FOR HELP?</p>
+                                <p style="font-family: 'Anek Latin'; color: #ffffff; font-weight: 500; font-size: 11px; line-height: 14px; margin: 0 0 12px 0;">
+                                    Mail us at <a href="mailto:support@ticpin.in" style="color: #5331EA; text-decoration: none;">support@ticpin.in</a> (10AM-5PM), and we'll help you out.
+                                </p>
+                                
+                                <div style="border-top: 1px solid #ffffff; margin-bottom: 12px;"></div>
+
+                                <table border="0" cellspacing="0" cellpadding="0" align="center">
+                                    <tr>
+                                        <td style="padding-right: 8px;">
+                                            <a href="#" style="text-decoration: none;">
+                                                <img src="https://raw.githubusercontent.com/ramji2311/tailwind-tsx-replica/main/whatsapp.png" width="28" height="28" style="display: block; border: 0;" alt="WA" oncontextmenu="return false;" ondragstart="return false;" />
+                                            </a>
+                                        </td>
+                                        <td style="padding-right: 8px;">
+                                            <a href="#" style="text-decoration: none;">
+                                                <img src="https://raw.githubusercontent.com/ramji2311/tailwind-tsx-replica/main/facebook.png" width="28" height="28" style="display: block; border: 0;" alt="FB" oncontextmenu="return false;" ondragstart="return false;" />
+                                            </a>
+                                        </td>
+                                        <td style="padding-right: 8px;">
+                                            <a href="#" style="text-decoration: none;">
+                                                <img src="https://raw.githubusercontent.com/ramji2311/tailwind-tsx-replica/main/insta.png" width="28" height="28" style="display: block; border: 0;" alt="IG" oncontextmenu="return false;" ondragstart="return false;" />
+                                            </a>
+                                        </td>
+                                        <td style="padding-right: 8px;">
+                                            <a href="#" style="text-decoration: none;">
+                                                <img src="https://raw.githubusercontent.com/ramji2311/tailwind-tsx-replica/main/twitter.png" width="28" height="28" style="display: block; border: 0;" alt="X" oncontextmenu="return false;" ondragstart="return false;" />
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <a href="#" style="text-decoration: none;">
+                                                <img src="https://raw.githubusercontent.com/ramji2311/tailwind-tsx-replica/main/youtube.png" width="28" height="28" style="display: block; border: 0;" alt="YT" oncontextmenu="return false;" ondragstart="return false;" />
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </table>
+                                <div style="border-top: 1px solid #ffffff; margin-top: 12px;"></div>
+                            </td>
+                        </tr>
+                    </table>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

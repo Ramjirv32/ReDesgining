@@ -14,23 +14,30 @@ import (
 )
 
 type BookingEmailData struct {
-	Day             string
-	Date            string
-	Month           string
-	Time            string
-	EventName       string
-	PlayName        string
-	Venue           string
-	VenueAddress    string
-	Location        string
-	BookingID       string
-	TicketCount     int
-	GateOpeningTime string
-	Duration        int
-	Offer           string
-	UserPhone       string
-	EventImageURL   string
-	PlayImageURL    string
+	Day               string
+	Date              string
+	Month             string
+	Time              string
+	EventName         string
+	PlayName          string
+	Venue             string
+	VenueAddress      string
+	Location          string
+	BookingID         string
+	TicketCount       int
+	GateOpeningTime   string
+	Duration          int
+	Offer             string
+	UserPhone         string
+	EventImageURL     string
+	PlayImageURL      string
+	RestaurantName    string
+	RestaurantAddress string
+	VoucherID         string
+	VoucherValue      string
+	PartySize         int
+	PassName          string
+	PurchaseID        string
 }
 
 func sendOTP(from, pass, to, subject, body string) error {
@@ -160,6 +167,16 @@ func SendBookingConfirmation(toEmail string, category string, data BookingEmailD
 		pass = os.Getenv("EVENTS_APP_PASSWORD")
 		subject = "Ticpin Event Booking Confirmed: #" + data.BookingID
 		templateName = "event_confirmation.html"
+	case "dining":
+		from = os.Getenv("DINING_EMAIL")
+		pass = os.Getenv("DINING_APP_PASSWORD")
+		subject = "Ticpin Dining Voucher Confirmed: #" + data.BookingID
+		templateName = "dining_confirmation.html"
+	case "pass":
+		from = os.Getenv("ADMIN_EMAIL")
+		pass = os.Getenv("ADMIN_APP_PASSWORD")
+		subject = "Ticpin Pass Purchase Confirmed: #" + data.PurchaseID
+		templateName = "pass_confirmation.html"
 	default:
 		return fmt.Errorf("invalid category for confirmation email")
 	}

@@ -2,8 +2,10 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { ChevronRight, Trash2, X, Tag, CheckCircle2, ChevronDown, ArrowLeft, TriangleAlert } from 'lucide-react';
+import { ChevronRight, Trash2, X, Tag, CheckCircle2, ChevronDown, ArrowLeft, TriangleAlert, Clock } from 'lucide-react';
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { useSlotLock } from '@/hooks/useSlotLock';
+import { toast } from '@/components/ui/Toast';
 import { bookingApi, OfferItem, PaymentOrderResponse } from '@/lib/api/booking';
 import { profileApi } from '@/lib/api/profile';
 import Link from 'next/link';
@@ -82,6 +84,25 @@ export default function DiningReviewPage() {
     // Modals
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+    const { timeRemaining, loading: lockLoading, locks } = useSlotLock('dining');
+    
+    useEffect(() => {
+        if (step === 'success') return;
+        
+        // If locks finished loading and we have no active locks or timer hit 0, kick out.
+        if (!lockLoading && timeRemaining === 0 && locks.length === 0 && venueData) {
+            sessionStorage.removeItem('dining_cart');
+            toast.error("Booking session expired. Please start over.");
+            router.push('/');
+        }
+    }, [step, timeRemaining, lockLoading, locks.length, venueData, router]);
+
+    const formatTimer = (seconds: number) => {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    };
 
     const billingRef = useRef<HTMLDivElement>(null);
 
@@ -372,6 +393,15 @@ export default function DiningReviewPage() {
                     <ArrowLeft size={16} /> Back
                 </button>
             </header>
+
+            {timeRemaining > 0 && (
+                <div className="w-full bg-[#f4effe] flex items-center justify-center py-2 border-b border-[#e9defe]">
+                    <Clock className="w-4 h-4 text-[#5331EA] mr-2" />
+                    <span className="text-[13px] font-medium text-[#4a3978]">
+                        Complete your booking in <span className="text-[#5331EA] font-bold">{formatTimer(timeRemaining)}</span> mins
+                    </span>
+                </div>
+            )}
 
             <main className="max-w-[1200px] mx-auto px-4 py-8 md:py-12">
                 <div className="flex flex-col lg:flex-row gap-8 items-start">

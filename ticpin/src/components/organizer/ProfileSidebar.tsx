@@ -64,18 +64,11 @@ export default function ProfileSidebar({ isOpen, onClose }: ProfileSidebarProps)
 
     return (
         <>
-            {/* Backdrop */}
-            {isOpen && (
-                <div 
-                    className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[99]"
-                    onClick={onClose}
-                />
-            )}
 
             {/* Sidebar */}
             <div 
-                className={`fixed top-[114px] right-0 w-[336px] h-[calc(100vh-114px)] bg-white shadow-[-4px_0_15px_rgba(0,0,0,0.1)] z-[100] transition-transform duration-300 transform ${
-                    isOpen ? 'translate-x-0' : 'translate-x-full'
+                className={`fixed top-[114px] w-[280px] h-[calc(100vh-114px)] bg-white shadow-[-4px_0_15px_rgba(0,0,0,0.1)] z-[100] transition-all duration-300 ${
+                    isOpen ? 'right-0' : 'right-[-280px]'
                 }`}
             >
                 <div className="flex flex-col h-full border-l border-zinc-200">

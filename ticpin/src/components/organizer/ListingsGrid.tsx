@@ -15,6 +15,7 @@ interface ListingsGridProps {
     accentColor: string;
     Icon: React.ElementType;
     searchQuery?: string;
+    onDataCountChange?: (count: number) => void;
 }
 
 const VERTICAL_APIS = {
@@ -23,11 +24,17 @@ const VERTICAL_APIS = {
     play: playApi,
 };
 
-export default function ListingsGrid({ vertical, createPath, createLabel, accentColor, Icon, searchQuery = '' }: ListingsGridProps) {
+export default function ListingsGrid({ vertical, createPath, createLabel, accentColor, Icon, searchQuery = '', onDataCountChange }: ListingsGridProps) {
     const router = useRouter();
     const [listings, setListings] = useState<Listing[]>([]);
     const [loadingListings, setLoadingListings] = useState(true);
     const [errorMsg, setErrorMsg] = useState('');
+
+    useEffect(() => {
+        if (onDataCountChange && !loadingListings) {
+            onDataCountChange(listings.length);
+        }
+    }, [listings.length, loadingListings, onDataCountChange]);
 
     const fetchListings = useCallback(async () => {
         setLoadingListings(true);

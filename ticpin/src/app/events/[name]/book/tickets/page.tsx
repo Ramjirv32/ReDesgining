@@ -7,7 +7,9 @@ import { bookingApi } from '@/lib/api/booking';
 import { passApi, TicpinPass } from '@/lib/api/pass';
 import { useUserSession } from '@/lib/auth/user';
 import { TicketSkeleton } from '@/components/ui/Skeleton';
-import { Zap } from 'lucide-react';
+import { Zap, Clock } from 'lucide-react';
+import { useSlotLock } from '@/hooks/useSlotLock';
+import { toast } from '@/components/ui/Toast';
 
 interface TicketCategory {
     name: string;
@@ -79,14 +81,32 @@ export default function TicketSelectionPage() {
         return Math.max(0, cat.capacity - booked);
     };
 
-    const add = (i: number) => {
+    const { lockSlot, unlockSlot, timeRemaining } = useSlotLock('event');
+
+    const add = async (i: number) => {
         const cat = categories[i];
         const avail = getAvailable(cat);
         const current = counts[i] ?? 0;
         if (current >= avail) return;
-        setCounts(c => ({ ...c, [i]: current + 1 }));
+        
+        try {
+            const dateStr = event?.date || new Date().toISOString().split('T')[0];
+            await lockSlot(event!.id, dateStr, `${cat.name}|${current}`);
+            setCounts(c => ({ ...c, [i]: current + 1 }));
+        } catch (err: any) {
+            toast.error(err.message || "Failed to secure ticket.");
+        }
     };
-    const remove = (i: number) => setCounts(c => ({ ...c, [i]: Math.max(0, (c[i] ?? 0) - 1) }));
+    
+    const remove = async (i: number) => {
+        const current = counts[i] ?? 0;
+        if (current === 0) return;
+        const cat = categories[i];
+        
+        const dateStr = event?.date || new Date().toISOString().split('T')[0];
+        await unlockSlot(event!.id, dateStr, `${cat.name}|${current - 1}`);
+        setCounts(c => ({ ...c, [i]: current - 1 }));
+    };
 
     const totalTickets = useMemo(() => Object.values(counts).reduce((s, v) => s + v, 0), [counts]);
     const totalPrice = useMemo(() => categories.reduce((s, cat, i) => s + (counts[i] ?? 0) * (cat.price ?? 0), 0), [categories, counts]);
@@ -129,6 +149,17 @@ export default function TicketSelectionPage() {
 
                 <div className="w-6 h-6" /> {/* spacer */}
             </header>
+
+            {timeRemaining > 0 && Object.values(counts).some(v => v > 0) && (
+                <div className="bg-amber-100 border-l-4 border-amber-500 text-amber-900 px-4 py-3 sticky top-[60px] md:top-[80px] z-40 flex items-center justify-between shadow-sm transition-all duration-300">
+                    <div className="flex items-center gap-2">
+                        <Clock size={18} className="text-amber-600 animate-pulse" />
+                        <span className="font-semibold text-[13px] md:text-sm tracking-wide">
+                            Tickets reserved for <span className="font-bold tabular-nums bg-amber-200 px-1.5 rounded">{Math.floor(timeRemaining / 60).toString().padStart(2, '0')}:{(timeRemaining % 60).toString().padStart(2, '0')}</span>
+                        </span>
+                    </div>
+                </div>
+            )}
 
             <main className="w-full max-w-[1400px] mx-auto px-6 md:px-12 py-8 space-y-6 flex-grow">
                 <h2 className="text-black" style={{ fontSize: '32px', fontFamily: "'Anek Tamil Condensed', sans-serif", fontWeight: 400, lineHeight: '50px' }}>

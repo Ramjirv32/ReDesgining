@@ -2,8 +2,9 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { ChevronRight, Trash2, X, Tag, CheckCircle2, ChevronDown } from 'lucide-react';
+import { ChevronRight, Trash2, X, Tag, CheckCircle2, ChevronDown, Clock } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
+import { useSlotLock } from '@/hooks/useSlotLock';
 import { bookingApi, OfferItem, PaymentOrderResponse } from '@/lib/api/booking';
 import { profileApi } from '@/lib/api/profile';
 import Link from 'next/link';
@@ -54,6 +55,10 @@ export default function ReviewBookingPage() {
     const billingRef = useRef<HTMLDivElement>(null);
     const [cart, setCart] = useState<CartData | null>(null);
     const [eventData, setEventData] = useState<{id: string; name: string} | null>(null);
+
+    const { timeRemaining, loading: lockLoading, locks } = useSlotLock('event');
+    
+
 
 
     const [offers, setOffers] = useState<OfferItem[]>([]);
@@ -106,6 +111,24 @@ export default function ReviewBookingPage() {
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const [pass, setPass] = useState<any>(null);
+
+    useEffect(() => {
+        if (step === 'success') return;
+        
+        // If locks finished loading and we have no active locks or timer hit 0, kick out.
+        // Also don't kick if we don't have eventData loaded yet
+        if (!lockLoading && timeRemaining === 0 && locks.length === 0 && eventData) {
+            sessionStorage.removeItem('ticpin_cart');
+            toast.error("Booking session expired. Please start over.");
+            router.push('/');
+        }
+    }, [step, timeRemaining, lockLoading, locks.length, eventData, router]);
+
+    const formatTimer = (seconds: number) => {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    };
 
     useEffect(() => {
         const saved = sessionStorage.getItem('ticpin_cart');
@@ -665,6 +688,15 @@ export default function ReviewBookingPage() {
                 </h1>
                 <div className="w-6 h-6 md:w-[25px]" />
             </header>
+
+            {timeRemaining > 0 && (
+                <div className="w-full bg-[#f4effe] flex items-center justify-center py-2 border-b border-[#e9defe]">
+                    <Clock className="w-4 h-4 text-[#5331EA] mr-2" />
+                    <span className="text-[13px] font-medium text-[#4a3978]">
+                        Complete your booking in <span className="text-[#5331EA] font-bold">{formatTimer(timeRemaining)}</span> mins
+                    </span>
+                </div>
+            )}
 
             <main className="w-full max-w-[1100px] mx-auto px-6 py-8 space-y-8 flex-grow">
 

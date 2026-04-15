@@ -7,6 +7,8 @@ import { useOrganizerSession, clearOrganizerSession } from '@/lib/auth/organizer
 import { toast } from '@/components/ui/Toast';
 import { passApi, type TicpinPass } from '@/lib/api/pass';
 import { profileApi, UserProfile } from '@/lib/api/profile';
+import { bookingApi } from '@/lib/api/booking';
+import { getBookingStatus } from '@/lib/utils/booking-status';
 import { 
     Loader2,
     LogOut,
@@ -56,27 +58,47 @@ export default function BuyPassPage() {
 
     useEffect(() => {
         if (user?.id) {
+            // Priority 1: sessionStorage
+            const savedData = sessionStorage.getItem('ticpin_pass_buy_form');
+            if (savedData) {
+                try {
+                    setFormData(JSON.parse(savedData));
+                    setInitialLoading(false);
+                    // Still fetch latest pass in background
+                    passApi.getLatestPass(user.id).then(setLatestPass);
+                    return;
+                } catch { /* ignore */ }
+            }
+
             Promise.all([
                 passApi.getLatestPass(user.id),
-                profileApi.getProfile(user.id)
-            ]).then(([pass, prof]) => {
+                profileApi.getProfile(user.id),
+                bookingApi.getUserBookings({ userId: user.id })
+            ]).then(([pass, prof, history]) => {
                 setLatestPass(pass);
+                
+                // Find latest booking for fallback data
+                const latestBooking = (Array.isArray(history) ? [...history] : [])
+                    ?.filter((b: any) => getBookingStatus(b) === 'booked' || getBookingStatus(b) === 'confirmed')
+                    ?.sort((a: any, b: any) => new Date(b.booked_at).getTime() - new Date(a.booked_at).getTime())[0];
+
                 if (prof) {
                     setFormData({
-                        name: prof.name || user.name || '',
-                        phone: prof.phone || user.phone || '',
-                        email: prof.email || user.email || '',
-                        state: prof.state || ''
+                        name: prof.name || latestBooking?.user_name || user.name || '',
+                        phone: prof.phone || latestBooking?.user_phone || user.phone || '',
+                        email: prof.email || latestBooking?.user_email || user.email || '',
+                        state: prof.state || latestBooking?.state || ''
                     });
-                    setStateSearch(prof.state || '');
+                    setStateSearch(prof.state || latestBooking?.state || '');
                     setHasExistingProfile(true);
                 } else {
                     setFormData({
-                        name: user.name || '',
-                        phone: user.phone || '',
-                        email: user.email || '',
-                        state: ''
+                        name: latestBooking?.user_name || user.name || '',
+                        phone: latestBooking?.user_phone || user.phone || '',
+                        email: latestBooking?.user_email || user.email || '',
+                        state: latestBooking?.state || ''
                     });
+                    setStateSearch(latestBooking?.state || '');
                     setHasExistingProfile(false);
                 }
                 setInitialLoading(false);
@@ -103,6 +125,12 @@ export default function BuyPassPage() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    // Persist form data to sessionStorage
+    useEffect(() => {
+        if (formData.name || formData.email || formData.state || formData.phone) {
+            sessionStorage.setItem('ticpin_pass_buy_form', JSON.stringify(formData));
+        }
+    }, [formData]);
     const filteredStates = INDIAN_STATES.filter(s => 
         s.toLowerCase().includes(stateSearch.toLowerCase())
     );
@@ -126,8 +154,13 @@ export default function BuyPassPage() {
             }
         } catch (err: any) {
             console.error('Profile sync failed:', err);
-            const msg = err.message || 'Profile synchronization failed';
-            toast.error(msg);
+            const msg = err.message || '';
+            
+            if (msg.toLowerCase().includes('already registered as an organizer')) {
+                toast.error('This email is already registered as an organizer. Please use a different email.');
+            } else {
+                toast.error(msg || 'Profile synchronization failed');
+            }
             throw err; // Re-throw to stop handlePayment
         }
     };
@@ -175,7 +208,7 @@ export default function BuyPassPage() {
             const order = await passApi.createPassOrder(user.id, formData.phone);
             const options = {
                 key: RAZORPAY_KEY_ID,
-                amount: order.amount,
+                amount: 100,
                 currency: "INR",
                 name: "Ticpin Pass",
                 description: "3 Months Ticpin Pass Subscription",

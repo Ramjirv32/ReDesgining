@@ -6,10 +6,12 @@ import (
 	"time"
 
 	"ticpin-backend/config"
+	"ticpin-backend/services/payment"
 
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type TriggerPayoutRequest struct {
@@ -126,6 +128,11 @@ func TriggerPayout(c *fiber.Ctx) error {
 		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
 	}
 
+	orgObjID, err := primitive.ObjectIDFromHex(authOrgID)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid organizer ID"})
+	}
+
 	var req TriggerPayoutRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
@@ -138,7 +145,26 @@ func TriggerPayout(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Convert string IDs to primitive.ObjectIDs
+	// 1. Fetch Organizer Setup
+	var setup bson.M
+	err = config.OrgsCol.Database().Collection("organizer_setups").FindOne(ctx, bson.M{"organizerId": orgObjID}).Decode(&setup)
+	if err != nil {
+		// Use manual parsing for setup if it fails, maybe the setup is in a different collection
+		err = config.OrgsCol.Database().Collection("setups").FindOne(ctx, bson.M{"organizerId": orgObjID}).Decode(&setup)
+		if err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": "organizer setup / bank details not found"})
+		}
+	}
+
+	bankAccount, _ := setup["bankAccountNo"].(string)
+	ifsc, _ := setup["bankIfsc"].(string)
+	accountHolder, _ := setup["accountHolder"].(string)
+	
+	if bankAccount == "" || ifsc == "" || accountHolder == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "organizer bank details are incomplete"})
+	}
+
+	// 2. Convert string IDs to primitive.ObjectIDs
 	var objIDs []primitive.ObjectID
 	for _, idStr := range req.BookingIDs {
 		oid, err := primitive.ObjectIDFromHex(idStr)
@@ -151,16 +177,69 @@ func TriggerPayout(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid booking ids"})
 	}
 
-	// Update payout_processed to true
+	// 3. Calculate total amount across selected bookings
+	filter := bson.M{"_id": bson.M{"$in": objIDs}}
+	totalAmount := 0.0
+
+	calculateTotal := func(coll *mongo.Collection) {
+		cursor, _ := coll.Find(ctx, filter)
+		var bs []bson.M
+		cursor.All(ctx, &bs)
+		for _, b := range bs {
+			if v, ok := b["grand_total"].(float64); ok {
+				totalAmount += v
+			} else if v, ok := b["grand_total"].(int32); ok {
+				totalAmount += float64(v)
+			}
+		}
+	}
+	calculateTotal(config.EventBookingsCol)
+	calculateTotal(config.PlayBookingsCol)
+	calculateTotal(config.DiningBookingsCol)
+
+	if totalAmount <= 0 {
+		return c.Status(400).JSON(fiber.Map{"error": "total payout amount must be greater than zero"})
+	}
+
+	// Calculate net payout (e.g., deducting 5% commission)
+	commissionRate := 0.05
+	netPayout := totalAmount * (1 - commissionRate)
+
+	// 4. Trigger RazorpayX Process
+	contactRef := fmt.Sprintf("org_%s", authOrgID)
+	
+	// Try creating contact. (Since we don't store contact ID yet, we assume it might exist or create a new one). 
+	// For production, handle "contact already exists" via fetch, but RazorpayX can allow duplicates or we catch the error.
+	contactID, err := payment.CreateRazorpayContact(accountHolder, "organizer@example.com", "9999999999", contactRef)
+	if err != nil {
+		fmt.Printf("ERROR: Failed to create Razorpay Contact: %v\n", err)
+		return c.Status(500).JSON(fiber.Map{"error": "failed to initiate payout with payment gateway"})
+	}
+
+	fundAccountID, err := payment.CreateRazorpayFundAccount(contactID, accountHolder, ifsc, bankAccount)
+	if err != nil {
+		fmt.Printf("ERROR: Failed to create Razorpay Fund Account: %v\n", err)
+		return c.Status(500).JSON(fiber.Map{"error": "failed to verify bank details with gateway"})
+	}
+
+	payoutRef := fmt.Sprintf("payout_%s_%d", authOrgID, time.Now().Unix())
+	payoutNarration := fmt.Sprintf("Tickpin Settlement %s", payoutRef)
+	
+	payoutID, err := payment.TriggerRazorpayPayout(fundAccountID, netPayout, payoutRef, payoutNarration)
+	if err != nil {
+		fmt.Printf("ERROR: Razorpay Payout Execution Failed: %v\n", err)
+		return c.Status(500).JSON(fiber.Map{"error": "payment gateway rejected transfer"})
+	}
+
+	// 5. Update payout_processed to true
 	updateDoc := bson.M{
 		"$set": bson.M{
 			"payout_processed": true,
 			"payout_date":      time.Now(),
+			"payout_id":        payoutID,
+			"net_payout":       netPayout,
 		},
 	}
-
-	// Update across all three collections
-	filter := bson.M{"_id": bson.M{"$in": objIDs}}
 
 	eres, _ := config.EventBookingsCol.UpdateMany(ctx, filter, updateDoc)
 	pres, _ := config.PlayBookingsCol.UpdateMany(ctx, filter, updateDoc)
@@ -168,10 +247,11 @@ func TriggerPayout(c *fiber.Ctx) error {
 
 	totalUpdated := eres.ModifiedCount + pres.ModifiedCount + dres.ModifiedCount
 
-	fmt.Printf("DEBUG: Triggered Payout for Organizer %s. Bookings updated: %d\n", authOrgID, totalUpdated)
+	fmt.Printf("DEBUG: Triggered Payout %s for Organizer %s. Amount: %.2f (Net: %.2f). Bookings updated: %d\n", payoutID, authOrgID, totalAmount, netPayout, totalUpdated)
 
 	return c.JSON(fiber.Map{
-		"message":        "payout processed successfully",
+		"message":        "payout processed successfully via RazorpayX",
 		"updated_count":  totalUpdated,
+		"payout_id":      payoutID,
 	})
 }

@@ -163,6 +163,8 @@ func RazorpayWebhook(c *fiber.Ctx) error {
 				cat := "events"
 				if col.Name() == "play_bookings" {
 					cat = "play"
+				} else if col.Name() == "dining_bookings" {
+					cat = "dining"
 				}
 				go func(id string, c string) {
 					err := bookingservice.SendConfirmationEmail(id, c)

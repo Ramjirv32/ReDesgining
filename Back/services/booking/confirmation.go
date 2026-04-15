@@ -21,6 +21,11 @@ func SendConfirmationEmail(orderID string, category string) error {
 		col = config.PlayBookingsCol
 	case "events":
 		col = config.EventBookingsCol
+	case "dining":
+		col = config.DiningBookingsCol
+	case "pass":
+		// Pass confirmation is handled separately via SendPassConfirmationEmail
+		return nil
 	default:
 		return fmt.Errorf("invalid category: %s", category)
 	}
@@ -67,6 +72,43 @@ func SendConfirmationEmail(orderID string, category string) error {
 		}
 
 		return config.SendBookingConfirmation(b.UserEmail, "play", data)
+	} else if category == "dining" {
+		var b models.DiningBooking
+		err := col.FindOne(ctx, filter).Decode(&b)
+		if err != nil {
+			return err
+		}
+
+		// Fetch Dining details for image
+		var dining models.Dining
+		var restaurantImageURL string
+		err = config.DiningsCol.FindOne(ctx, bson.M{"_id": b.DiningID}).Decode(&dining)
+		if err == nil {
+			restaurantImageURL = dining.LandscapeImageURL
+			if restaurantImageURL == "" {
+				restaurantImageURL = dining.PortraitImageURL
+			}
+		}
+
+		// Format data for email
+		data := config.BookingEmailData{
+			Day:               b.BookedAt.Format("Monday"),
+			Date:              b.BookedAt.Format("02"),
+			Month:             b.BookedAt.Format("January"),
+			Time:              b.TimeSlot,
+			RestaurantName:    b.VenueName,
+			RestaurantAddress: b.City,
+			Location:          b.City,
+			BookingID:         b.BookingID,
+			VoucherID:         b.BookingID,
+			VoucherValue:      fmt.Sprintf("₹%.2f", b.OrderAmount),
+			PartySize:         b.Guests,
+			UserPhone:         b.UserPhone,
+			Offer:             b.CouponCode,
+			EventImageURL:     restaurantImageURL, // Using EventImageURL as generic image field
+		}
+
+		return config.SendBookingConfirmation(b.UserEmail, "dining", data)
 	} else {
 		var b models.Booking
 		err := col.FindOne(ctx, filter).Decode(&b)

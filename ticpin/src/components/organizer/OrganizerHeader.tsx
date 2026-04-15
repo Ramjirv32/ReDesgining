@@ -25,7 +25,7 @@ export default function OrganizerHeader({ activeTab }: OrganizerHeaderProps) {
         <>
             <header className="w-full h-[114px] bg-white flex items-center justify-between px-10 shadow-[0px_0.5px_5px_rgba(0,0,0,0.15)] z-[10] relative">
                 <div className="flex items-center gap-8">
-                    <button onClick={() => router.push('/organizer/dashboard')} className="transition-opacity hover:opacity-80">
+                    <button onClick={() => router.push('/')} className="transition-opacity hover:opacity-80">
                         <img 
                             src="https://res.cloudinary.com/dt9vkv9as/image/upload/v1741270000/WORDMARK_PNG_1.png" 
                             alt="TICPIN" 

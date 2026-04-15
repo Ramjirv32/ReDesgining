@@ -11,7 +11,7 @@ import OrganizerLogoutModal from '@/components/modals/OrganizerLogoutModal';
 import { toast } from '@/components/ui/Toast';
 import { passApi, TicpinPass } from '@/lib/api/pass';
 import { Zap, ShieldCheck } from 'lucide-react';
-
+import { useSlotLock } from '@/hooks/useSlotLock';
 
 interface Court {
     id: string;
@@ -144,6 +144,7 @@ export default function PlayBookPage() {
     const [duration, setDuration] = useState(1);
     const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
     const [selectedCourtIds, setSelectedCourtIds] = useState<string[]>([]);
+    const { lockSlot, unlockSlot, locks, timeRemaining } = useSlotLock('play');
     const [bookedSlots, setBookedSlots] = useState<string[]>([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
     const [activePeriod, setActivePeriod] = useState<string>('morning');
@@ -223,13 +224,52 @@ export default function PlayBookPage() {
             .finally(() => setLoadingSlots(false));
     }, [venueName, selectedDate]);
 
-    const toggleCourt = (uniqueId: string) => {
-        setSelectedCourtIds([uniqueId]);
-        // Do NOT reset the selected slot — the user picks slot first, then court.
+    const toggleCourt = async (uniqueId: string) => {
+        if (!selectedSlot || !venue) return;
+
+        const court = courts?.find((c, idx) => `${c.id}-${idx}` === uniqueId);
+        if (!court) return;
+
+        const backendSlot = blockSlots.find(b => b.label === selectedSlot)
+            ? `${formatTime(blockSlots.find(b => b.label === selectedSlot)!.startMin)} - ${formatTime(blockSlots.find(b => b.label === selectedSlot)!.startMin + 30)}`
+            : selectedSlot;
+
+        if (selectedCourtIds.includes(uniqueId)) {
+            // Deselect and Unlock
+            const success = await unlockSlot(venue.id, selectedDate, backendSlot, court.name);
+            if (success !== false) {
+                setSelectedCourtIds(prev => prev.filter(id => id !== uniqueId));
+            }
+        } else {
+            // Select and Lock
+            try {
+                // Determine limits: Play allows max 2 courts. If we already have 2, prompt or auto-replace oldest.
+                // The backend will auto-delete the oldest lock if we exceed 2.
+                await lockSlot(venue.id, selectedDate, backendSlot, court.name);
+                
+                setSelectedCourtIds(prev => {
+                    if (prev.length >= 2) return [...prev.slice(1), uniqueId];
+                    return [...prev, uniqueId];
+                });
+            } catch (err: any) {
+                toast.error(err.message || 'Failed to lock this court. It might be taken.');
+            }
+        }
     };
 
     // When duration changes, reset both selections (availability window changes)
     useEffect(() => {
+        // Unlock any active locks when clearing selections due to duration change
+        if (venue && selectedSlot && selectedCourtIds.length > 0) {
+            const backendSlot = blockSlots.find(b => b.label === selectedSlot)
+                ? `${formatTime(blockSlots.find(b => b.label === selectedSlot)!.startMin)} - ${formatTime(blockSlots.find(b => b.label === selectedSlot)!.startMin + 30)}`
+                : selectedSlot;
+                
+            selectedCourtIds.forEach(uid => {
+                const court = courts?.find((c, idx) => `${c.id}-${idx}` === uid);
+                if (court) unlockSlot(venue.id, selectedDate, backendSlot, court.name);
+            });
+        }
         setSelectedSlot(null);
         setSelectedCourtIds([]);
     }, [duration]);

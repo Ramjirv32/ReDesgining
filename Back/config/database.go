@@ -73,7 +73,7 @@ func ConnectDB() error {
 	BookingsCol = db.Collection("bookings")
 	EventBookingsCol = db.Collection("event_bookings")
 	PlayBookingsCol = db.Collection("play_bookings")
-	SlotLocksCol = db.Collection("play_slot_locks")
+	SlotLocksCol = db.Collection("slot_locks")
 	DiningBookingsCol = db.Collection("dining_bookings")
 	CouponsCol = db.Collection("coupons")
 	OffersCol = db.Collection("offers")
@@ -172,9 +172,25 @@ func CreateIndexes() {
 		Options: options.Index().SetUnique(true),
 	})
 
+	// Add lock_key index for efficient lookups
 	SlotLocksCol.Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys:    bson.D{{Key: "created_at", Value: 1}},
-		Options: options.Index().SetExpireAfterSeconds(900),
+		Keys: bson.D{
+			{Key: "lock_key", Value: 1},
+			{Key: "type", Value: 1},
+		},
+	})
+
+	// Add reference_id index for efficient lookups
+	SlotLocksCol.Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys: bson.D{
+			{Key: "reference_id", Value: 1},
+			{Key: "type", Value: 1},
+		},
+	})
+
+	SlotLocksCol.Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys:    bson.D{{Key: "expires_at", Value: 1}},
+		Options: options.Index().SetExpireAfterSeconds(0),
 	})
 
 	SlotLocksCol.Indexes().CreateOne(ctx, mongo.IndexModel{

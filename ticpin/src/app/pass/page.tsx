@@ -11,49 +11,49 @@ import Link from 'next/link';
 
 /* ── small shared inline components ── */
 const StarIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="#FFD700"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/></svg>
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="#FFD700"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" /></svg>
 );
 const ChevronRight = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9,18 15,12 9,6"/></svg>
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9,18 15,12 9,6" /></svg>
 );
 const SupportIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
 );
 const FAQIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
 );
 const DocsIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14,2 14,8 20,8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>
 );
 
 const TurfIcon = () => (
   <svg width="40" height="40" viewBox="0 0 52 52" fill="none">
-    <circle cx="26" cy="26" r="24" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.25)" strokeWidth="1"/>
-    <circle cx="26" cy="26" r="12" fill="none" stroke="white" strokeWidth="1.5"/>
-    <line x1="26" y1="2" x2="26" y2="50" stroke="white" strokeWidth="1.2" opacity="0.5"/>
-    <line x1="2" y1="26" x2="50" y2="26" stroke="white" strokeWidth="1.2" opacity="0.5"/>
-    <circle cx="26" cy="26" r="2.5" fill="white"/>
+    <circle cx="26" cy="26" r="24" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.25)" strokeWidth="1" />
+    <circle cx="26" cy="26" r="12" fill="none" stroke="white" strokeWidth="1.5" />
+    <line x1="26" y1="2" x2="26" y2="50" stroke="white" strokeWidth="1.2" opacity="0.5" />
+    <line x1="2" y1="26" x2="50" y2="26" stroke="white" strokeWidth="1.2" opacity="0.5" />
+    <circle cx="26" cy="26" r="2.5" fill="white" />
   </svg>
 );
 const DiningIcon = () => (
   <svg width="40" height="40" viewBox="0 0 52 52" fill="none">
-    <circle cx="26" cy="26" r="24" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.25)" strokeWidth="1"/>
-    <ellipse cx="26" cy="22" rx="14" ry="6" fill="none" stroke="white" strokeWidth="1.5"/>
-    <rect x="12" y="22" width="28" height="3" fill="rgba(255,255,255,0.2)"/>
-    <line x1="26" y1="12" x2="26" y2="16" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-    <rect x="22" y="28" width="8" height="12" rx="2" fill="none" stroke="white" strokeWidth="1.5"/>
+    <circle cx="26" cy="26" r="24" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.25)" strokeWidth="1" />
+    <ellipse cx="26" cy="22" rx="14" ry="6" fill="none" stroke="white" strokeWidth="1.5" />
+    <rect x="12" y="22" width="28" height="3" fill="rgba(255,255,255,0.2)" />
+    <line x1="26" y1="12" x2="26" y2="16" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+    <rect x="22" y="28" width="8" height="12" rx="2" fill="none" stroke="white" strokeWidth="1.5" />
   </svg>
 );
 const TicketIcon = () => (
   <svg width="40" height="40" viewBox="0 0 52 52" fill="none">
-    <circle cx="26" cy="26" r="24" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.25)" strokeWidth="1"/>
-    <rect x="10" y="18" width="32" height="16" rx="3" fill="none" stroke="white" strokeWidth="1.5"/>
-    <circle cx="10" cy="26" r="3" fill="#3B2B9E"/>
-    <circle cx="42" cy="26" r="3" fill="#3B2B9E"/>
-    <line x1="10" y1="26" x2="42" y2="26" stroke="white" strokeWidth="1" strokeDasharray="3 2" opacity="0.5"/>
-    <line x1="20" y1="22" x2="32" y2="22" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-    <line x1="20" y1="26" x2="28" y2="26" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-    <line x1="20" y1="30" x2="24" y2="30" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+    <circle cx="26" cy="26" r="24" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.25)" strokeWidth="1" />
+    <rect x="10" y="18" width="32" height="16" rx="3" fill="none" stroke="white" strokeWidth="1.5" />
+    <circle cx="10" cy="26" r="3" fill="#3B2B9E" />
+    <circle cx="42" cy="26" r="3" fill="#3B2B9E" />
+    <line x1="10" y1="26" x2="42" y2="26" stroke="white" strokeWidth="1" strokeDasharray="3 2" opacity="0.5" />
+    <line x1="20" y1="22" x2="32" y2="22" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="20" y1="26" x2="28" y2="26" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="20" y1="30" x2="24" y2="30" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
   </svg>
 );
 
@@ -262,7 +262,7 @@ export default function TicpinPass() {
     return (
       <Wrapper>
         <ManagePass pass={latestPass} onRefresh={() => {
-          if (user?.id) passApi.getLatestPass(user.id).then(setLatestPass).catch(() => {});
+          if (user?.id) passApi.getLatestPass(user.id).then(setLatestPass).catch(() => { });
         }} />
       </Wrapper>
     );

@@ -18,6 +18,14 @@ function DashboardContent() {
     const [session, setSession] = useState<ReturnType<typeof getOrganizerSession>>(null);
     const [loading, setLoading] = useState(true);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [dataCount, setDataCount] = useState<Record<string, number>>({});
+
+    const handleDataCountChange = React.useCallback((count: number) => {
+        setDataCount(prev => {
+            if (prev[activeTab] === count) return prev;
+            return { ...prev, [activeTab]: count };
+        });
+    }, [activeTab]);
 
     // Set activeTab from URL parameter
     useEffect(() => {
@@ -160,22 +168,24 @@ function DashboardContent() {
                     {/* Horizontal Line Divider */}
                     <div className="w-full h-[1px] bg-black/10 mb-8" />
 
-                    {/* Search Bar */}
-                    <div className="mb-8 relative group">
-                        <input
-                            type="text"
-                            placeholder={`Search for an ${activeTab === 'dining' ? 'dining' : activeTab === 'play' ? 'play' : 'event'}`}
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full h-[64px] bg-white rounded-[15px] border-2 border-transparent focus:border-[#5331EA] px-8 text-[20px] text-[#5331EA] placeholder:text-[#5331EA]/50 outline-none transition-all shadow-sm group-hover:shadow-md"
-                            style={{ fontFamily: 'Anek Latin' }}
-                        />
-                        <div className="absolute right-6 top-1/2 -translate-y-1/2">
-                            <svg className="w-7 h-7 text-[#5331EA]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
+                    {/* Search Bar - Controlled by data count and status */}
+                    {(currentStatus === 'approved' && (dataCount[activeTab] || 0) > 0) && (
+                        <div className="mb-8 relative group">
+                            <input
+                                type="text"
+                                placeholder={`Search for an ${activeTab === 'dining' ? 'dining' : activeTab === 'play' ? 'play' : 'event'}`}
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full h-[64px] bg-white rounded-[15px] border-2 border-transparent focus:border-[#5331EA] px-8 text-[20px] text-[#5331EA] placeholder:text-[#5331EA]/50 outline-none transition-all shadow-sm group-hover:shadow-md"
+                                style={{ fontFamily: 'Anek Latin' }}
+                            />
+                            <div className="absolute right-6 top-1/2 -translate-y-1/2">
+                                <svg className="w-7 h-7 text-[#5331EA]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* Content States */}
                     <div className="pt-4">
@@ -234,6 +244,7 @@ function DashboardContent() {
                                 accentColor={currentTheme.accent}
                                 Icon={currentTheme.icon}
                                 searchQuery={searchQuery}
+                                onDataCountChange={handleDataCountChange}
                             />
                         ) : currentStatus === 'rejected' ? (
                             /* State 4: Rejected */

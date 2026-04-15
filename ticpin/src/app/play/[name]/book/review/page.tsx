@@ -3,8 +3,9 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
-import { CheckCircle2, ChevronRight, Tag, Trash2, ChevronDown, ArrowLeft, TriangleAlert, User, Percent, ChevronUp } from 'lucide-react';
+import { CheckCircle2, ChevronRight, Tag, Trash2, ChevronDown, ArrowLeft, TriangleAlert, User, Percent, ChevronUp, Clock } from 'lucide-react';
 import { bookingApi, OfferItem, PaymentOrderResponse } from '@/lib/api/booking';
+import { useSlotLock } from '@/hooks/useSlotLock';
 import { profileApi } from '@/lib/api/profile';
 import { useUserSession } from '@/lib/auth/user';
 import { useOrganizerSession, clearOrganizerSession } from '@/lib/auth/organizer';
@@ -71,6 +72,25 @@ export default function PlayReviewPage() {
     const [step, setStep] = useState<'review' | 'billing' | 'success'>('review');
 
     const [lockedGrandTotal, setLockedGrandTotal] = useState<number | null>(null);
+    
+    const { timeRemaining, loading: lockLoading, locks } = useSlotLock('play');
+
+    useEffect(() => {
+        if (step === 'success') return;
+        
+        // If locks finished loading and we have no active locks or timer hit 0, kick out.
+        if (!lockLoading && timeRemaining === 0 && locks.length === 0) {
+            sessionStorage.removeItem('ticpin_cart');
+            toast.error("Booking session expired. Please start over.");
+            router.push('/');
+        }
+    }, [step, timeRemaining, lockLoading, locks.length, router]);
+
+    const formatTimer = (seconds: number) => {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    };
 
     // Offers
     const [offers, setOffers] = useState<OfferItem[]>([]);
@@ -627,6 +647,15 @@ export default function PlayReviewPage() {
                     {step === 'billing' ? 'Billing Details' : 'Review your booking'}
                 </h1>
             </header>
+
+            {timeRemaining > 0 && (
+                <div className="w-full bg-[#f4effe] flex items-center justify-center py-2 border-b border-[#e9defe]">
+                    <Clock className="w-4 h-4 text-[#5331EA] mr-2" />
+                    <span className="text-[13px] font-medium text-[#4a3978]">
+                        Complete your booking in <span className="text-[#5331EA] font-bold">{timeRemaining > 0 ? formatTimer(timeRemaining) : "00:00"}</span> mins
+                    </span>
+                </div>
+            )}
 
             <main className="max-w-[760px] mx-auto px-4 pt-8">
                 {step === 'review' && (

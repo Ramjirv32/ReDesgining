@@ -27,5 +27,10 @@ func BookingRoutes(app *fiber.App) {
 	app.Get("/api/dining/:id/offers", adminoffer.GetDiningOffers)
 	app.Get("/api/play/:id/offers", adminoffer.GetPlayOffers)
 
+	// Unified Slot Locking APIs
+	app.Post("/api/booking/lock", bookingctrl.CreateSlotLock)
+	app.Post("/api/booking/unlock", bookingctrl.UnlockSlot)
+	app.Get("/api/booking/lock/status", bookingctrl.GetUserActiveLocks)
+
 	app.Post("/api/coupons/validate", middleware.RequireUserAuth, admincoupon.ValidateCoupon)
 }

@@ -294,19 +294,149 @@ func CreateRefundRazorpay(paymentID string, amount float64, notes map[string]str
 	respBody, _ := io.ReadAll(resp.Body)
 
 	if resp.StatusCode >= 400 {
-		return "", fmt.Errorf("razorpay refund API error (status %d): %s", resp.StatusCode, string(respBody))
+		return "", fmt.Errorf("razorpay refund failed with status %d: %s", resp.StatusCode, string(respBody))
 	}
 
-	var result map[string]interface{}
-	json.Unmarshal(respBody, &result)
+	var jsonResp map[string]interface{}
+	json.Unmarshal(respBody, &jsonResp)
 
-	refundID, _ := result["id"].(string)
-	if refundID == "" {
-		return "", fmt.Errorf("razorpay did not return refund ID: %s", string(respBody))
+	if id, ok := jsonResp["id"].(string); ok {
+		return id, nil
 	}
 
-	fmt.Printf("DEBUG: Successfully created Razorpay refund - Refund ID: %s, Payment ID: %s\n", refundID, paymentID)
-	return refundID, nil
+	return "", fmt.Errorf("could not parse refund id from razorpay response")
+}
+
+// ======================= RAZORPAYX PAYOUTS =======================
+
+func CreateRazorpayContact(name, email, phone, referenceID string) (string, error) {
+	url := "https://api.razorpay.com/v1/contacts"
+	
+	payload := map[string]interface{}{
+		"name": name,
+		"email": email,
+		"contact": phone,
+		"type": "vendor",
+		"reference_id": referenceID,
+	}
+
+	body, _ := json.Marshal(payload)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	if err != nil {
+		return "", err
+	}
+
+	req.SetBasicAuth(os.Getenv("RAZORPAY_KEY"), os.Getenv("RAZORPAY_SECRET"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 400 {
+		return "", fmt.Errorf("create contact failed: %s", string(respBody))
+	}
+
+	var jsonResp map[string]interface{}
+	json.Unmarshal(respBody, &jsonResp)
+	if id, ok := jsonResp["id"].(string); ok {
+		return id, nil
+	}
+	return "", fmt.Errorf("could not parse contact id")
+}
+
+func CreateRazorpayFundAccount(contactID, name, ifsc, accountNumber string) (string, error) {
+	url := "https://api.razorpay.com/v1/fund_accounts"
+	
+	payload := map[string]interface{}{
+		"contact_id": contactID,
+		"account_type": "bank_account",
+		"bank_account": map[string]interface{}{
+			"name": name,
+			"ifsc": ifsc,
+			"account_number": accountNumber,
+		},
+	}
+
+	body, _ := json.Marshal(payload)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	if err != nil {
+		return "", err
+	}
+
+	req.SetBasicAuth(os.Getenv("RAZORPAY_KEY"), os.Getenv("RAZORPAY_SECRET"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 400 {
+		return "", fmt.Errorf("create fund account failed: %s", string(respBody))
+	}
+
+	var jsonResp map[string]interface{}
+	json.Unmarshal(respBody, &jsonResp)
+	if id, ok := jsonResp["id"].(string); ok {
+		return id, nil
+	}
+	return "", fmt.Errorf("could not parse fund account id")
+}
+
+func TriggerRazorpayPayout(fundAccountID string, amount float64, referenceID, narration string) (string, error) {
+	url := "https://api.razorpay.com/v1/payouts"
+	
+	// Create payout request. Mode: IMPS for immediate, NEFT for standard processing.
+	// We'll queue it if low balance.
+	payload := map[string]interface{}{
+		"account_number": os.Getenv("RAZORPAY_PAYOUT_ACCOUNT"), // Business account number used to fund payouts (requires X config)
+		"fund_account_id": fundAccountID,
+		"amount": int(amount * 100), // convert to paise
+		"currency": "INR",
+		"mode": "IMPS",
+		"purpose": "payout",
+		"queue_if_low_balance": true,
+		"reference_id": referenceID,
+		"narration": narration,
+	}
+
+	// For safety, if Payout Account isn't set, default to standard "business" type.
+	if os.Getenv("RAZORPAY_PAYOUT_ACCOUNT") == "" {
+		delete(payload, "account_number")
+	}
+
+	body, _ := json.Marshal(payload)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	if err != nil {
+		return "", err
+	}
+
+	req.SetBasicAuth(os.Getenv("RAZORPAY_KEY"), os.Getenv("RAZORPAY_SECRET"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 400 {
+		return "", fmt.Errorf("payout failed: %s", string(respBody))
+	}
+
+	var jsonResp map[string]interface{}
+	json.Unmarshal(respBody, &jsonResp)
+	if id, ok := jsonResp["id"].(string); ok {
+		return id, nil // payout ID
+	}
+	return "", fmt.Errorf("could not parse payout id")
 }
 
 // CreateRefund initiates a refund based on payment gateway

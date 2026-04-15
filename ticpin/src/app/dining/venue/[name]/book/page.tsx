@@ -11,7 +11,7 @@ import OrganizerLogoutModal from '@/components/modals/OrganizerLogoutModal';
 import { toast } from '@/components/ui/Toast';
 import { passApi, TicpinPass } from '@/lib/api/pass';
 import { Zap } from 'lucide-react';
-
+import { useSlotLock } from '@/hooks/useSlotLock';
 
 interface RealDining {
     id: string;
@@ -58,6 +58,7 @@ const DiningBooking: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [selectedMeal, setSelectedMeal] = useState<'lunch' | 'dinner'>('lunch');
     const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+    const { lockSlot, unlockSlot } = useSlotLock('dining');
     const [selectedOfferType, setSelectedOfferType] = useState<'regular' | 'offers'>('offers');
     const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
     const [selectedDate, setSelectedDate] = useState<any>(getNextDays()[0]);
@@ -162,6 +163,30 @@ const DiningBooking: React.FC = () => {
     const handleOrganizerLogout = () => {
         clearOrganizerSession();
         setShowAuthModal(true);
+    };
+
+    const handleSlotClick = async (slot: string) => {
+        if (!venue) return;
+        
+        const dateStr = selectedDate.fullDate.toISOString().split('T')[0];
+        
+        if (selectedSlot === slot) {
+            // Deselect
+            await unlockSlot(venue.id, dateStr, slot);
+            setSelectedSlot(null);
+            return;
+        }
+
+        if (selectedSlot) {
+            await unlockSlot(venue.id, dateStr, selectedSlot);
+        }
+
+        try {
+            await lockSlot(venue.id, dateStr, slot);
+            setSelectedSlot(slot);
+        } catch (err: any) {
+            toast.error(err.message || 'Slot is currently unavailable');
+        }
     };
 
     const lunchSlots = ['12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM', '2:00 PM', '2:30 PM', '3:00 PM'];
@@ -319,23 +344,23 @@ const DiningBooking: React.FC = () => {
                 </div>
 
                 {/* Slots */}
-                <TimeSlot time="12:30 PM" left={134 - offsetX} top={766 - offsetY} active={selectedSlot === '12:30 PM'} onClick={() => setSelectedSlot('12:30 PM')} />
-                <TimeSlot time="01:00 PM" left={286 - offsetX} top={766 - offsetY} active={selectedSlot === '01:00 PM'} onClick={() => setSelectedSlot('01:00 PM')} />
-                <TimeSlot time="01:30 PM" left={438 - offsetX} top={766 - offsetY} active={selectedSlot === '01:30 PM'} onClick={() => setSelectedSlot('01:30 PM')} />
-                <TimeSlot time="02:00 PM" left={590 - offsetX} top={766 - offsetY} active={selectedSlot === '02:00 PM'} onClick={() => setSelectedSlot('02:00 PM')} />
-                <TimeSlot time="02:30 PM" left={742 - offsetX} top={766 - offsetY} active={selectedSlot === '02:30 PM'} onClick={() => setSelectedSlot('02:30 PM')} />
-                <TimeSlot time="03:00 PM" left={894 - offsetX} top={766 - offsetY} active={selectedSlot === '03:00 PM'} onClick={() => setSelectedSlot('03:00 PM')} />
-                <TimeSlot time="03:30 PM" left={1046 - offsetX} top={766 - offsetY} active={selectedSlot === '03:30 PM'} onClick={() => setSelectedSlot('03:30 PM')} />
-                <TimeSlot time="04:00 PM" left={1198 - offsetX} top={766 - offsetY} active={selectedSlot === '04:00 PM'} onClick={() => setSelectedSlot('04:00 PM')} />
+                <TimeSlot time="12:30 PM" left={134 - offsetX} top={766 - offsetY} active={selectedSlot === '12:30 PM'} onClick={() => handleSlotClick('12:30 PM')} />
+                <TimeSlot time="01:00 PM" left={286 - offsetX} top={766 - offsetY} active={selectedSlot === '01:00 PM'} onClick={() => handleSlotClick('01:00 PM')} />
+                <TimeSlot time="01:30 PM" left={438 - offsetX} top={766 - offsetY} active={selectedSlot === '01:30 PM'} onClick={() => handleSlotClick('01:30 PM')} />
+                <TimeSlot time="02:00 PM" left={590 - offsetX} top={766 - offsetY} active={selectedSlot === '02:00 PM'} onClick={() => handleSlotClick('02:00 PM')} />
+                <TimeSlot time="02:30 PM" left={742 - offsetX} top={766 - offsetY} active={selectedSlot === '02:30 PM'} onClick={() => handleSlotClick('02:30 PM')} />
+                <TimeSlot time="03:00 PM" left={894 - offsetX} top={766 - offsetY} active={selectedSlot === '03:00 PM'} onClick={() => handleSlotClick('03:00 PM')} />
+                <TimeSlot time="03:30 PM" left={1046 - offsetX} top={766 - offsetY} active={selectedSlot === '03:30 PM'} onClick={() => handleSlotClick('03:30 PM')} />
+                <TimeSlot time="04:00 PM" left={1198 - offsetX} top={766 - offsetY} active={selectedSlot === '04:00 PM'} onClick={() => handleSlotClick('04:00 PM')} />
 
-                <TimeSlot time="07:00 PM" left={134 - offsetX} top={853 - offsetY} active={selectedSlot === '07:00 PM'} onClick={() => setSelectedSlot('07:00 PM')} />
-                <TimeSlot time="07:30 PM" left={286 - offsetX} top={853 - offsetY} active={selectedSlot === '07:30 PM'} onClick={() => setSelectedSlot('07:30 PM')} />
-                <TimeSlot time="08:00 PM" left={438 - offsetX} top={853 - offsetY} active={selectedSlot === '08:00 PM'} onClick={() => setSelectedSlot('08:00 PM')} />
-                <TimeSlot time="08:30 PM" left={590 - offsetX} top={853 - offsetY} active={selectedSlot === '08:30 PM'} onClick={() => setSelectedSlot('08:30 PM')} />
-                <TimeSlot time="09:00 PM" left={742 - offsetX} top={853 - offsetY} active={selectedSlot === '09:00 PM'} onClick={() => setSelectedSlot('09:00 PM')} />
-                <TimeSlot time="09:30 PM" left={894 - offsetX} top={853 - offsetY} active={selectedSlot === '09:30 PM'} onClick={() => setSelectedSlot('09:30 PM')} />
-                <TimeSlot time="10:00 PM" left={1046 - offsetX} top={853 - offsetY} active={selectedSlot === '10:00 PM'} onClick={() => setSelectedSlot('10:00 PM')} />
-                <TimeSlot time="10:30 PM" left={1198 - offsetX} top={853 - offsetY} active={selectedSlot === '10:30 PM'} onClick={() => setSelectedSlot('10:30 PM')} />
+                <TimeSlot time="07:00 PM" left={134 - offsetX} top={853 - offsetY} active={selectedSlot === '07:00 PM'} onClick={() => handleSlotClick('07:00 PM')} />
+                <TimeSlot time="07:30 PM" left={286 - offsetX} top={853 - offsetY} active={selectedSlot === '07:30 PM'} onClick={() => handleSlotClick('07:30 PM')} />
+                <TimeSlot time="08:00 PM" left={438 - offsetX} top={853 - offsetY} active={selectedSlot === '08:00 PM'} onClick={() => handleSlotClick('08:00 PM')} />
+                <TimeSlot time="08:30 PM" left={590 - offsetX} top={853 - offsetY} active={selectedSlot === '08:30 PM'} onClick={() => handleSlotClick('08:30 PM')} />
+                <TimeSlot time="09:00 PM" left={742 - offsetX} top={853 - offsetY} active={selectedSlot === '09:00 PM'} onClick={() => handleSlotClick('09:00 PM')} />
+                <TimeSlot time="09:30 PM" left={894 - offsetX} top={853 - offsetY} active={selectedSlot === '09:30 PM'} onClick={() => handleSlotClick('09:30 PM')} />
+                <TimeSlot time="10:00 PM" left={1046 - offsetX} top={853 - offsetY} active={selectedSlot === '10:00 PM'} onClick={() => handleSlotClick('10:00 PM')} />
+                <TimeSlot time="10:30 PM" left={1198 - offsetX} top={853 - offsetY} active={selectedSlot === '10:30 PM'} onClick={() => handleSlotClick('10:30 PM')} />
 
                 <h2
                     className="absolute font-anek-condensed font-medium text-[30px] leading-[200%] text-black uppercase"

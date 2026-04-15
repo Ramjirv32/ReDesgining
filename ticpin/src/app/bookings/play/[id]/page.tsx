@@ -5,26 +5,15 @@ import { useRouter, useParams } from 'next/navigation';
 import { toast } from '@/components/ui/Toast';
 import { 
   ChevronLeft, 
-  Download, 
-  Phone, 
-  Mail, 
-  MapPin, 
-  Calendar, 
-  Ticket, 
-  QrCode,
-  Image as ImageIcon,
-  FileText,
-  Share2,
-  Clock,
-  Users,
-  CreditCard,
-  XCircle,
-  CheckCircle,
-  Gamepad2
+  CheckCircle, 
+  MessageCircle, 
+  User,
+  MapPin,
+  X
 } from 'lucide-react';
 import { useUserSession } from '@/lib/auth/user';
 import { bookingApi } from '@/lib/api/booking';
-import { getBookingStatus, getBookingStatusStyles } from '@/lib/utils/booking-status';
+import { getBookingStatus } from '@/lib/utils/booking-status';
 
 export default function PlayBookingDetailPage() {
   const router = useRouter();
@@ -35,6 +24,7 @@ export default function PlayBookingDetailPage() {
   const [booking, setBooking] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   useEffect(() => {
     if (bookingId) {
@@ -54,139 +44,31 @@ export default function PlayBookingDetailPage() {
     }
   }, [bookingId, session]);
 
-  const handleCancel = async () => {
-    if (!confirm('Are you sure you want to cancel this booking?')) return;
-    
-    // FIX RC2 & RC4: Better error handling for cancel operation
+  const handleCancel = async (reason: string) => {
     try {
       const response: any = await bookingApi.cancelBooking(bookingId, 'play');
       
-      // Verify cancellation was successful by checking message
       if (response?.message?.includes('cancelled successfully')) {
         toast.success('Booking cancelled successfully. Refund will be processed shortly.');
-        
-        // Wait a moment for backend to process refunds/email
+        setShowCancelModal(false);
         setTimeout(async () => {
           const updatedBooking = await bookingApi.getBookingDetails(bookingId, session?.id);
           setBooking(updatedBooking);
         }, 1000);
       } else {
         toast.error('Cancellation status unclear. Please refresh the page.');
-        const updatedBooking = await bookingApi.getBookingDetails(bookingId, session?.id);
-        setBooking(updatedBooking);
+        setShowCancelModal(false);
       }
     } catch (err: any) {
-      // FIX RC1 & RC2: Show specific error messages from API
       const errorMessage = err?.response?.data?.error || err?.message || 'Failed to cancel booking';
-      
-      if (errorMessage.includes('expired')) {
-        toast.error('Cannot cancel expired bookings.');
-      } else if (errorMessage.includes('already confirmed') || errorMessage.includes('already been paid')) {
-        toast.error('This booking cannot be cancelled as it has already been confirmed.');
-      } else if (errorMessage.includes('already cancelled')) {
-        toast.error('This booking has already been cancelled.');
-      } else {
-        toast.error(errorMessage);
-      }
-      
-      // Attempt to refresh booking status
-      try {
-        const updatedBooking = await bookingApi.getBookingDetails(bookingId, session?.id);
-        setBooking(updatedBooking);
-      } catch (refreshErr) {
-        console.error('Failed to refresh booking status:', refreshErr);
-      }
-    }
-  };
-
-  const downloadTicket = (format: 'png' | 'pdf') => {
-    // Create ticket HTML content
-    const ticketContent = `
-      <div style="width: 600px; padding: 40px; background: linear-gradient(135deg, #000000 0%, #333333 100%); color: white; font-family: Arial, sans-serif;">
-        <div style="text-align: center; margin-bottom: 30px;">
-          <h1 style="font-size: 32px; margin: 0;">PLAY BOOKING</h1>
-          <div style="font-size: 18px; opacity: 0.9;">Booking ID: ${booking?.booking_id}</div>
-        </div>
-        
-        <div style="background: white; color: black; padding: 30px; border-radius: 15px; margin-bottom: 20px;">
-          <h2 style="font-size: 24px; color: #000000; margin: 0 0 20px 0;">${booking?.venue_name}</h2>
-          
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-            <div>
-              <div style="font-size: 14px; color: #666;">Date</div>
-              <div style="font-size: 16px; font-weight: bold;">${booking?.date}</div>
-            </div>
-            <div>
-              <div style="font-size: 14px; color: #666;">Time Slot</div>
-              <div style="font-size: 16px; font-weight: bold;">${booking?.slot}</div>
-            </div>
-            ${booking?.duration ? `
-            <div>
-              <div style="font-size: 14px; color: #666;">Duration</div>
-              <div style="font-size: 16px; font-weight: bold;">${booking.duration} hours</div>
-            </div>
-            ` : ''}
-          </div>
-          
-          <div style="border-top: 2px solid #f0f0f0; padding-top: 20px;">
-            <h3 style="font-size: 18px; margin: 0 0 15px 0;">Court Details</h3>
-            ${booking?.tickets?.map((ticket: any, idx: number) => `
-              <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                <span>${ticket.category} x ${ticket.quantity}</span>
-                <span>₹${ticket.price * ticket.quantity}</span>
-              </div>
-            `).join('') || ''}
-            <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; margin-top: 15px; padding-top: 15px; border-top: 2px solid #f0f0f0;">
-              <span>Total</span>
-              <span>₹${booking?.grand_total || booking?.order_amount}</span>
-            </div>
-          </div>
-        </div>
-        
-        <div style="text-align: center; font-size: 12px; opacity: 0.7;">
-          <div>Status: ${getBookingStatus(booking) === 'CANCELLED' ? 'CANCELLED' : getBookingStatus(booking) === 'EXPIRED' ? 'EXPIRED' : 'CONFIRMED'}</div>
-          <div>Generated on ${new Date().toLocaleDateString()}</div>
-        </div>
-      </div>
-    `;
-
-    if (format === 'png') {
-      // For PNG, create a downloadable HTML file
-      const blob = new Blob([ticketContent], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `play-booking-${bookingId}.html`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } else {
-      // For PDF, create a print-friendly version
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        printWindow.document.write(`
-          <html>
-            <head>
-              <title>Play Booking - ${bookingId}</title>
-              <style>
-                body { margin: 0; font-family: Arial, sans-serif; }
-                @media print { body { margin: 0; } }
-              </style>
-            </head>
-            <body>${ticketContent}</body>
-          </html>
-        `);
-        printWindow.document.close();
-        printWindow.focus();
-        setTimeout(() => {
-          printWindow.print();
-        }, 500);
-      }
+      toast.error(errorMessage);
+      setShowCancelModal(false);
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#FFFCED] to-white flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
           <p className="text-zinc-500">Loading booking details...</p>
@@ -197,7 +79,7 @@ export default function PlayBookingDetailPage() {
 
   if (error || !booking) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#FFFCED] to-white flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="text-red-500">{error || 'Booking not found'}</div>
           <button 
@@ -211,174 +93,246 @@ export default function PlayBookingDetailPage() {
     );
   }
 
+  const venueImage = booking.venue_image || booking.image_url || booking.images?.[0] || booking.court_image || booking.play_image || null;
+
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col items-center py-12 px-4 font-[family-name:var(--font-anek-latin)]">
-      {/* Back Button */}
-      <div className="w-full max-w-[711px] mb-6">
-        <button 
-          onClick={() => router.back()}
-          className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors group"
-        >
-          <div className="w-8 h-8 rounded-full bg-zinc-900 flex items-center justify-center group-hover:bg-zinc-800 transition-colors">
-            <ChevronLeft size={18} />
-          </div>
-          <span className="font-medium">Back to bookings</span>
-        </button>
-      </div>
-
-      {/* Main Ticket Card */}
-      <div className="w-full max-w-[711px] bg-[#0A0132] rounded-[15px] border border-white/10 overflow-hidden shadow-2xl">
-        
-        {/* Yellow Header */}
-        <div className="bg-[#E7C200] px-12 py-6 flex items-center">
-          <span className="text-black font-[900] text-4xl tracking-[4px]">
-            TIC<span className="italic">P</span>IN
-          </span>
-        </div>
-
-        {/* Main Content Box */}
-        <div className="mx-12 bg-[#EBEBEB] rounded-b-[15px] p-8 md:p-9">
-          
-          {/* Title Row */}
-          <div className="flex items-center gap-3 mb-1.5">
-            <h2 className="text-[30px] font-bold text-black m-0">Play booking confirmed</h2>
-            <div className="w-7 h-7 bg-[#0AC655] rounded-full flex items-center justify-center flex-shrink-0">
-              <svg width="18" height="18" viewBox="0 0 28 28" fill="none">
-                <path d="M8 14.5L12 18.5L20 10" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-          </div>
-          
-          <p className="text-base text-[#686868] m-0 mb-5">
-            Booking Date : {new Date(booking.booked_at).toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}, {new Date(booking.booked_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </p>
-
-          <hr className="border-t border-[#AEAEAE] m-0 mb-5" />
-
-          {/* Play Summary Card */}
-          <div className="bg-white rounded-[10px] p-5 mb-4 flex gap-5 items-center">
-            <div className="w-[197px] h-[111px] bg-[#FFFCED] rounded-[6px] flex-shrink-0 overflow-hidden border border-amber-100">
-               <div className="w-full h-full flex items-center justify-center text-amber-200">
-                <Gamepad2 size={40} />
-               </div>
-            </div>
-            <div>
-              <p className="text-lg font-bold text-black m-0 mb-1.5">{booking.venue_name}</p>
-              <p className="text-base text-[#686868] m-0">{booking.city}, {booking.state}</p>
-            </div>
-          </div>
-
-          {/* Details Card */}
-          <div className="bg-white rounded-[10px] px-6 py-5 mb-4">
-            <div className="space-y-3">
-              <div className="pb-3 border-b border-[#D9D9D9]">
-                <p className="text-sm text-[#686868] m-0 mb-0.5">Booking ID</p>
-                <p className="text-lg font-semibold text-black m-0">{booking.booking_id}</p>
-              </div>
-              
-              <div className="pb-3 border-b border-[#D9D9D9]">
-                <p className="text-sm text-[#686868] m-0 mb-0.5">Date & Time</p>
-                <p className="text-lg font-semibold text-black m-0">{booking.date} | {booking.slot}</p>
-              </div>
-
-              <div className="pb-3 border-b border-[#D9D9D9]">
-                <p className="text-sm text-[#686868] m-0 mb-0.5">Play duration</p>
-                <p className="text-lg font-semibold text-black m-0">{booking.duration} mins</p>
-              </div>
-
-              <div className="pb-3 border-b border-[#D9D9D9]">
-                <p className="text-sm text-[#686868] m-0 mb-0.5">Location</p>
-                <p className="text-lg font-semibold text-black m-0">{booking.city || 'Venue'}</p>
-              </div>
-
-              <div>
-                <p className="text-sm text-[#686868] m-0 mb-0.5">Total Amount</p>
-                <div className="flex justify-between items-center">
-                  <p className="text-lg font-bold text-black m-0">₹{booking.grand_total}</p>
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${getBookingStatusStyles(getBookingStatus(booking))}`}>
-                    {getBookingStatus(booking)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* QR Code Section */}
-          <div className="flex justify-center mb-4">
-            <div className="w-[215px] h-[215px] bg-[#E7C2001A] rounded-[8px] flex items-center justify-center border-2 border-dashed border-[#E7C20033]">
-              <div className="flex flex-col items-center gap-2">
-                <QrCode size={100} className="text-black" strokeWidth={1.5} />
-                <span className="text-sm text-black font-medium">{booking.booking_id}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Access Info */}
-          <p className="text-sm text-[#686868] mb-5">
-            To access your booking, please sign in to your <span className="text-[#5331EA] font-semibold">Ticpin</span> account with {booking.user_phone}
-          </p>
-
-          {/* Notes Section */}
-          <p className="text-lg font-bold text-black mb-3">Notes</p>
-          <div className="bg-white rounded-[10px] px-6 py-5">
-            <div className="space-y-3.5">
-              {[
-                "Please arrive 10 minutes before the scheduled time for your slot booking.",
-                "Your booking time is strictly reserved, late arrivals may result in reduced playtime.",
-                "Ensure you vacate the turf on or before your end time to avoid inconvenience to the next booking.",
-              ].map((note, i) => (
-                <div key={i} className="flex gap-3 items-start">
-                  <div className="w-2.5 h-2.5 border-2 border-[#E7C200] rotate-45 flex-shrink-0 mt-1" />
-                  <p className="text-sm text-[#686868] m-0">{note}</p>
-                </div>
-              ))}
-            </div>
-            <p className="text-[13px] text-[#686868] m-0 mt-4">
-              See you there!<br />
-              Team <span className="text-[#5331EA] font-semibold">Ticpin</span>
-            </p>
-          </div>
-        </div>
-
-        {/* Support Section */}
-        <div className="px-12 py-7 pt-4">
-          <p className="text-white font-bold text-[26px] m-0 mb-2 uppercase">Looking for help?</p>
-          <p className="text-white text-base m-0 mb-6">
-            Mail us at <span className="text-[#E7C200] underline font-medium">support@ticpin.in</span> (10AM-5PM), and we'll help you out.
-          </p>
-          <hr className="border-t border-white m-0 mb-6" />
-
-          {/* Social Links Placeholder */}
-          <div className="flex justify-center gap-6 mb-6">
-            {['FB', 'IG', 'X', 'YT'].map(s => (
-              <div key={s} className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center text-xs text-white font-bold hover:bg-white/10 transition-colors cursor-pointer">
-                {s}
-              </div>
-            ))}
-          </div>
-          <hr className="border-t border-white m-0 mb-0" />
-        </div>
-      </div>
-
-      {/* Action Buttons (External to the ticket) */}
-      <div className="w-full max-w-[711px] mt-8 flex gap-4">
-          <button 
-            onClick={() => downloadTicket('pdf')}
-            className="flex-1 h-14 bg-white text-black rounded-[15px] font-bold flex items-center justify-center gap-2 hover:bg-zinc-100 transition-all active:scale-95"
+    <div className="min-h-screen bg-white pb-24">
+      {/* Header */}
+      <header className="w-full h-[114px] bg-white flex items-center justify-between px-10 border-b border-[#D9D9D9]">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => router.back()}
+            className="w-[31px] h-[31px] bg-white rounded-full flex items-center justify-center border border-[#D0D0D0] shadow-sm"
           >
-            <Download size={20} />
-            Download Ticket
+            <ChevronLeft size={20} className="text-black" />
           </button>
-          {getBookingStatus(booking) === 'CONFIRMED' && (
-            <button 
-              onClick={handleCancel}
-              className="flex-1 h-14 bg-red-500/10 text-red-500 border border-red-500/20 rounded-[15px] font-bold flex items-center justify-center gap-2 hover:bg-red-500/20 transition-all active:scale-95"
-            >
-              <XCircle size={20} />
-              Cancel Booking
-            </button>
-          )}
-      </div>
+          <div className="flex items-center gap-4">
+            {/* Yellow Image Badge */}
+            <div className="w-[104px] h-[58px] bg-[#FFEF9A] rounded-[10px] overflow-hidden flex items-center justify-center">
+              {venueImage ? (
+                <img 
+                  src={venueImage} 
+                  alt="Venue" 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-black font-bold text-lg">₹{booking.grand_total || booking.amount || 0}</span>
+              )}
+            </div>
+            <div className="w-[1px] h-[22px] bg-[#AEAEAE]" />
+            <div>
+              <h2 className="text-[20px] font-medium text-black" style={{ fontFamily: 'Anek Latin', lineHeight: '22px' }}>
+                {booking.venue_name || booking.title}
+              </h2>
+              <p className="text-[17px] font-medium text-[#686868]" style={{ fontFamily: 'Anek Latin', lineHeight: '19px' }}>
+                {booking.address || booking.city || booking.state}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-full bg-zinc-200 flex items-center justify-center">
+            <User size={20} className="text-zinc-500" />
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="container mx-auto px-4 pt-[45px]">
+        {/* Booking Confirmed Card */}
+        <div className="max-w-[787px] mx-auto">
+          <div className="border border-[#686868] rounded-[25px] overflow-hidden" style={{ background: 'radial-gradient(52.97% 102.98% at 0% -7.55%, #D6FAE5 0%, #FFFFFF 100%)' }}>
+            <div className="p-8">
+              <div className="flex items-center gap-4 mb-2">
+                <CheckCircle size={38} className="text-[#0AC655]" />
+                <h1 className="text-[34px] font-semibold text-black" style={{ fontFamily: 'Anek Latin', lineHeight: '37px' }}>
+                  Booking confirmed
+                </h1>
+              </div>
+              <p className="text-[17px] font-medium text-[#686868]" style={{ fontFamily: 'Anek Latin', lineHeight: '19px' }}>
+                Reach the venue 10 mins before your slot
+              </p>
+
+              <div className="border-b border-[#686868] my-6 w-[717px]" />
+
+              <div className="space-y-6">
+                {/* Date & Time */}
+                <div>
+                  <p className="text-[17px] font-medium text-[#686868] mb-1" style={{ fontFamily: 'Anek Latin', lineHeight: '19px' }}>
+                    Date & Time
+                  </p>
+                  <p className="text-[20px] font-medium text-black" style={{ fontFamily: 'Anek Latin', lineHeight: '22px' }}>
+                    {booking.date ? new Date(booking.date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }) : '-'} | {booking.slot || '-'}
+                  </p>
+                </div>
+
+                <div className="border-b border-[#686868] w-[717px]" />
+
+                {/* Play Duration */}
+                <div>
+                  <p className="text-[17px] font-medium text-[#686868] mb-1" style={{ fontFamily: 'Anek Latin', lineHeight: '19px' }}>
+                    Play duration
+                  </p>
+                  <p className="text-[20px] font-medium text-black" style={{ fontFamily: 'Anek Latin', lineHeight: '22px' }}>
+                    {booking.duration || '1'} hours
+                  </p>
+                </div>
+
+                <div className="border-b border-[#686868] w-[717px]" />
+
+                {/* Location */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[17px] font-medium text-[#686868] mb-1" style={{ fontFamily: 'Anek Latin', lineHeight: '19px' }}>
+                      Location
+                    </p>
+                    <p className="text-[20px] font-medium text-black" style={{ fontFamily: 'Anek Latin', lineHeight: '22px' }}>
+                      {booking.city || booking.location || '-'}
+                    </p>
+                  </div>
+                  <MapPin size={24} className="text-black" />
+                </div>
+
+                <div className="border-b border-[#686868] w-[717px]" />
+
+                {/* Offer */}
+                <div>
+                  <p className="text-[17px] font-medium text-[#686868] mb-1" style={{ fontFamily: 'Anek Latin', lineHeight: '19px' }}>
+                    Offer
+                  </p>
+                  <p className="text-[20px] font-medium text-black" style={{ fontFamily: 'Anek Latin', lineHeight: '22px' }}>
+                    {booking.offer_name || booking.offer || 'No offer applied'}
+                  </p>
+                </div>
+
+                <div className="border-b border-[#686868] w-[717px]" />
+
+                {/* Cancel Booking */}
+                {getBookingStatus(booking) === 'CONFIRMED' && (
+                  <button
+                    onClick={() => setShowCancelModal(true)}
+                    className="text-[22px] font-semibold underline text-[#ED4D1B]"
+                    style={{ fontFamily: 'Anek Latin', lineHeight: '24px' }}
+                  >
+                    Cancel booking
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Your Details Card */}
+          <div className="border border-[#686868] rounded-[25px] mt-6 p-8">
+            <h3 className="text-[25px] font-semibold text-black mb-4" style={{ fontFamily: 'Anek Latin', lineHeight: '28px' }}>
+              Your details
+            </h3>
+            <div className="space-y-2">
+              <p className="text-[20px] font-medium text-black" style={{ fontFamily: 'Anek Latin', lineHeight: '22px' }}>
+                {booking.user_name || session?.name || '-'}
+              </p>
+              <p className="text-[20px] font-medium text-[#686868]" style={{ fontFamily: 'Anek Latin', lineHeight: '22px' }}>
+                {booking.user_phone || session?.phone || '-'}
+              </p>
+            </div>
+          </div>
+
+          {/* Booking Info Card */}
+          <div className="border border-[#686868] rounded-[25px] mt-6 p-8">
+            <div className="space-y-2">
+              <p className="text-[17px] font-medium text-[#686868]" style={{ fontFamily: 'Anek Latin', lineHeight: '19px' }}>
+                Booking ID: {booking.booking_id || booking.id}
+              </p>
+              <p className="text-[17px] font-medium text-[#686868]" style={{ fontFamily: 'Anek Latin', lineHeight: '19px' }}>
+                Booking date: {booking.booked_at ? new Date(booking.booked_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
+              </p>
+            </div>
+          </div>
+
+          {/* Terms & Conditions Card */}
+          <div className="bg-[#E1E1E1] rounded-[25px] mt-6 p-8 h-[330px]">
+            <h3 className="text-[25px] font-semibold text-black mb-4" style={{ fontFamily: 'Anek Latin', lineHeight: '28px' }}>
+              Terms & Conditions
+            </h3>
+            <div className="space-y-3 text-[#686868] text-sm">
+              <p>• Please arrive 10 minutes before your slot.</p>
+              <p>• Late arrivals may result in reduced playtime.</p>
+              <p>• Ensure you vacate the turf on time.</p>
+              <p>• Cancellations must be made at least 2 hours before the slot.</p>
+              <p>• Refunds will be processed within 5-7 business days.</p>
+            </div>
+          </div>
+
+          {/* Chat with Support Card */}
+          <div 
+            className="border border-[#686868] rounded-[25px] mt-6 p-8 flex items-center gap-4 cursor-pointer hover:bg-gray-50 transition-colors"
+            onClick={() => router.push('/chat-support')}
+          >
+            <MessageCircle size={32} className="text-black" strokeWidth={2} />
+            <h3 className="text-[25px] font-semibold text-black" style={{ fontFamily: 'Anek Latin', lineHeight: '28px' }}>
+              Chat with support
+            </h3>
+          </div>
+        </div>
+      </main>
+
+      {/* Cancel Modal */}
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-[26px] w-[787px] h-[398px] p-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-[25px] font-semibold text-black" style={{ fontFamily: 'Anek Latin', lineHeight: '28px' }}>
+                Booking cancellation request
+              </h2>
+              <button
+                onClick={() => setShowCancelModal(false)}
+                className="text-[25px] font-semibold text-black"
+              >
+                <X size={28} />
+              </button>
+            </div>
+
+            <div className="border-b border-dashed border-[#686868] w-[787px] mb-4" />
+
+            <p className="text-[17px] font-medium text-[#686868] mb-4" style={{ fontFamily: 'Anek Latin', lineHeight: '19px' }}>
+              Select your reason here
+            </p>
+
+            <div className="flex gap-3 mb-6">
+              <button
+                onClick={() => handleCancel('Plan change')}
+                className="px-6 py-3 border border-[#D9D9D9] rounded-[33px] text-[20px] font-medium text-black hover:bg-gray-50"
+                style={{ fontFamily: 'Anek Latin', lineHeight: '22px' }}
+              >
+                Plan change
+              </button>
+              <button
+                onClick={() => handleCancel('Found a better offer elsewhere')}
+                className="px-6 py-3 border border-[#D9D9D9] rounded-[33px] text-[20px] font-medium text-black hover:bg-gray-50"
+                style={{ fontFamily: 'Anek Latin', lineHeight: '22px' }}
+              >
+                Found a better offer elsewhere
+              </button>
+              <button
+                onClick={() => handleCancel('Booked by mistake')}
+                className="px-6 py-3 border border-[#D9D9D9] rounded-[33px] text-[20px] font-medium text-black hover:bg-gray-50"
+                style={{ fontFamily: 'Anek Latin', lineHeight: '22px' }}
+              >
+                Booked by mistake
+              </button>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleCancel('Others')}
+                className="px-6 py-3 border border-[#D9D9D9] rounded-[33px] text-[20px] font-medium text-black hover:bg-gray-50"
+                style={{ fontFamily: 'Anek Latin', lineHeight: '22px' }}
+              >
+                Others
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
