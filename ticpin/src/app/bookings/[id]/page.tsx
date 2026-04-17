@@ -66,7 +66,7 @@ export default function BookingDetailsPage() {
         if (!selectedReason || !booking) return;
         setCancelling(true);
         try {
-            await bookingApi.cancelBooking(booking.id, booking.type || 'play');
+            await bookingApi.cancelBooking(booking.id, booking.type || 'play', selectedReason);
             // Refresh booking data
             const res = await fetch(`/backend/api/bookings/${bookingId}${session?.id ? `?user_id=${session.id}` : ''}`, {
                 credentials: 'include',
@@ -132,10 +132,19 @@ export default function BookingDetailsPage() {
         );
     }
 
-    const isCancelled = booking.status === 'cancelled';
+    const isCancelled = booking.status === 'cancelled' || booking.status === 'refunded';
+    const isRefunded = booking.status === 'refunded';
+
+    // Check if booking date is expired
+    const isExpired = booking.date ? new Date(booking.date).getTime() < new Date().setHours(0, 0, 0, 0) : false;
 
     return (
-        <div className={`min-h-screen bg-white font-[family-name:var(--font-anek-latin)] pb-20 relative ${(isCancelModalOpen) ? 'overflow-hidden' : ''}`}>
+        <div className={`bg-white font-[family-name:var(--font-anek-latin)] relative pb-0 ${(isCancelModalOpen) ? 'overflow-hidden' : ''}`}>
+            <style>{`
+                body {
+                    background-color: white !important;
+                }
+            `}</style>
             {/* Header */}
             <header className="h-16 md:h-20 w-full bg-white border-b border-[#D9D9D9] flex items-center px-4 md:px-10 lg:px-[37px] sticky top-0 z-50">
                 <div className="flex items-center gap-4 md:gap-10">
@@ -156,11 +165,11 @@ export default function BookingDetailsPage() {
 
                         <div className="flex items-center gap-6">
                             {/* Venue Thumbnail */}
-                            <div className="w-[85px] h-[48px] bg-[#FFEF9A] rounded-[10px] overflow-hidden flex items-center justify-center">
+                            <div className="w-[85px] h-[48px] bg-zinc-100 rounded-[10px] overflow-hidden flex items-center justify-center">
                                 {(booking.event_image_url || booking.venue_image_url || booking.play_image || booking.image_url) ? (
                                     <img src={booking.event_image_url || booking.venue_image_url || booking.play_image || booking.image_url} alt="" className="w-full h-full object-cover" />
                                 ) : (
-                                    <MapPin size={24} className="text-black/20" />
+                                    <MapPin size={24} className="text-zinc-400" />
                                 )}
                             </div>
 
@@ -177,7 +186,7 @@ export default function BookingDetailsPage() {
                 </div>
             </header>
 
-            <main className="max-w-[787px] mx-auto px-4 mt-6 md:mt-[45px] pb-10 space-y-10">
+            <main className="max-w-[787px] mx-auto px-4 mt-6 md:mt-[45px] pb-0 mb-0 space-y-6">
 
                 {/* Main Booking Card (Confirm/Cancel state) */}
                 <div className="relative bg-white border-[0.5px] border-[#686868] rounded-[25px] overflow-hidden">
@@ -187,6 +196,8 @@ export default function BookingDetailsPage() {
                         style={{
                             background: isCancelled
                                 ? 'radial-gradient(52.97% 102.98% at 0% -7.55%, #FFD6D6 0%, #FFFFFF 100%)'
+                                : isExpired
+                                ? 'radial-gradient(52.97% 102.98% at 0% -7.55%, #FFE4CC 0%, #FFFFFF 100%)'
                                 : 'radial-gradient(52.97% 102.98% at 0% -7.55%, #D6FAE5 0%, #FFFFFF 100%)'
                         }}
                     />
@@ -197,23 +208,41 @@ export default function BookingDetailsPage() {
                             <div>
                                 <div className="flex items-center gap-3">
                                     <h1 className="text-[28px] md:text-[34px] font-semibold text-black leading-none">
-                                        {isCancelled ? 'Booking cancelled' : 'Booking confirmed'}
+                                        {isRefunded ? 'Booking refunded' : isCancelled ? 'Booking cancelled' : isExpired ? 'Booking expired' : 'Booking confirmed'}
                                     </h1>
                                     <div className="w-8 h-8 md:w-[38px] md:h-[38px] flex-shrink-0">
                                         {isCancelled ? (
                                             <XCircle className="w-full h-full text-red-500" />
+                                        ) : isExpired ? (
+                                            <XCircle className="w-full h-full text-orange-500" />
                                         ) : (
                                             <CheckCircle className="w-full h-full text-[#009133]" />
                                         )}
                                     </div>
                                 </div>
                                 <p className="text-[17px] font-medium text-[#686868] mt-2">
-                                    {isCancelled ? 'The refund if any will be processed soon' : 'Reach the venue 10 mins before your slot'}
+                                    {isRefunded ? 'Refund has been processed' :
+                                     isCancelled ? 'The refund if any will be processed soon' :
+                                     isExpired ? 'This booking has passed and is no longer active' :
+                                     'Reach the venue 10 mins before your slot'}
                                 </p>
                             </div>
                         </div>
 
                         {/* Divider */}
+                        <div className="h-[0.5px] bg-[#686868] w-full" />
+
+                        {/* Turf Image */}
+                        {booking.type === 'play' && (booking.event_image_url || booking.venue_image_url || booking.play_image || booking.image_url) && (
+                            <div className="w-full h-[200px] md:h-[250px] rounded-[15px] overflow-hidden">
+                                <img
+                                    src={booking.event_image_url || booking.venue_image_url || booking.play_image || booking.image_url}
+                                    alt="Turf"
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+                        )}
+
                         <div className="h-[0.5px] bg-[#686868] w-full" />
 
                         {/* Booking Details Grid */}
@@ -248,7 +277,7 @@ export default function BookingDetailsPage() {
                                 <p className="text-[20px] font-medium text-black uppercase leading-tight">
                                     {booking.venue_address || booking.event_location || 'Venue Location'}
                                 </p>
-                                <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center justify-center w-10 h-10 bg-[#FFEF9A] rounded-full">
+                                <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center justify-center w-10 h-10 bg-zinc-100 rounded-full">
                                     <Navigation size={20} className="text-black" />
                                 </div>
                             </div>
@@ -259,13 +288,17 @@ export default function BookingDetailsPage() {
                             <div className="space-y-1">
                                 <p className="text-[17px] font-medium text-[#686868] leading-none">Discount</p>
                                 <p className="text-[20px] font-medium text-black uppercase">
-                                    {booking.discount_amount > 0 ? `₹${booking.discount_amount} Savings` : 'No offer applied'}
+                                    {booking.ticpass_applied ? `Ticpass Applied - ₹${booking.discount_amount} off` :
+                                        booking.offer_id ? `Offer Applied - ₹${booking.discount_amount} off` :
+                                        booking.coupon_code ? `Coupon: ${booking.coupon_code} - ₹${booking.discount_amount} off` :
+                                        booking.grand_total === 0 ? 'Total Free' :
+                                        booking.discount_amount > 0 ? `₹${booking.discount_amount} Savings` : 'No offer applied'}
                                 </p>
                             </div>
 
                             {/* Cancel Link / Download Link */}
                             <div className="pt-4 flex flex-wrap gap-6 items-center">
-                                {!isCancelled && (
+                                {!isCancelled && !isExpired && (
                                     <button
                                         onClick={() => setIsCancelModalOpen(true)}
                                         className="text-[22px] font-semibold text-[#ED4D1B] underline underline-offset-4 decoration-1 decoration-[#ED4D1B]"
@@ -332,30 +365,113 @@ export default function BookingDetailsPage() {
 
             {/* HIDDEN PREMIUM TICKET FOR PDF DOWNLOAD */}
             <div className="opacity-0 pointer-events-none absolute -left-[9999px]">
-                <div ref={ticketRef} id="hidden-ticket-capture" style={{ width: '800px', background: '#F5F5F5', padding: '60px 40px' }}>
-                    <div style={{ background: '#ffffff', borderRadius: '15px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-                        <div style={{ background: '#000000', padding: '30px', textAlign: 'center' }}>
-                            <span style={{ color: '#ffffff', fontWeight: 900, fontSize: '42px', letterSpacing: '8px' }}>TICPIN</span>
+                <div ref={ticketRef} id="hidden-ticket-capture" style={{ width: '595px', height: '842px', background: '#f5f5f5', padding: '0', fontFamily: 'Anek Latin, Arial, sans-serif', display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end' }}>
+                    {/* Gray Container */}
+                    <div style={{ width: '500px', background: '#EBEBEB', borderRadius: '15px', border: '1px solid #ffffff', overflow: 'hidden', marginRight: '0', marginTop: '20px', marginBottom: '0' }}>
+                        {/* Yellow Header */}
+                        <div style={{ background: '#E7C200', padding: '8px 16px' }}>
+                            <span style={{ color: '#000000', fontWeight: 900, fontSize: '14px', letterSpacing: '1px' }}>TICPIN</span>
                         </div>
-                        <div style={{ padding: '40px' }}>
-                            <div style={{ fontSize: '32px', fontWeight: 700, marginBottom: '10px' }}>Booking Confirmed</div>
-                            <p style={{ color: '#686868', fontSize: '18px', marginBottom: '30px' }}>ID: {booking.booking_id || booking.id?.slice(-8).toUpperCase()}</p>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', marginBottom: '30px' }}>
-                                <div>
-                                    <p style={{ color: '#686868', fontSize: '14px' }}>Venue / Event</p>
-                                    <p style={{ fontSize: '18px', fontWeight: 700 }}>{booking.event_name || booking.venue_name}</p>
+                        {/* Gray Content Body */}
+                        <div style={{ padding: '16px' }}>
+                            {/* Heading */}
+                            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '6px' }}>
+                                <span style={{ fontSize: '20px', fontWeight: 600, color: '#000000' }}>Play booking confirmed</span>
+                                <span style={{ display: 'inline-block', width: '18px', height: '18px', background: '#0AC655', borderRadius: '50%', color: '#fff', textAlign: 'center', lineHeight: '18px', fontSize: '12px', marginLeft: '8px' }}>✓</span>
+                            </div>
+
+                            <p style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 500, color: '#686868', lineHeight: '16px' }}>
+                                Booking Date: {new Date(booking.date || Date.now()).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}, {booking.time || booking.time_slot}
+                            </p>
+
+                            {/* Play Card Box */}
+                            <div style={{ background: '#ffffff', borderRadius: '10px', marginBottom: '12px', padding: '10px', display: 'flex', gap: '10px' }}>
+                                <div style={{ width: '120px', height: '68px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 }}>
+                                    {(booking.event_image_url || booking.venue_image_url || booking.play_image || booking.image_url) ? (
+                                        <img src={booking.event_image_url || booking.venue_image_url || booking.play_image || booking.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ) : (
+                                        <div style={{ width: '100%', height: '100%', backgroundColor: '#FFEF9A' }}></div>
+                                    )}
                                 </div>
-                                <div>
-                                    <p style={{ color: '#686868', fontSize: '14px' }}>Date & Time</p>
-                                    <p style={{ fontSize: '18px', fontWeight: 700 }}>{new Date(booking.date).toLocaleDateString()} | {booking.time || booking.time_slot}</p>
+                                <div style={{ flex: 1 }}>
+                                    <p style={{ margin: '0 0 6px 0', fontWeight: 600, fontSize: '14px', color: '#000000', lineHeight: '18px' }}>{booking.event_name || booking.venue_name}</p>
+                                    <p style={{ margin: 0, fontSize: '12px', fontWeight: 500, color: '#686868', lineHeight: '16px' }}>{booking.venue_address || booking.event_location || 'Venue Location'}</p>
                                 </div>
                             </div>
 
-                            <div style={{ textAlign: 'center', padding: '30px', border: '2px dashed #D9D9D9', borderRadius: '15px' }}>
-                                <div style={{ display: 'inline-block', padding: '10px', background: 'white' }}>
-                                    <QRCodeCanvas value={booking.booking_id || bookingId} size={150} />
+                            {/* Details Card Box */}
+                            <div style={{ background: '#ffffff', borderRadius: '10px', marginBottom: '12px', padding: '14px' }}>
+                                <p style={{ margin: '0 0 2px 0', fontSize: '11px', fontWeight: 500, color: '#686868', lineHeight: '14px' }}>Booking ID</p>
+                                <p style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: 500, color: '#000000', lineHeight: '16px' }}>{booking.booking_id || booking.id?.slice(-8).toUpperCase()}</p>
+
+                                <div style={{ borderTop: '1px solid #D9D9D9', margin: '8px 0 12px 0' }}></div>
+
+                                <p style={{ margin: '0 0 2px 0', fontSize: '11px', fontWeight: 500, color: '#686868', lineHeight: '14px' }}>Date & Time</p>
+                                <p style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: 500, color: '#000000', lineHeight: '16px' }}>
+                                    {new Date(booking.date || Date.now()).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })} | {booking.time || booking.time_slot}
+                                </p>
+
+                                <p style={{ margin: '0 0 2px 0', fontSize: '11px', fontWeight: 500, color: '#686868', lineHeight: '14px' }}>Play duration</p>
+                                <p style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: 500, color: '#000000', lineHeight: '16px' }}>
+                                    {booking.type === 'play' ? `${booking.duration ? (booking.duration * 30) : '60'} mins` :
+                                        booking.type === 'dining' ? `${booking.guests} Guests` :
+                                            `${booking.tickets?.reduce((acc: number, t: any) => acc + (t.quantity || 0), 0) || 1} tickets`}
+                                </p>
+
+                                <p style={{ margin: '0 0 2px 0', fontSize: '11px', fontWeight: 500, color: '#686868', lineHeight: '14px' }}>Location</p>
+                                <p style={{ margin: 0, fontSize: '13px', fontWeight: 500, color: '#000000', lineHeight: '16px' }}>{booking.venue_address || booking.event_location || 'Venue Location'}</p>
+
+                                {(booking.ticpass_applied || booking.offer_id || booking.coupon_code) && (
+                                    <>
+                                        <div style={{ borderTop: '1px solid #D9D9D9', margin: '8px 0 12px 0' }}></div>
+                                        <p style={{ margin: '0 0 2px 0', fontSize: '11px', fontWeight: 500, color: '#686868', lineHeight: '14px' }}>Discount</p>
+                                        <p style={{ margin: 0, fontSize: '13px', fontWeight: 500, color: '#000000', lineHeight: '16px' }}>
+                                            {booking.ticpass_applied ? `Ticpass Applied - ₹${booking.discount_amount} off` :
+                                                booking.offer_id ? `Offer Applied - ₹${booking.discount_amount} off` :
+                                                booking.coupon_code ? `Coupon: ${booking.coupon_code} - ₹${booking.discount_amount} off` :
+                                                booking.grand_total === 0 ? 'Total Free' : ''}
+                                        </p>
+                                    </>
+                                )}
+                            </div>
+
+                            <p style={{ fontSize: '11px', fontWeight: 500, color: '#686868', margin: '12px 0 12px 0', lineHeight: '14px' }}>
+                                To access your booking, please sign in to your <span style={{ color: '#5331EA', fontWeight: 600 }}>Ticpin</span> account with {booking.user_phone}
+                            </p>
+
+                            <p style={{ fontWeight: 600, fontSize: '14px', color: '#000000', marginBottom: '8px', lineHeight: '18px' }}>Notes</p>
+
+                            {/* Notes Box */}
+                            <div style={{ background: '#ffffff', borderRadius: '10px', padding: '12px' }}>
+                                <div style={{ display: 'flex', marginBottom: '8px' }}>
+                                    <div style={{ width: '18px', paddingTop: '2px' }}>
+                                        <div style={{ width: '6px', height: '6px', border: '2px solid #E7C200', boxSizing: 'border-box', transform: 'rotate(-45deg)' }}></div>
+                                    </div>
+                                    <p style={{ fontSize: '11px', fontWeight: 500, color: '#686868', lineHeight: '14px', margin: 0 }}>
+                                        Please arrive 10 minutes before the scheduled time for your slot booking.
+                                    </p>
                                 </div>
+                                <div style={{ display: 'flex', marginBottom: '8px' }}>
+                                    <div style={{ width: '18px', paddingTop: '2px' }}>
+                                        <div style={{ width: '6px', height: '6px', border: '2px solid #E7C200', boxSizing: 'border-box', transform: 'rotate(-45deg)' }}></div>
+                                    </div>
+                                    <p style={{ fontSize: '11px', fontWeight: 500, color: '#686868', lineHeight: '14px', margin: 0 }}>
+                                        Your booking time is strictly reserved, late arrivals may result in reduced playtime.
+                                    </p>
+                                </div>
+                                <div style={{ display: 'flex', marginBottom: '8px' }}>
+                                    <div style={{ width: '18px', paddingTop: '2px' }}>
+                                        <div style={{ width: '6px', height: '6px', border: '2px solid #E7C200', boxSizing: 'border-box', transform: 'rotate(-45deg)' }}></div>
+                                    </div>
+                                    <p style={{ fontSize: '11px', fontWeight: 500, color: '#686868', lineHeight: '14px', margin: 0 }}>
+                                        Ensure you vacate the turf on or before your end time to avoid inconvenience to the next booking
+                                    </p>
+                                </div>
+                                <p style={{ margin: '12px 0 0 0', fontSize: '10px', fontWeight: 500, color: '#686868', lineHeight: '14px' }}>
+                                    See you there!<br />
+                                    Team <span style={{ color: '#5331EA', fontWeight: 600 }}>Ticpin</span>
+                                </p>
                             </div>
                         </div>
                     </div>

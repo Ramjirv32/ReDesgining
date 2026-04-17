@@ -84,4 +84,8 @@ export const playApi = {
   /** Fetch all plays for search/listing */
   publicList: () =>
     request<{ data: any[] }>('/play'),
+
+  /** Fetch play details by ID (public) */
+  getPlayById: (id: string) =>
+    request<any>(`/play/${id}`),
 };

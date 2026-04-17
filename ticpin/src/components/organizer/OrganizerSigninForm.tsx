@@ -6,7 +6,9 @@ import { useRouter } from 'next/navigation';
 import { ChevronRight } from 'lucide-react';
 import { auth, googleProvider, signInWithPopup } from '@/lib/firebase';
 import { saveOrganizerSession } from '@/lib/auth/organizer';
+import { getUserSession } from '@/lib/auth/user';
 import { useIdentityStore } from '@/store/useIdentityStore';
+import { toast } from '@/components/ui/Toast';
 
 interface SigninApi {
     signin: (email: string, password: string) => Promise<unknown>;
@@ -39,6 +41,7 @@ export default function OrganizerSigninForm({ vertical, api, setupPath, otpPath,
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [rememberMe, setRememberMe] = useState(true);
     const router = useRouter();
 
     useEffect(() => {
@@ -62,7 +65,7 @@ export default function OrganizerSigninForm({ vertical, api, setupPath, otpPath,
         try {
             await api.signin(email, password);
             sessionStorage.setItem('otp_pending_email', email);
-            setRememberedEmail(email);
+            if (rememberMe) setRememberedEmail(email);
             router.push(otpPath);
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : 'Signup failed';
@@ -106,6 +109,15 @@ export default function OrganizerSigninForm({ vertical, api, setupPath, otpPath,
     const bgClass = isPlay ? 'bg-gradient-to-b from-[#FFFCED] via-white to-white' : '';
     const bgStyle = !isPlay ? { background: 'rgba(211, 203, 245, 0.1)' } : {};
 
+    // Check if regular user is logged in
+    useEffect(() => {
+        const userSession = getUserSession();
+        if (userSession) {
+            toast.error('Please logout from your user account first to access organizer signup', 5000);
+            router.push('/');
+        }
+    }, [router]);
+
     return (
         <div className={`overflow-hidden flex flex-col font-[family-name:var(--font-anek-latin)] ${bgClass}`} style={{ ...bgStyle, height: 'calc(100vh - 80px)' }}>
             <main className="flex-1 flex flex-col items-center justify-start pt-20 px-6 overflow-y-auto scrollbar-hide">
@@ -137,6 +149,16 @@ export default function OrganizerSigninForm({ vertical, api, setupPath, otpPath,
                                 onKeyDown={e => e.key === 'Enter' && handleSignup()}
                                 className="w-full px-6 py-4 border-[1.5px] border-[#AEAEAE] rounded-[20px] text-[#AEAEAE] placeholder-[#AEAEAE] focus:outline-none focus:border-black transition-colors"
                                 style={{ height: '65px' }} />
+                            <div className="flex items-center gap-2 mt-3">
+                                <input
+                                    type="checkbox"
+                                    id="rememberMe"
+                                    checked={rememberMe}
+                                    onChange={e => setRememberMe(e.target.checked)}
+                                    className="w-4 h-4 accent-black cursor-pointer"
+                                />
+                                <label htmlFor="rememberMe" className="text-sm font-medium text-[#686868] cursor-pointer">Remember me</label>
+                            </div>
                             <p className="text-sm font-medium text-[#5331EA] mt-4" style={{ fontSize: '15px', lineHeight: '16px' }}>{passwordHint ?? 'Password must be at least 8 characters.'}</p>
                         </div>
                     </div>

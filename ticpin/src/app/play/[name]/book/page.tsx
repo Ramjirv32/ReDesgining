@@ -322,13 +322,23 @@ export default function PlayBookPage() {
         const { start: venueStart, end: venueEnd } = resolveVenueTimes();
         const blocks: { label: string; startMin: number; endMin: number }[] = [];
         let current = venueStart;
+
+        // Get current time in minutes for filtering past slots
+        const now = new Date();
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        const isToday = selectedDate === now.toISOString().split('T')[0];
+
         while (current + durationMins <= venueEnd) {
             const end = current + durationMins;
-            blocks.push({
-                label: `${formatTime(current)} - ${formatTime(end)}`,
-                startMin: current,
-                endMin: end,
-            });
+
+            // Skip past slots if booking for today
+            if (!isToday || current >= currentMinutes) {
+                blocks.push({
+                    label: `${formatTime(current)} - ${formatTime(end)}`,
+                    startMin: current,
+                    endMin: end,
+                });
+            }
             current += 30; // step every 30 min
         }
         return blocks;

@@ -101,38 +101,15 @@ const UserMenu: React.FC<UserMenuProps> = ({
 
                             {/* Booking Navigation */}
                             <div className="py-2">
-                                <div className="px-4 py-2 text-xs font-medium text-zinc-500 uppercase tracking-wider">
-                                    My Bookings
-                                </div>
                                 <Link
-                                    href="/bookings/event-tickets"
+                                    href="/bookings?type=play"
                                     className="flex items-center gap-3 px-4 py-2 text-zinc-700 hover:bg-zinc-50 transition-colors"
                                     onClick={() => {
                                         onToggleMenu();
                                     }}
                                 >
                                     <Ticket size={16} />
-                                    <span>Event Tickets</span>
-                                </Link>
-                                <Link
-                                    href="/bookings/play-tickets"
-                                    className="flex items-center gap-3 px-4 py-2 text-zinc-700 hover:bg-zinc-50 transition-colors"
-                                    onClick={() => {
-                                        onToggleMenu();
-                                    }}
-                                >
-                                    <Gamepad2 size={16} />
-                                    <span>Play Bookings</span>
-                                </Link>
-                                <Link
-                                    href="/bookings/dining-tickets"
-                                    className="flex items-center gap-3 px-4 py-2 text-zinc-700 hover:bg-zinc-50 transition-colors"
-                                    onClick={() => {
-                                        onToggleMenu();
-                                    }}
-                                >
-                                    <Utensils size={16} />
-                                    <span>Dining Reservations</span>
+                                    <span>View Bookings</span>
                                 </Link>
                             </div>
                         </>

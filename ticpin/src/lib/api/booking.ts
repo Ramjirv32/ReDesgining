@@ -279,10 +279,12 @@ export const bookingApi = {
     },
 
     /** Cancel a booking by ID and category */
-    cancelBooking: async (id: string, category: string): Promise<{ message: string }> => {
+    cancelBooking: async (id: string, category: string, reason?: string): Promise<{ message: string }> => {
         const res = await fetch(`${BASE}/bookings/${id}/cancel?category=${category}`, {
             method: 'PUT',
             credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: reason ? JSON.stringify({ reason }) : undefined,
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to cancel booking');

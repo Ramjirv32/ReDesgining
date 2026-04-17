@@ -64,10 +64,17 @@ export default function ProfileSidebar({ isOpen, onClose }: ProfileSidebarProps)
 
     return (
         <>
+            {/* Backdrop overlay */}
+            {isOpen && (
+                <div
+                    onClick={onClose}
+                    className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[90] transition-opacity duration-300 ease-in-out"
+                />
+            )}
 
             {/* Sidebar */}
-            <div 
-                className={`fixed top-[114px] w-[280px] h-[calc(100vh-114px)] bg-white shadow-[-4px_0_15px_rgba(0,0,0,0.1)] z-[100] transition-all duration-300 ${
+            <div
+                className={`fixed top-[114px] w-[280px] h-[calc(100vh-114px)] bg-white shadow-[-4px_0_15px_rgba(0,0,0,0.1)] z-[100] transition-all duration-500 ease-in-out ${
                     isOpen ? 'right-0' : 'right-[-280px]'
                 }`}
             >

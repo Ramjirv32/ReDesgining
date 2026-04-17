@@ -171,6 +171,9 @@ func buildBookingResponse(booking interface{}, bookingType string) fiber.Map {
 		response["payment_method"] = b.PaymentGateway
 		response["booked_at"] = b.BookedAt
 		response["status"] = b.Status
+		response["coupon_code"] = b.CouponCode
+		response["offer_id"] = b.OfferID.Hex()
+		response["ticpass_applied"] = b.TicpassApplied
 
 	case "play":
 		b := booking.(*models.PlayBooking)
@@ -196,6 +199,9 @@ func buildBookingResponse(booking interface{}, bookingType string) fiber.Map {
 		response["payment_method"] = b.PaymentGateway
 		response["booked_at"] = b.BookedAt
 		response["status"] = b.Status
+		response["coupon_code"] = b.CouponCode
+		response["offer_id"] = b.OfferID.Hex()
+		response["ticpass_applied"] = b.TicpassApplied
 
 	case "dining":
 		b := booking.(*models.DiningBooking)
@@ -222,6 +228,9 @@ func buildBookingResponse(booking interface{}, bookingType string) fiber.Map {
 		response["payment_method"] = b.PaymentGateway
 		response["booked_at"] = b.BookedAt
 		response["status"] = b.Status
+		response["coupon_code"] = b.CouponCode
+		response["offer_id"] = b.OfferID.Hex()
+		response["ticpass_applied"] = b.TicpassApplied
 	}
 
 	return response

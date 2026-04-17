@@ -139,9 +139,7 @@ export default function MobileProfile() {
         { icon: <img src="/mobile_icons/profile_page/logout.svg" className="w-[20px] h-[20px]" alt="Logout" />, label: "Logout", onClick: () => { logoutUser(); router.push('/'); } },
     ] : [
         // 1) User Menu
-        { icon: <img src="/mobile_icons/profile_page/dining-table.svg" className="w-[20px] h-[20px]" alt="Dining" />, label: "Dining bookings", onClick: () => router.push('/profile/bookings/dining') },
-        { icon: <img src="/mobile_icons/profile_page/guitar.svg" className="w-[20px] h-[20px]" alt="Event" />, label: "Event tickets", onClick: () => router.push('/profile/bookings/events') },
-        { icon: <img src="/mobile_icons/Pickelball 1.svg" className="w-[20px] h-[20px]" alt="Play" />, label: "Play bookings", onClick: () => router.push('/profile/bookings/play') },
+        { icon: <img src="/mobile_icons/profile_page/guitar.svg" className="w-[20px] h-[20px]" alt="Bookings" />, label: "View bookings", onClick: () => router.push('/bookings?type=play') },
         { icon: <img src="/mobile_icons/profile_page/support.svg" className="w-[20px] h-[20px]" alt="FAQ" />, label: "Frequently asked questions", onClick: () => router.push('/faq') },
         { icon: <img src="/mobile_icons/profile_page/chat.svg" className="w-[20px] h-[20px]" alt="Chat" />, label: "Chat with us", onClick: () => router.push('/chat-support') },
         { icon: <img src="/mobile_icons/profile_page/profile.svg" className="w-[20px] h-[20px]" alt="Account" />, label: "Edit profile", onClick: () => router.push(organizerSession ? '/organizer/profile/edit' : '/profile/edit') },

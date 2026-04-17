@@ -22,6 +22,21 @@ func CancelBooking(c *fiber.Ctx) error {
 
 	fmt.Printf("DEBUG: CancelBooking called - ID: %s, Category: %s\n", id, category)
 
+	// Parse request body for cancellation reason
+	var requestBody struct {
+		Reason       string `json:"reason"`
+		CancelReason string `json:"cancel_reason"`
+	}
+	if err := c.BodyParser(&requestBody); err != nil {
+		// If body parsing fails, continue without reason (backward compatibility)
+		fmt.Printf("DEBUG: Failed to parse request body: %v\n", err)
+	}
+
+	cancellationReason := requestBody.Reason
+	if cancellationReason == "" {
+		cancellationReason = requestBody.CancelReason
+	}
+
 	if id == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "booking id is required"})
 	}
@@ -203,17 +218,11 @@ func CancelBooking(c *fiber.Ctx) error {
 	refundAmount := 0.0
 	penaltyAmount := grandTotal
 
-	// Tiered Refund Logic
-	if timeLeft > 24*time.Hour {
-		refundAmount = grandTotal // 100% refund
-		penaltyAmount = 0.0
-	} else if timeLeft > 12*time.Hour {
-		refundAmount = grandTotal * 0.5 // 50% refund
-		penaltyAmount = grandTotal * 0.5
-	}
-	// else: timeLeft <= 12h, refundAmount remains 0.0, penaltyAmount remains grandTotal
+	// Temporary: Always refund full amount as requested
+	refundAmount = grandTotal
+	penaltyAmount = 0.0
 
-	fmt.Printf("DEBUG: Refund Calculation - Total: %.2f, Refund: %.2f, Penalty: %.2f, TimeLeft: %v\n", 
+	fmt.Printf("DEBUG: Refund Calculation - Total: %.2f, Refund: %.2f, Penalty: %.2f, TimeLeft: %v\n",
 		grandTotal, refundAmount, penaltyAmount, timeLeft)
 
 	refundID := ""
@@ -230,37 +239,49 @@ func CancelBooking(c *fiber.Ctx) error {
 	}
 
 	if paymentID != "" && grandTotal > 0 && refundAmount > 0 {
-		refundNotes := map[string]string{
-			"booking_id":   bookingIDStr,
-			"booking_type": category,
-			"reason":       "booking_cancelled",
-			"penalty":      fmt.Sprintf("%.2f", penaltyAmount),
-			"cancelled_at": time.Now().Format(time.RFC3339),
+		// Razorpay minimum refund amount is ₹1.00
+		if refundAmount < 1.0 {
+			fmt.Printf("INFO: Refund skipped for booking %s because amount %.2f is less than Razorpay minimum of ₹1.00\n", bookingIDStr, refundAmount)
+			// Proceed with cancellation without Razorpay refund
+		} else {
+			refundNotes := map[string]string{
+				"booking_id":   bookingIDStr,
+				"booking_type": category,
+				"reason":       "booking_cancelled",
+				"penalty":      fmt.Sprintf("%.2f", penaltyAmount),
+				"cancelled_at": time.Now().Format(time.RFC3339),
+			}
+
+			rid, err := paymentsvc.CreateRefund(paymentID, refundAmount, refundNotes)
+			if err != nil {
+				fmt.Printf("ERROR: Refund failed for booking %s: %v\n", bookingIDStr, err)
+
+				return c.Status(500).JSON(fiber.Map{
+					"error": "refund failed: " + err.Error(),
+				})
+			}
+
+			refundID = rid
+			fmt.Printf("SUCCESS: Refund created: %s\n", refundID)
 		}
-
-		rid, err := paymentsvc.CreateRefund(paymentID, refundAmount, refundNotes)
-		if err != nil {
-			fmt.Printf("ERROR: Refund failed for booking %s: %v\n", bookingIDStr, err)
-
-			return c.Status(500).JSON(fiber.Map{
-				"error": "refund failed: " + err.Error(),
-			})
-		}
-
-		refundID = rid
-		fmt.Printf("SUCCESS: Refund created: %s\n", refundID)
 	}
 
 	// Now update status to cancelled
+	updateFields := bson.M{
+		"status":         "cancelled",
+		"cancelled_at":   time.Now(),
+		"refund_id":      refundID,
+		"refund_amount":  refundAmount,
+		"penalty_amount": penaltyAmount,
+		"refund_date":    time.Now(),
+	}
+	// Add cancellation reason if provided
+	if cancellationReason != "" {
+		updateFields["cancel_reason"] = cancellationReason
+	}
+
 	update := bson.M{
-		"$set": bson.M{
-			"status":         "cancelled",
-			"cancelled_at":   time.Now(),
-			"refund_id":      refundID,
-			"refund_amount":  refundAmount,
-			"penalty_amount": penaltyAmount,
-			"refund_date":    time.Now(),
-		},
+		"$set": updateFields,
 	}
 
 	result, err := col.UpdateOne(ctx, bson.M{
@@ -277,7 +298,7 @@ func CancelBooking(c *fiber.Ctx) error {
 	if result.MatchedCount == 0 {
 		return c.Status(400).JSON(fiber.Map{"error": "booking already cancelled or unavailable"})
 	}
-	
+
 	if category == "play" || category == "dining" {
 		// FIX RC3 & BUG4: Properly handle lock cleanup with error tracking + context timeout
 		go func() {

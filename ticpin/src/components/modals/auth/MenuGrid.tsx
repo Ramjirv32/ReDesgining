@@ -83,19 +83,9 @@ const MenuGrid: React.FC<MenuGridProps> = ({
         // 1) User Menu
         menuItems = [
             { 
-                label: 'Dining bookings', 
-                icon: Utensils,
-                action: () => { router.push('/profile/bookings/dining'); onClose(); }
-            },
-            { 
-                label: 'Event tickets', 
+                label: 'View bookings', 
                 icon: Ticket,
-                action: () => { router.push('/profile/bookings/events'); onClose(); }
-            },
-            { 
-                label: 'Play bookings', 
-                icon: Gamepad2,
-                action: () => { router.push('/profile/bookings/play'); onClose(); }
+                action: () => { router.push('/bookings?type=play'); onClose(); }
             },
             { 
                 label: 'Frequently asked questions', 
