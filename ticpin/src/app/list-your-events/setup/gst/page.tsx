@@ -27,11 +27,24 @@ export default function GstSelectionPage() {
 
         if (saved.pan) {
             setLoading(true);
-            organizerApi.fetchGST(saved.pan)
+            // Mocking GST fetch for testing
+            console.log('Mocking GST fetch for testing');
+            setTimeout(() => {
+                const mockGstList = [
+                    { gstin: saved.pan + 'Z1', status: 'ACTIVE', state: 'TAMIL NADU' },
+                ];
+                setGstList(mockGstList);
+                if (selectedGsts.length === 0 && !saved.gstList && !saved.gstNumber) {
+                    setSelectedGsts([mockGstList[0].gstin]);
+                }
+                setLoading(false);
+            }, 500);
+            /* organizerApi.fetchGST(saved.pan)
                 .then(res => {
                     if (res.status === 'SUCCESS' && res.data.gstin_list) {
                         const list = res.data.gstin_list;
                         setGstList(list);
+                        // Auto-select if only one GST is found and nothing is selected yet
                         if (list.length === 1 && selectedGsts.length === 0 && !saved.gstList && !saved.gstNumber) {
                             setSelectedGsts([list[0].gstin]);
                         }
@@ -41,7 +54,7 @@ export default function GstSelectionPage() {
                     console.error('Fetch GST failed', err);
                     setError(err.message || 'Failed to fetch GST details');
                 })
-                .finally(() => setLoading(false));
+                .finally(() => setLoading(false)); */
         }
     }, [selectedGsts.length]);
 
