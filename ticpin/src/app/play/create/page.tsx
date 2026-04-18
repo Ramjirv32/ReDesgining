@@ -125,7 +125,7 @@ const CreatePlayPage = () => {
         setPocs([]); setSalesNotifs([]);
         setShowInstructions(false); setShowYoutube(false); setShowProhibited(false); setShowFaqs(false);
         setPlayInstructions(''); setYoutubeVideoUrl(''); setProhibitedItems([]); setFaqs([]);
-        setCourts([]); 
+        setCourts([]);
         setPaymentVerified(false);
         if (editorRef.current) editorRef.current.innerHTML = '';
         setHasContent(false);
@@ -446,7 +446,7 @@ const CreatePlayPage = () => {
                                 </h2>
                                 <div className="flex items-center border border-[#686868] rounded-[5px] h-[38px] overflow-hidden">
                                     <span className="px-5 text-[18px] font-medium text-black">Venue description guidelines</span>
-                                    <div className="bg-[#E7C200] w-[41px] h-full flex items-center justify-center border-l border-[#686868]">
+                                    <div className="bg-[#FFFCED] w-[41px] h-full flex items-center justify-center border-l border-[#686868]">
                                         <ExternalLink size={20} className="text-black" />
                                     </div>
                                 </div>
@@ -602,7 +602,7 @@ const CreatePlayPage = () => {
                                             <label htmlFor="upload-portrait" className="cursor-pointer">
                                                 <div className="flex items-center border border-[#686868] rounded-[5px] h-[35px] overflow-hidden bg-[#EBEBEB]">
                                                     <span className="px-5 text-[15px] font-medium text-black">{uploading.portrait ? 'Uploading...' : portraitUrl ? 'Replace' : 'Upload'}</span>
-                                                    <div className="bg-[#E7C200] w-[41px] h-full flex items-center justify-center border-l border-[#686868]"><Upload size={20} className="text-black" /></div>
+                                                    <div className="bg-[#FFFCED] w-[41px] h-full flex items-center justify-center border-l border-[#686868]"><Upload size={20} className="text-black" /></div>
                                                 </div>
                                             </label>
                                         </div>
@@ -629,7 +629,7 @@ const CreatePlayPage = () => {
                                             <label htmlFor="upload-landscape" className="cursor-pointer">
                                                 <div className="flex items-center border border-[#686868] rounded-[5px] h-[35px] overflow-hidden bg-[#EBEBEB]">
                                                     <span className="px-5 text-[15px] font-medium text-black">{uploading.landscape ? 'Uploading...' : landscapeUrl ? 'Replace' : 'Upload'}</span>
-                                                    <div className="bg-[#E7C200] w-[41px] h-full flex items-center justify-center border-l border-[#686868]"><Upload size={20} className="text-black" /></div>
+                                                    <div className="bg-[#FFFCED] w-[41px] h-full flex items-center justify-center border-l border-[#686868]"><Upload size={20} className="text-black" /></div>
                                                 </div>
                                             </label>
                                         </div>
@@ -656,7 +656,7 @@ const CreatePlayPage = () => {
                                             <label htmlFor="upload-secondary_banner" className="cursor-pointer">
                                                 <div className="flex items-center border border-[#686868] rounded-[5px] h-[35px] overflow-hidden bg-[#EBEBEB]">
                                                     <span className="px-5 text-[15px] font-medium text-black">{uploading.secondary_banner ? 'Uploading...' : secondaryBannerUrl ? 'Replace' : 'Upload'}</span>
-                                                    <div className="bg-[#E7C200] w-[41px] h-full flex items-center justify-center border-l border-[#686868]"><Upload size={20} className="text-black" /></div>
+                                                    <div className="bg-[#FFFCED] w-[41px] h-full flex items-center justify-center border-l border-[#686868]"><Upload size={20} className="text-black" /></div>
                                                 </div>
                                             </label>
                                         </div>
@@ -676,7 +676,7 @@ const CreatePlayPage = () => {
                                             <label htmlFor="upload-gallery" className="cursor-pointer">
                                                 <div className="flex items-center border border-[#686868] rounded-[5px] h-[35px] overflow-hidden bg-[#EBEBEB]">
                                                     <span className="px-5 text-[15px] font-medium text-black">{uploading.gallery ? 'Uploading...' : '+ Add Image'}</span>
-                                                    <div className="bg-[#E7C200] w-[41px] h-full flex items-center justify-center border-l border-[#686868]"><Upload size={20} className="text-black" /></div>
+                                                    <div className="bg-[#FFFCED] w-[41px] h-full flex items-center justify-center border-l border-[#686868]"><Upload size={20} className="text-black" /></div>
                                                 </div>
                                             </label>
                                         </div>
@@ -738,7 +738,7 @@ const CreatePlayPage = () => {
                                                         key={period}
                                                         type="button"
                                                         onClick={() => setTimePeriod(period)}
-                                                        className={`w-[80px] text-[22px] font-semibold transition-colors ${timePeriod === period ? 'bg-[#E7C200] text-black' : 'bg-transparent text-[#686868] hover:bg-zinc-100'}`}
+                                                        className={`w-[80px] text-[22px] font-semibold transition-colors ${timePeriod === period ? 'bg-[#FFFCED] text-black' : 'bg-transparent text-[#686868] hover:bg-zinc-100'}`}
                                                     >
                                                         {period}
                                                     </button>
@@ -776,7 +776,7 @@ const CreatePlayPage = () => {
                                                         key={period}
                                                         type="button"
                                                         onClick={() => setClosePeriod(period)}
-                                                        className={`w-[80px] text-[22px] font-semibold transition-colors ${closePeriod === period ? 'bg-[#E7C200] text-black' : 'bg-transparent text-[#686868] hover:bg-zinc-100'}`}
+                                                        className={`w-[80px] text-[22px] font-semibold transition-colors ${closePeriod === period ? 'bg-[#FFFCED] text-black' : 'bg-transparent text-[#686868] hover:bg-zinc-100'}`}
                                                     >
                                                         {period}
                                                     </button>
@@ -852,8 +852,8 @@ const CreatePlayPage = () => {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="bg-[#E7C20026] border border-[#E7C200] rounded-[10px] p-4 flex items-center gap-3 mt-6">
-                                    <Image src="/create event/info-circle.svg" alt="Info" width={40} height={40} />
+                                <div className="bg-[#FFFCED] border border-[#686868]/30 rounded-[10px] p-4 flex items-center gap-3 mt-6">
+                                    <Info size={40} className="text-black/50" />
                                     <span className="text-[19px] font-medium text-black">Can’t find an option that properly describes your play venue? Email play@ticpin.in and we’ll assist you.</span>
                                 </div>
                             </section>
@@ -885,7 +885,7 @@ const CreatePlayPage = () => {
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[20px] font-medium text-[#686868]">Court Image</label>
+                                    <label className="text-[20px] font-medium text-[#686868]">Court Image <span className="text-[14px] text-[#AEAEAE]">(3:4, max 1.5MB, 900x1200px)</span></label>
                                     <div className="flex items-center gap-4">
                                         {makeUploadInput('court_image', 'image/*')}
                                         <label htmlFor="upload-court_image" className="cursor-pointer flex-1">
@@ -974,7 +974,7 @@ const CreatePlayPage = () => {
                                         <span className="px-4 text-[19px] font-medium text-black" style={{ fontFamily: 'var(--font-anek-latin)' }}>
                                             {btn.name}
                                         </span>
-                                        <div className={`w-[42px] h-full flex items-center justify-center ${btn.active ? 'bg-black' : 'bg-[#E7C200]'}`}>
+                                        <div className={`w-[42px] h-full flex items-center justify-center ${btn.active ? 'bg-black' : 'bg-[#FFFCED]'}`}>
                                             <PlusCircle size={20} className={btn.active ? 'text-white' : 'text-black'} />
                                         </div>
                                     </button>
@@ -1155,8 +1155,8 @@ const CreatePlayPage = () => {
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[20px] font-medium text-[#686868]">Account Type:</label>
-                                    <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6">
-                                        <select value={payment.accountType} onChange={e => setPayment(p => ({ ...p, accountType: e.target.value }))} className="w-full bg-transparent outline-none text-[20px]">
+                                    <div className={`border rounded-[10px] h-[64px] flex items-center px-6 ${paymentVerified && payment.accountType ? 'border-green-300 bg-green-50/40' : 'border-[#686868]'}`}>
+                                        <select value={payment.accountType} onChange={e => setPayment(p => ({ ...p, accountType: e.target.value }))} disabled={paymentVerified} className="w-full bg-transparent outline-none text-[20px] disabled:cursor-default">
                                             <option value="">Select type</option>
                                             <option value="Savings">Savings</option>
                                             <option value="Current">Current</option>
@@ -1170,42 +1170,61 @@ const CreatePlayPage = () => {
                     {/* Point of Contact Section */}
                     <section className="bg-white rounded-[15px] p-10 flex flex-col gap-8">
                         <div>
-                            <h2 className="text-[30px] font-medium text-black">Point of Contact <span className="text-[#E7C200]">*</span></h2>
-                            <p className="text-[20px] text-[#AEAEAE] mt-1">Please add POCs with whom play venue feedback will be shared</p>
+                            <h2 className="text-[30px] font-medium text-black">Point of Contact <span className="text-[#FFFCED]">*</span></h2>
+                            <p className="text-[20px] text-[#AEAEAE] mt-1">Please add the POC with whom play venue feedback will be shared</p>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                             <div className="space-y-3">
                                 <label className="text-[20px] font-medium text-[#686868]">Name</label>
                                 <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
-                                    <input type="text" value={newPoc.name} onChange={e => setNewPoc({ ...newPoc, name: e.target.value })} placeholder="Enter name" className="w-full bg-transparent outline-none text-[25px] text-black placeholder-[#AEAEAE]" />
+                                    <input type="text" value={newPoc.name} onChange={e => {
+                                        setNewPoc({ ...newPoc, name: e.target.value });
+                                        if (pocs.length > 0) setPocs([{ ...pocs[0], name: e.target.value }]);
+                                    }} placeholder="Enter name" className="w-full bg-transparent outline-none text-[25px] text-black placeholder-[#AEAEAE]" />
                                 </div>
                             </div>
                             <div className="space-y-3">
                                 <label className="text-[20px] font-medium text-[#686868]">Mail</label>
                                 <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
-                                    <input type="text" value={newPoc.email} onChange={e => setNewPoc({ ...newPoc, email: e.target.value })} placeholder="Enter email address" className="w-full bg-transparent outline-none text-[25px] text-black placeholder-[#AEAEAE]" />
+                                    <input type="text" value={newPoc.email} onChange={e => {
+                                        setNewPoc({ ...newPoc, email: e.target.value });
+                                        if (pocs.length > 0) setPocs([{ ...pocs[0], email: e.target.value }]);
+                                    }} placeholder="Enter email address" className="w-full bg-transparent outline-none text-[25px] text-black placeholder-[#AEAEAE]" />
                                 </div>
                             </div>
                             <div className="space-y-3">
                                 <label className="text-[20px] font-medium text-[#686868]">Mobile</label>
                                 <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
-                                    <input type="text" value={newPoc.mobile} onChange={e => setNewPoc({ ...newPoc, mobile: e.target.value })} placeholder="Enter mobile number" className="w-full bg-transparent outline-none text-[25px] text-black placeholder-[#AEAEAE]" />
+                                    <input type="text" value={newPoc.mobile} onChange={e => {
+                                        setNewPoc({ ...newPoc, mobile: e.target.value });
+                                        if (pocs.length > 0) setPocs([{ ...pocs[0], mobile: e.target.value }]);
+                                    }} placeholder="Enter mobile number" className="w-full bg-transparent outline-none text-[25px] text-black placeholder-[#AEAEAE]" />
                                 </div>
                             </div>
                         </div>
-                        {pocs.length > 0 && (
-                            <div className="space-y-2">
-                                {pocs.map((poc, idx) => (
-                                    <div key={idx} className="flex items-center justify-between bg-[#F5F5F5] rounded-[10px] px-6 py-3">
-                                        <span className="text-[18px] text-black">{poc.name} — {poc.email} — {poc.mobile}</span>
-                                        <button onClick={() => removePoc(idx)} className="text-red-500 text-[14px] font-medium">Remove</button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                        <div className="flex justify-end">
-                            <button onClick={addPoc} className="bg-black text-white rounded-[15px] h-[65px] px-3 flex items-center gap-3">
-                                <span className="text-[30px] font-medium">ADD</span>
+                        <div className="flex justify-end gap-4 items-center">
+                            {pocs.length > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setPocs([]);
+                                        setNewPoc({ name: '', email: '', mobile: '' });
+                                    }}
+                                    className="flex items-center gap-2 text-red-500 font-bold uppercase tracking-tight text-[18px]"
+                                >
+                                    <Trash2 size={24} /> Remove POC
+                                </button>
+                            )}
+                            <button
+                                onClick={() => {
+                                    if (newPoc.name && newPoc.email && newPoc.mobile) {
+                                        setPocs([newPoc]);
+                                    }
+                                }}
+                                disabled={pocs.length > 0}
+                                className={`rounded-[15px] h-[65px] px-8 flex items-center gap-3 transition-opacity ${pocs.length > 0 ? 'bg-zinc-100 text-[#AEAEAE] cursor-default' : 'bg-black text-white active:scale-95'}`}
+                            >
+                                <span className="text-[30px] font-medium">{pocs.length > 0 ? 'EDIT' : 'ADD'}</span>
                                 <PlusCircle size={28} />
                             </button>
                         </div>
@@ -1213,7 +1232,10 @@ const CreatePlayPage = () => {
 
                     {/* Sales Notifications Section */}
                     <section className="bg-white rounded-[15px] p-10 flex flex-col gap-8">
-                        <h2 className="text-[30px] font-medium text-black">Need a copy of every sale to</h2>
+                        <div>
+                            <h2 className="text-[30px] font-medium text-black">Sales Notifications <span className="text-[#AEAEAE] text-[18px] ml-2">(Optional)</span></h2>
+                            <p className="text-[20px] text-[#AEAEAE] mt-1">Add details of who should receive a copy of every sale</p>
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div className="space-y-3">
                                 <label className="text-[20px] font-medium text-[#686868]">Mail</label>
@@ -1231,15 +1253,26 @@ const CreatePlayPage = () => {
                         {salesNotifs.length > 0 && (
                             <div className="space-y-2">
                                 {salesNotifs.map((s, idx) => (
-                                    <div key={idx} className="flex items-center justify-between bg-[#F5F5F5] rounded-[10px] px-6 py-3">
-                                        <span className="text-[18px] text-black">{s.email} — {s.mobile}</span>
-                                        <button onClick={() => removeSalesNotif(idx)} className="text-red-500 text-[14px] font-medium">Remove</button>
+                                    <div key={idx} className="flex items-center justify-between bg-[#F5F5F5] rounded-[10px] px-6 py-3 border border-zinc-200">
+                                        <span className="text-[18px] text-black font-medium">{s.email} — {s.mobile}</span>
+                                        <div className="flex gap-4">
+                                            <button
+                                                onClick={() => {
+                                                    setNewSales(s);
+                                                    setSalesNotifs(salesNotifs.filter((_, i) => i !== idx));
+                                                }}
+                                                className="text-black font-bold uppercase text-[14px] hover:underline"
+                                            >
+                                                Edit
+                                            </button>
+                                            <button onClick={() => removeSalesNotif(idx)} className="text-red-500 font-bold uppercase text-[14px] hover:underline">Remove</button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
                         )}
                         <div className="flex justify-end">
-                            <button onClick={addSalesNotif} className="bg-black text-white rounded-[15px] h-[65px] px-3 flex items-center gap-3">
+                            <button onClick={addSalesNotif} className="bg-black text-white rounded-[15px] h-[65px] px-8 flex items-center gap-3 active:scale-95 transition-transform">
                                 <span className="text-[30px] font-medium">ADD</span>
                                 <PlusCircle size={28} />
                             </button>

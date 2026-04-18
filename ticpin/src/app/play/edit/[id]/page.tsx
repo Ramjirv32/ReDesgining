@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { ChevronDown, ChevronUp, PlusCircle, Upload, Search, ArrowLeft } from 'lucide-react';
+import { ChevronDown, ChevronUp, PlusCircle, Upload, Search, ArrowLeft, Trash2, Info, ExternalLink } from 'lucide-react';
 import { CATEGORIES, CITIES, CATEGORY_DATA } from '@/app/play/create/data';
 import { useRouter, useParams } from 'next/navigation';
 import { getOrganizerSession } from '@/lib/auth/organizer';
@@ -78,7 +78,7 @@ export default function EditPlayPage() {
 
     useEffect(() => {
         if (!hasCheckedSession) return;
-        
+
         const load = async () => {
             let session = getOrganizerSession();
             if (!session) { router.replace('/'); return; }
@@ -103,7 +103,7 @@ export default function EditPlayPage() {
                 const d = await playApi.getByID(id) as Record<string, unknown>;
                 // Store original data for change detection
                 setOriginalData(d);
-                
+
                 setVenueName((d.name as string) ?? '');
                 if (editorRef.current) editorRef.current.innerHTML = (d.description as string) ?? '';
                 setHasContent(!!d.description);
@@ -197,7 +197,7 @@ export default function EditPlayPage() {
     // Check if any changes have been made
     const checkChanges = useCallback(() => {
         if (!originalData || Object.keys(originalData).length === 0) return;
-        
+
         const currentData = {
             name: venueName,
             description: editorRef.current?.innerHTML || '',
@@ -226,8 +226,8 @@ export default function EditPlayPage() {
 
         const hasFieldChanges = JSON.stringify(originalData) !== JSON.stringify(currentData);
         setHasChanges(hasFieldChanges);
-    }, [originalData, venueName, venueAddress, instagramLink, googleMapLink, openingTime, openingTimeOnly, closingTimeOnly, 
-        portraitUrl, landscapeUrl, secondaryBannerUrl, videoUrl, galleryUrls, playInstructions, youtubeVideoUrl, 
+    }, [originalData, venueName, venueAddress, instagramLink, googleMapLink, openingTime, openingTimeOnly, closingTimeOnly,
+        portraitUrl, landscapeUrl, secondaryBannerUrl, videoUrl, galleryUrls, playInstructions, youtubeVideoUrl,
         prohibitedItems, faqs, selections, pocs, salesNotifs, courts]);
 
     // Update hasChanges whenever any field changes
@@ -237,7 +237,7 @@ export default function EditPlayPage() {
 
     if (!authChecked && hasCheckedSession) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#FFFCED] via-white to-white">
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#FFF8D6] via-white to-white">
                 <div className="bg-white rounded-[24px] p-10 shadow-lg max-w-md text-center space-y-4">
                     <h2 className="text-[24px] font-semibold text-black">Access Restricted</h2>
                     <p className="text-[16px] text-zinc-500">Your play registration must be approved by the admin before you can edit listings.</p>
@@ -364,7 +364,7 @@ export default function EditPlayPage() {
     const accentColor = '#E7C200';
 
     if (loadingData) return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#FFFCED] via-white to-white">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#FFF8D6] via-white to-white">
             <div className="text-center space-y-4">
                 <div className="w-10 h-10 border-4 border-[#E7C200] border-t-transparent rounded-full animate-spin mx-auto" />
                 <p className="text-[16px] text-zinc-500">Loading venue...</p>
@@ -373,7 +373,7 @@ export default function EditPlayPage() {
     );
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-[#FFFCED] via-white to-white overflow-x-hidden">
+        <div className="min-h-screen bg-gradient-to-b from-[#FFF8D6] via-white to-white overflow-x-hidden">
             <div className="w-full" style={{ zoom: '0.70' }}>
                 <div className="max-w-[1920px] mx-auto px-10 pt-20">
                     {/* Back + Title */}
@@ -574,7 +574,7 @@ export default function EditPlayPage() {
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[20px] font-medium text-[#686868]">Court Image</label>
+                                    <label className="text-[20px] font-medium text-[#686868]">Court Image <span className="text-[14px] text-[#AEAEAE]">(3:4, max 1.5MB, 900x1200px)</span></label>
                                     <div className="flex items-center gap-4">
                                         <label htmlFor="upload-court_image" className="cursor-pointer flex-1">
                                             <div className="border border-[#AEAEAE] border-dashed rounded-[10px] h-[64px] flex items-center justify-center px-6 hover:bg-zinc-50 transition-colors">
@@ -665,7 +665,7 @@ export default function EditPlayPage() {
                                         <label htmlFor={`upload-${key}`} className="cursor-pointer">
                                             <div className="flex items-center border border-[#686868] rounded-[5px] h-[35px] overflow-hidden bg-white">
                                                 <span className="px-5 text-[15px] font-medium text-black">{uploading[key] ? 'Uploading...' : url ? 'Replace' : 'Upload'}</span>
-                                                <div className="w-[41px] h-full flex items-center justify-center border-l border-[#686868]" style={{ background: accentColor }}><Upload size={20} className="text-black" /></div>
+                                                <div className="bg-[#FFF8D6] w-[41px] h-full flex items-center justify-center border-l border-[#686868]"><Upload size={20} className="text-black" /></div>
                                             </div>
                                         </label>
                                     </div>
@@ -688,7 +688,7 @@ export default function EditPlayPage() {
                                     <label htmlFor="upload-secondary_banner" className="cursor-pointer">
                                         <div className="flex items-center border border-[#686868] rounded-[5px] h-[35px] overflow-hidden bg-white">
                                             <span className="px-5 text-[15px] font-medium text-black">{uploading['secondary_banner'] ? 'Uploading...' : secondaryBannerUrl ? 'Replace' : 'Upload'}</span>
-                                            <div className="w-[41px] h-full flex items-center justify-center border-l border-[#686868]" style={{ background: accentColor }}><Upload size={20} className="text-black" /></div>
+                                            <div className="bg-[#FFF8D6] w-[41px] h-full flex items-center justify-center border-l border-[#686868]"><Upload size={20} className="text-black" /></div>
                                         </div>
                                     </label>
                                 </div>
@@ -706,7 +706,7 @@ export default function EditPlayPage() {
                                     <label htmlFor="upload-video" className="cursor-pointer">
                                         <div className="flex items-center border border-[#686868] rounded-[5px] h-[35px] overflow-hidden bg-white">
                                             <span className="px-5 text-[15px] font-medium text-black">{uploading.video ? 'Uploading...' : videoUrl ? 'Replace' : 'Upload'}</span>
-                                            <div className="w-[41px] h-full flex items-center justify-center border-l border-[#686868]" style={{ background: accentColor }}><Upload size={20} className="text-black" /></div>
+                                            <div className="bg-[#FFF8D6] w-[41px] h-full flex items-center justify-center border-l border-[#686868]"><Upload size={20} className="text-black" /></div>
                                         </div>
                                     </label>
                                 </div>
@@ -716,7 +716,7 @@ export default function EditPlayPage() {
                                         <label htmlFor="upload-gallery" className="cursor-pointer inline-flex">
                                             <div className="flex items-center border border-[#686868] rounded-[5px] h-[35px] overflow-hidden bg-[#EBEBEB]">
                                                 <span className="px-5 text-[15px] font-medium text-black">{uploading.gallery ? 'Uploading...' : '+ Add Image'}</span>
-                                                <div className="w-[41px] h-full flex items-center justify-center border-l border-[#686868]" style={{ background: accentColor }}><Upload size={20} className="text-black" /></div>
+                                                <div className="bg-[#FFF8D6] w-[41px] h-full flex items-center justify-center border-l border-[#686868]"><Upload size={20} className="text-black" /></div>
                                             </div>
                                         </label>
                                     </div>
@@ -751,7 +751,7 @@ export default function EditPlayPage() {
                                 ].map((btn, idx) => (
                                     <button key={idx} onClick={btn.toggle} className="flex items-center bg-white rounded-[6px] h-[42px] overflow-hidden">
                                         <span className="px-4 text-[19px] font-medium text-black">{btn.name}</span>
-                                        <div className={`w-[42px] h-full flex items-center justify-center ${btn.active ? 'bg-black' : ''}`} style={!btn.active ? { background: accentColor } : {}}>
+                                        <div className={`w-[42px] h-full flex items-center justify-center ${btn.active ? 'bg-black' : 'bg-[#FFF8D6]'}`}>
                                             <PlusCircle size={20} className={btn.active ? 'text-white' : 'text-black'} />
                                         </div>
                                     </button>
@@ -903,8 +903,8 @@ export default function EditPlayPage() {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[20px] font-medium text-[#686868]">Account Type:</label>
-                                        <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
-                                            <select value={payment.accountType} onChange={e => setPayment({ ...payment, accountType: e.target.value })} className="w-full bg-transparent outline-none text-[20px]">
+                                        <div className={`border rounded-[10px] h-[64px] flex items-center px-6 mt-[10px] ${paymentVerified && payment.accountType ? 'border-green-300 bg-green-50/40' : 'border-[#686868] bg-green-50/40'}`}>
+                                            <select value={payment.accountType} onChange={e => setPayment({ ...payment, accountType: e.target.value })} disabled={paymentVerified} className="w-full bg-transparent outline-none text-[20px] disabled:cursor-default">
                                                 <option value="">Select type</option>
                                                 <option value="Savings">Savings</option>
                                                 <option value="Current">Current</option>
@@ -915,54 +915,102 @@ export default function EditPlayPage() {
                             </div>
                         </section>
 
-                        {/* POC */}
                         <section className="bg-white rounded-[15px] p-10 flex flex-col gap-8">
                             <div>
-                                <h2 className="text-[30px] font-medium text-black">Point of Contact <span style={{ color: accentColor }}>*</span></h2>
-                                <p className="text-[20px] text-[#AEAEAE] mt-1">POCs with whom feedback will be shared</p>
+                                <h2 className="text-[30px] font-medium text-black">Point of Contact <span className="text-[#FFF8D6]">*</span></h2>
+                                <p className="text-[20px] text-[#AEAEAE] mt-1">Please add the POC with whom play venue feedback will be shared</p>
                             </div>
-                            <div className="grid grid-cols-3 gap-8">
-                                {[['Name', 'name', 'Enter name'], ['Mail', 'email', 'Enter email'], ['Mobile', 'mobile', 'Enter mobile']].map(([label, key, ph]) => (
-                                    <div key={key} className="space-y-3">
-                                        <label className="text-[20px] font-medium text-[#686868]">{label}</label>
-                                        <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
-                                            <input type="text" placeholder={ph} value={newPoc[key as 'name' | 'email' | 'mobile']} onChange={e => setNewPoc({ ...newPoc, [key]: e.target.value })} className="w-full bg-transparent outline-none text-[25px] text-black placeholder-[#AEAEAE]" />
-                                        </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                <div className="space-y-3">
+                                    <label className="text-[20px] font-medium text-[#686868]">Name</label>
+                                    <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
+                                        <input type="text" value={newPoc.name} onChange={e => setNewPoc({ ...newPoc, name: e.target.value })} placeholder="Enter name" className="w-full bg-transparent outline-none text-[25px] text-black placeholder-[#AEAEAE]" />
                                     </div>
-                                ))}
-                            </div>
-                            {pocs.map((poc, i) => (
-                                <div key={i} className="flex items-center justify-between bg-[#F5F5F5] rounded-[10px] px-6 py-3">
-                                    <span>{poc.name} — {poc.email} — {poc.mobile}</span>
-                                    <button onClick={() => removePoc(i)} className="text-red-500 text-[14px]">Remove</button>
                                 </div>
-                            ))}
-                            <div className="flex justify-end">
-                                <button onClick={addPoc} className="bg-black text-white rounded-[15px] h-[65px] px-6 flex items-center gap-3 text-[25px] font-medium"><PlusCircle size={24} /> ADD</button>
+                                <div className="space-y-3">
+                                    <label className="text-[20px] font-medium text-[#686868]">Mail</label>
+                                    <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
+                                        <input type="text" value={newPoc.email} onChange={e => setNewPoc({ ...newPoc, email: e.target.value })} placeholder="Enter email address" className="w-full bg-transparent outline-none text-[25px] text-black placeholder-[#AEAEAE]" />
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    <label className="text-[20px] font-medium text-[#686868]">Mobile</label>
+                                    <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
+                                        <input type="text" value={newPoc.mobile} onChange={e => setNewPoc({ ...newPoc, mobile: e.target.value })} placeholder="Enter mobile number" className="w-full bg-transparent outline-none text-[25px] text-black placeholder-[#AEAEAE]" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex justify-end gap-4 items-center">
+                                {pocs.length > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setPocs([]);
+                                            setNewPoc({ name: '', email: '', mobile: '' });
+                                        }}
+                                        className="flex items-center gap-2 text-red-500 font-bold uppercase tracking-tight text-[18px]"
+                                    >
+                                        <Trash2 size={24} /> Remove POC
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => {
+                                        if (newPoc.name && newPoc.email && newPoc.mobile) {
+                                            setPocs([newPoc]);
+                                        }
+                                    }}
+                                    className="bg-black text-white rounded-[15px] h-[65px] px-8 flex items-center gap-3 active:scale-95 transition-transform"
+                                >
+                                    <span className="text-[30px] font-medium">{pocs.length > 0 ? 'UPDATE' : 'SAVE'}</span>
+                                    <PlusCircle size={28} />
+                                </button>
                             </div>
                         </section>
 
                         {/* Sales Notifications */}
                         <section className="bg-white rounded-[15px] p-10 flex flex-col gap-8">
-                            <h2 className="text-[30px] font-medium text-black">Send a copy of every sale to</h2>
-                            <div className="grid grid-cols-2 gap-8">
-                                {[['Mail', 'email', 'Enter email'], ['Mobile', 'mobile', 'Enter mobile']].map(([label, key, ph]) => (
-                                    <div key={key} className="space-y-3">
-                                        <label className="text-[20px] font-medium text-[#686868]">{label}</label>
-                                        <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
-                                            <input type="text" placeholder={ph} value={newSales[key as 'email' | 'mobile']} onChange={e => setNewSales({ ...newSales, [key]: e.target.value })} className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]" />
-                                        </div>
-                                    </div>
-                                ))}
+                            <div>
+                                <h2 className="text-[30px] font-medium text-black">Sales Notifications <span className="text-[#AEAEAE] text-[18px] ml-2">(Optional)</span></h2>
+                                <p className="text-[20px] text-[#AEAEAE] mt-1">Add details of who should receive a copy of every sale</p>
                             </div>
-                            {salesNotifs.map((s, i) => (
-                                <div key={i} className="flex items-center justify-between bg-[#F5F5F5] rounded-[10px] px-6 py-3">
-                                    <span>{s.email} — {s.mobile}</span>
-                                    <button onClick={() => removeSalesNotif(i)} className="text-red-500 text-[14px]">Remove</button>
+                            <div className="grid grid-cols-2 gap-8">
+                                <div className="space-y-3">
+                                    <label className="text-[20px] font-medium text-[#686868]">Mail</label>
+                                    <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
+                                        <input type="text" value={newSales.email} onChange={e => setNewSales({ ...newSales, email: e.target.value })} placeholder="Enter email address" className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]" />
+                                    </div>
                                 </div>
-                            ))}
-                            <div className="flex justify-end">
-                                <button onClick={addSalesNotif} className="bg-black text-white rounded-[15px] h-[65px] px-6 flex items-center gap-3 text-[25px] font-medium"><PlusCircle size={24} /> ADD</button>
+                                <div className="space-y-3">
+                                    <label className="text-[20px] font-medium text-[#686868]">Mobile</label>
+                                    <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
+                                        <input type="text" value={newSales.mobile} onChange={e => setNewSales({ ...newSales, mobile: e.target.value })} placeholder="Enter mobile number" className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex justify-end gap-4 items-center">
+                                {salesNotifs.length > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSalesNotifs([]);
+                                            setNewSales({ email: '', mobile: '' });
+                                        }}
+                                        className="flex items-center gap-2 text-red-500 font-bold uppercase tracking-tight text-[18px]"
+                                    >
+                                        <Trash2 size={24} /> Remove
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => {
+                                        if (newSales.email) {
+                                            setSalesNotifs([newSales]);
+                                        }
+                                    }}
+                                    className="bg-black text-white rounded-[15px] h-[65px] px-8 flex items-center gap-3 active:scale-95 transition-transform"
+                                >
+                                    <span className="text-[30px] font-medium">{salesNotifs.length > 0 ? 'UPDATE' : 'SAVE'}</span>
+                                    <PlusCircle size={28} />
+                                </button>
                             </div>
                         </section>
                     </div>

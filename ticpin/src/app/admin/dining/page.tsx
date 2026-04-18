@@ -27,6 +27,7 @@ function DetailViewPanel({ ev, onStatus, updating, onUpdate, onNext, currentInde
   const [isSaving, setIsSaving] = useState(false);
   const [step, setStep] = useState(1);
   const [hasChanges, setHasChanges] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
     setEditedEv({ ...ev });
@@ -112,8 +113,10 @@ function DetailViewPanel({ ev, onStatus, updating, onUpdate, onNext, currentInde
                   <div key={i} className="flex flex-col">
                     <div className="flex items-center justify-between border-b-[1px] border-[#AEAEAE] pb-1">
                       <span className="text-[18px] font-medium text-[#686868]" style={{ fontFamily: 'var(--font-anek-latin)' }}>{row.label}</span>
-                      {row.readOnly ? (
-                        <span className="text-[18px] font-medium text-black truncate max-w-[200px] text-right">{"{"}{row.value}{"}"}</span>
+                      {row.readOnly || !isEditMode ? (
+                        <span className={`text-[18px] font-medium text-black truncate max-w-[200px] text-right ${!isEditMode && !row.readOnly ? 'opacity-70' : ''}`}>
+                          {row.value || 'N/A'}
+                        </span>
                       ) : (
                         <input
                           type={row.type === 'number' ? 'number' : 'text'}
@@ -139,12 +142,18 @@ function DetailViewPanel({ ev, onStatus, updating, onUpdate, onNext, currentInde
                 </div>
                 <div className="flex gap-4">
                   <button
+                    onClick={() => setIsEditMode(!isEditMode)}
+                    className={`px-8 py-2 rounded-xl font-bold transition-all ${isEditMode ? 'bg-[#FFEB3B] text-black' : 'bg-[#F4F4F4] text-black border border-zinc-200'}`}
+                  >
+                    {isEditMode ? 'Exit Edit' : 'Edit'}
+                  </button>
+                  <button
                     onClick={(e) => { e.stopPropagation(); if (confirm('Delete this listing?')) onDelete(id); }}
                     className="px-6 py-2 rounded-xl border border-red-200 text-red-600 font-bold hover:bg-red-50 transition-all"
                   >
                     Delete
                   </button>
-                  {hasChanges && (
+                  {hasChanges && isEditMode && (
                     <button
                       onClick={handleSave}
                       disabled={isSaving}
@@ -201,12 +210,18 @@ function DetailViewPanel({ ev, onStatus, updating, onUpdate, onNext, currentInde
                 </div>
                 <div className="flex gap-4">
                   <button
+                    onClick={() => setIsEditMode(!isEditMode)}
+                    className={`px-8 py-2 rounded-xl font-bold transition-all ${isEditMode ? 'bg-[#FFEB3B] text-black' : 'bg-[#F4F4F4] text-black border border-zinc-200'}`}
+                  >
+                    {isEditMode ? 'Exit Edit' : 'Edit'}
+                  </button>
+                  <button
                     onClick={(e) => { e.stopPropagation(); if (confirm('Delete this listing?')) onDelete(id); }}
                     className="px-6 py-2 rounded-xl border border-red-200 text-red-600 font-bold hover:bg-red-50 transition-all"
                   >
                     Delete
                   </button>
-                  {hasChanges && (
+                  {hasChanges && isEditMode && (
                     <button
                       onClick={handleSave}
                       disabled={isSaving}

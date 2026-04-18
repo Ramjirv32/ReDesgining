@@ -10,6 +10,7 @@ import { getOrganizerSession } from '@/lib/auth/organizer';
 function BackupContactContent() {
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
     const [showOtp, setShowOtp] = useState(false);
+    const [timeLeft, setTimeLeft] = useState(180);
     const [email, setEmail] = useState('');
     const [prefilled, setPrefilled] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -43,23 +44,38 @@ function BackupContactContent() {
         router.push('/list-your-dining/setup/agreement');
     };
 
+    React.useEffect(() => {
+        if (!showOtp || timeLeft <= 0) return;
+        const interval = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
+        return () => clearInterval(interval);
+    }, [showOtp, timeLeft]);
+
+    const formatTime = (seconds: number) => {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m}:${s.toString().padStart(2, '0')}`;
+    };
+
     const handleSendOTP = async () => {
+        if (showOtp && timeLeft > 0) return;
         setError('');
-        if (!email) { setError('Please enter an email address.'); return; }
+        
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            setError('Please enter a valid email address.');
+            return;
+        }
         const session = getOrganizerSession();
         if (session?.email && email.toLowerCase() === session.email.toLowerCase()) {
             setError('Backup email must be different from your login email.');
             return;
         }
-        setLoading(true);
-        try {
-            await organizerApi.sendBackupOTP(session?.id ?? '', email, 'dining');
-            setShowOtp(true);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to send OTP');
-        } finally {
-            setLoading(false);
-        }
+        
+        setShowOtp(true);
+        setTimeLeft(180);
+        
+        organizerApi.sendBackupOTP(session?.id ?? '', email, 'dining').catch(err => {
+            console.error('Failed to send OTP:', err);
+        });
     };
 
     const handleOtpChange = (index: number, value: string) => {

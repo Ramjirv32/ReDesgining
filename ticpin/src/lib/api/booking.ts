@@ -263,7 +263,7 @@ export const bookingApi = {
         });
         const data = await res.json();
         if (!res.ok) return [];
-        return data as any[];
+        return Array.isArray(data) ? data : [];
     },
     /** Get detailed booking information by ID */
     getBookingDetails: async (bookingId: string, userId?: string): Promise<any> => {

@@ -530,19 +530,73 @@ export default function PlayBookPage() {
                                     SELECT TIME SLOT
                                 </h2>
                                 {!loadingSlots && (() => {
+                                    const { end: venueEnd } = resolveVenueTimes();
+                                    const now = new Date();
+                                    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                                    const isToday = selectedDate === now.toISOString().split('T')[0];
+                                    const isClosedNow = isToday && currentMinutes >= venueEnd;
+                                    
                                     const total = blockSlots.length;
-                                    // If there are no courts, show all slots as available
                                     const free = courts.length === 0 ? total : blockSlots.filter(b =>
                                         courts.some(c => isWindowAvailable(c.name, b.startMin, b.endMin))
                                     ).length;
+
+                                    if (isClosedNow) {
+                                        return <span className="text-[12px] font-bold px-3 py-1 bg-red-600 text-white rounded-full uppercase tracking-widest">Closed for today</span>;
+                                    }
+                                    if (isToday && total === 0) {
+                                        return <span className="text-[12px] font-bold px-3 py-1 bg-zinc-600 text-white rounded-full uppercase tracking-widest">No more slots today</span>;
+                                    }
+                                    if (total > 0 && free === 0) {
+                                        return <span className="text-[12px] font-bold px-3 py-1 bg-red-100 text-red-600 border border-red-200 rounded-full uppercase tracking-widest">Fully Booked</span>;
+                                    }
+                                    
                                     return (
-                                        <span className={`text-[12px] font-semibold px-2 py-0.5 rounded-full ${free === 0 ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-600'
-                                            }`}>
-                                            {free === 0 ? 'Fully Booked' : `${free} / ${total} free`}
+                                        <span className={`text-[12px] font-semibold px-2 py-0.5 rounded-full ${free === 0 ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-600'}`}>
+                                            {free === 0 ? 'Fully Booked' : `${free} / ${total} slots free`}
                                         </span>
                                     );
                                 })()}
                             </div>
+
+                            {/* Status Banner for edge cases */}
+                            {!loadingSlots && (() => {
+                                const { end: venueEnd } = resolveVenueTimes();
+                                const now = new Date();
+                                const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                                const isToday = selectedDate === now.toISOString().split('T')[0];
+                                const isClosedNow = isToday && currentMinutes >= venueEnd;
+                                const total = blockSlots.length;
+                                const free = courts.length === 0 ? total : blockSlots.filter(b =>
+                                    courts.some(c => isWindowAvailable(c.name, b.startMin, b.endMin))
+                                ).length;
+
+                                if (isClosedNow) {
+                                    return (
+                                        <div className="bg-red-50 border border-red-100 rounded-[15px] p-4 text-center">
+                                            <p className="text-red-700 font-bold text-[18px] uppercase tracking-wide">Venue is currently closed</p>
+                                            <p className="text-red-600 text-[14px] mt-1">Operating hours have ended for today. Please select another date.</p>
+                                        </div>
+                                    );
+                                }
+                                if (isToday && total === 0) {
+                                    return (
+                                        <div className="bg-zinc-50 border border-zinc-200 rounded-[15px] p-4 text-center">
+                                            <p className="text-zinc-700 font-bold text-[18px] uppercase tracking-wide">No more slots available today</p>
+                                            <p className="text-zinc-500 text-[14px] mt-1">All remaining time slots for today have passed or are booked.</p>
+                                        </div>
+                                    );
+                                }
+                                if (total > 0 && free === 0) {
+                                    return (
+                                        <div className="bg-orange-50 border border-orange-100 rounded-[15px] p-4 text-center">
+                                            <p className="text-orange-700 font-bold text-[18px] uppercase tracking-wide">Fully Booked</p>
+                                            <p className="text-orange-600 text-[14px] mt-1">All courts are already booked for the selected date and time.</p>
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            })()}
 
                             {/* ── Period filter tabs ───────────────────────── */}
                             <div className="flex gap-2 flex-wrap">

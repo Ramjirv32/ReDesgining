@@ -124,6 +124,7 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
     });
 
     const [uploading, setUploading] = useState<Record<string, boolean>>({});
+    const [isEditMode, setIsEditMode] = useState(false);
     const [submitLoading, setSubmitLoading] = useState(false);
     const [submitMsg, setSubmitMsg] = useState('');
     const [hasChanges, setHasChanges] = useState(false);
@@ -321,11 +322,17 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                         Current Status: {ev.status}
                     </span>
                     <div className="h-6 w-[1px] bg-zinc-300 mx-2"></div>
-                    <button onClick={() => onStatus(id, 'approved')} disabled={ev.status === 'approved'} className="px-6 py-2 rounded-lg bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <button onClick={() => onStatus(id, 'approved')} disabled={ev.status === 'approved' || isEditMode} className="px-6 py-2 rounded-lg bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed">
                         Approve
                     </button>
-                    <button onClick={() => onStatus(id, 'rejected')} disabled={ev.status === 'rejected'} className="px-6 py-2 rounded-lg bg-red-500 text-white font-bold text-sm hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <button onClick={() => onStatus(id, 'rejected')} disabled={ev.status === 'rejected' || isEditMode} className="px-6 py-2 rounded-lg bg-red-500 text-white font-bold text-sm hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed">
                         Reject
+                    </button>
+                    <button 
+                        onClick={() => setIsEditMode(!isEditMode)} 
+                        className={`px-6 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2 ${isEditMode ? 'bg-purple-100 text-purple-700 border border-purple-300' : 'bg-zinc-100 text-zinc-700 border border-zinc-200 hover:bg-zinc-200'}`}
+                    >
+                        {isEditMode ? <><Check size={16} /> Finish Editing</> : <><Edit3 size={16} /> Edit Details</>}
                     </button>
                     <button onClick={() => { if(confirm('Delete permanently?')) onDelete(id); }} className="p-2 text-zinc-400 hover:text-red-500 transition-colors">
                         <Trash2 size={20} />
@@ -360,7 +367,8 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                     <div className="mb-12">
                         <label className="block text-[24px] font-medium mb-2 text-black mt-[20px]">Event name</label>
                         <input type="text" placeholder="Your event's name" value={eventName} onChange={e => setEventName(e.target.value)}
-                            className="w-full text-[30px] font-medium text-black placeholder-[#AEAEAE] bg-transparent border-none outline-none mt-[-10px]" />
+                            disabled={!isEditMode}
+                            className={`w-full text-[30px] font-medium text-black placeholder-[#AEAEAE] bg-transparent border-none outline-none mt-[-10px] ${!isEditMode ? 'cursor-default' : ''}`} />
                         <div className="w-full h-[1px] bg-[#AEAEAE] mt-2" />
                     </div>
 
@@ -376,8 +384,8 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                                 <button onClick={() => handleFormat('underline')} className={`p-2 rounded ${isUnderline ? 'bg-gray-200' : ''}`}><span className="text-2xl underline">U</span></button>
                             </div>
                             <div className="border border-[#AEAEAE] rounded-[10px] p-6 min-h-[260px] relative">
-                                <div ref={editorRef} contentEditable onInput={e => setHasContent(e.currentTarget.innerText.length > 0)}
-                                    className="w-full h-full text-[30px] font-medium text-black outline-none min-h-[210px]" />
+                                <div ref={editorRef} contentEditable={isEditMode} onInput={e => setHasContent(e.currentTarget.innerText.length > 0)}
+                                    className={`w-full h-full text-[30px] font-medium text-black outline-none min-h-[210px] ${!isEditMode ? 'cursor-default' : ''}`} />
                                 {!hasContent && <div className="absolute top-6 left-6 text-[#AEAEAE] text-[25px] font-medium pointer-events-none">Event description</div>}
                             </div>
                         </section>
@@ -391,7 +399,7 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                                     <div key={key} className="space-y-2">
                                         <label className="text-[20px] font-medium text-[#686868]">{label} <span style={{ color: accentColor }}>*</span></label>
                                         <div className="relative w-full">
-                                            <div onClick={() => toggleDropdown(key)} className="relative border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[8px] cursor-pointer">
+                                            <div onClick={() => isEditMode && toggleDropdown(key)} className={`relative border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[8px] ${isEditMode ? 'cursor-pointer' : 'cursor-default bg-zinc-50/50'}`}>
                                                 <span className={`text-[20px] ${selections[key as 'category' | 'subCategory'].startsWith('Select') ? 'text-[#686868]' : 'text-black'}`}>{selections[key as 'category' | 'subCategory']}</span>
                                                 {openDropdown === key ? <ChevronUp className="absolute right-6" size={24} /> : <ChevronDown className="absolute right-6" size={24} />}
                                             </div>
@@ -417,7 +425,7 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                                     <div className="space-y-2">
                                         <label className="text-[20px] font-medium text-[#686868]">City</label>
                                         <div className="relative w-full">
-                                            <div onClick={() => toggleDropdown('city')} className="relative border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[8px] cursor-pointer">
+                                            <div onClick={() => isEditMode && toggleDropdown('city')} className={`relative border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[8px] ${isEditMode ? 'cursor-pointer' : 'cursor-default bg-zinc-50/50'}`}>
                                                 <span className={`text-[20px] ${selections.city === 'Select City' ? 'text-[#686868]' : 'text-black'}`}>{selections.city}</span>
                                                 {openDropdown === 'city' ? <ChevronUp className="absolute right-6" size={24} /> : <ChevronDown className="absolute right-6" size={24} />}
                                             </div>
@@ -445,7 +453,7 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                                     <div className="space-y-2">
                                         <label className="text-[20px] font-medium text-[#686868]">Venue Name</label>
                                         <div className="relative border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[8px]">
-                                            <input type="text" placeholder="e.g. Phoenix Mall" value={venueName} onChange={e => setVenueName(e.target.value)} className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]" />
+                                            <input type="text" placeholder="e.g. Phoenix Mall" value={venueName} onChange={e => setVenueName(e.target.value)} disabled={!isEditMode} className={`w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE] ${!isEditMode ? 'cursor-default' : ''}`} />
                                         </div>
                                     </div>
                                 </div>
@@ -453,20 +461,20 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                                     <label className="text-[20px] font-medium text-[#686868]">Full Address</label>
                                     <div className="relative border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 gap-4 mt-[10px]">
                                         <MapPin className="text-[#AEAEAE]" size={24} />
-                                        <input type="text" placeholder="Full address" value={venueAddress} onChange={e => setVenueAddress(e.target.value)} className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]" />
+                                        <input type="text" placeholder="Full address" value={venueAddress} onChange={e => setVenueAddress(e.target.value)} disabled={!isEditMode} className={`w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE] ${!isEditMode ? 'cursor-default' : ''}`} />
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-8">
                                     <div className="space-y-2">
                                         <label className="text-[20px] font-medium text-[#686868]">Google Maps Link</label>
                                         <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
-                                            <input type="text" placeholder="Google Maps URL" value={googleMapLink} onChange={e => setGoogleMapLink(e.target.value)} className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]" />
+                                            <input type="text" placeholder="Google Maps URL" value={googleMapLink} onChange={e => setGoogleMapLink(e.target.value)} disabled={!isEditMode} className={`w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE] ${!isEditMode ? 'cursor-default' : ''}`} />
                                         </div>
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[20px] font-medium text-[#686868]">Instagram Link</label>
                                         <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
-                                            <input type="text" placeholder="Instagram URL" value={instagramLink} onChange={e => setInstagramLink(e.target.value)} className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]" />
+                                            <input type="text" placeholder="Instagram URL" value={instagramLink} onChange={e => setInstagramLink(e.target.value)} disabled={!isEditMode} className={`w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE] ${!isEditMode ? 'cursor-default' : ''}`} />
                                         </div>
                                     </div>
                                 </div>
@@ -481,19 +489,19 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                                 <div className="space-y-2">
                                     <label className="text-[20px] font-medium text-[#686868]">Event Date</label>
                                     <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
-                                        <input type="date" value={eventDate} onChange={e => setEventDate(e.target.value)} className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]" />
+                                        <input type="date" value={eventDate} onChange={e => setEventDate(e.target.value)} disabled={!isEditMode} className={`w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE] ${!isEditMode ? 'cursor-default' : ''}`} />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[20px] font-medium text-[#686868]">Start Time</label>
                                     <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
-                                        <input type="text" placeholder="e.g. 06:00 PM" value={eventTime} onChange={e => setEventTime(e.target.value)} className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]" />
+                                        <input type="text" placeholder="e.g. 06:00 PM" value={eventTime} onChange={e => setEventTime(e.target.value)} disabled={!isEditMode} className={`w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE] ${!isEditMode ? 'cursor-default' : ''}`} />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[20px] font-medium text-[#686868]">Duration</label>
                                     <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
-                                        <input type="text" placeholder="e.g. 3 Hours" value={duration} onChange={e => setDuration(e.target.value)} className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]" />
+                                        <input type="text" placeholder="e.g. 3 Hours" value={duration} onChange={e => setDuration(e.target.value)} disabled={!isEditMode} className={`w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE] ${!isEditMode ? 'cursor-default' : ''}`} />
                                     </div>
                                 </div>
                             </div>
@@ -507,7 +515,7 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                                 <div className="flex items-center justify-between">
                                     <span className="text-[25px] font-medium text-black">Pet-friendly? <span style={{ color: accentColor }}>*</span></span>
                                     <div className="relative border border-[#686868] rounded-[10px] h-[64px] w-[840px] flex items-center px-6">
-                                        <select value={petFriendly} onChange={e => setPetFriendly(e.target.value)} className="w-full appearance-none bg-transparent outline-none text-[25px]">
+                                        <select value={petFriendly} onChange={e => setPetFriendly(e.target.value)} disabled={!isEditMode} className={`w-full appearance-none bg-transparent outline-none text-[25px] ${!isEditMode ? 'cursor-default' : ''}`}>
                                             {['Yes', 'No'].map(o => <option key={o} value={o}>{o}</option>)}
                                         </select>
                                         <ChevronDown size={24} className="absolute right-6" />
@@ -516,7 +524,7 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                                 <div className="flex items-center justify-between">
                                     <span className="text-[25px] font-medium text-black">Facilities</span>
                                     <div className="border border-[#686868] rounded-[10px] h-[64px] w-[840px] flex items-center px-6">
-                                        <input type="text" placeholder="e.g. Parking, Locker, Showers" value={facilities} onChange={e => setFacilities(e.target.value)} className="w-full bg-transparent outline-none text-[25px] placeholder-[#AEAEAE]" />
+                                        <input type="text" placeholder="e.g. Parking, Locker, Showers" value={facilities} onChange={e => setFacilities(e.target.value)} disabled={!isEditMode} className={`w-full bg-transparent outline-none text-[25px] placeholder-[#AEAEAE] ${!isEditMode ? 'cursor-default' : ''}`} />
                                     </div>
                                 </div>
                             </div>
@@ -526,61 +534,63 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                         <section className="bg-white rounded-[15px] p-8 shadow-sm border border-zinc-100">
                             <h2 className="text-[30px] font-medium text-black mb-2">Artists / Lineup</h2>
                             <p className="text-[20px] font-medium text-[#AEAEAE] mb-6">Add performers or speakers.</p>
-                            <div className="w-full h-[1px] bg-[#AEAEAE] mb-8"></div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-6">
-                                <div className="space-y-2">
-                                    <label className="text-[20px] font-medium text-[#686868]">Artist Name</label>
-                                    <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
-                                        <input type="text" value={newArtist.name} onChange={e => setNewArtist({ ...newArtist, name: e.target.value })} placeholder="e.g. DJ Snake" className="w-full bg-transparent outline-none text-[22px] text-black placeholder-[#AEAEAE]" />
+                            <div className="w-full h-[1px] bg-[#AEAEAE] mb-8"></div>                             {isEditMode && (
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-6">
+                                    <div className="space-y-2">
+                                        <label className="text-[20px] font-medium text-[#686868]">Artist Name</label>
+                                        <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
+                                            <input type="text" value={newArtist.name} onChange={e => setNewArtist({ ...newArtist, name: e.target.value })} placeholder="e.g. DJ Snake" className="w-full bg-transparent outline-none text-[22px] text-black placeholder-[#AEAEAE]" />
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[20px] font-medium text-[#686868]">Role / Description</label>
-                                    <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
-                                        <input type="text" value={newArtist.description} onChange={e => setNewArtist({ ...newArtist, description: e.target.value })} placeholder="e.g. Headliner" className="w-full bg-transparent outline-none text-[22px] text-black placeholder-[#AEAEAE]" />
+                                    <div className="space-y-2">
+                                        <label className="text-[20px] font-medium text-[#686868]">Role / Description</label>
+                                        <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
+                                            <input type="text" value={newArtist.description} onChange={e => setNewArtist({ ...newArtist, description: e.target.value })} placeholder="e.g. Headliner" className="w-full bg-transparent outline-none text-[22px] text-black placeholder-[#AEAEAE]" />
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="space-y-2 col-span-2">
-                                    <label className="text-[20px] font-medium text-[#686868]">Artist Image</label>
-                                    <div className="flex items-center gap-4">
-                                        <label htmlFor="upload-artist_image" className="cursor-pointer flex-1">
-                                            <div className="border border-[#AEAEAE] border-dashed rounded-[10px] h-[64px] flex items-center justify-center px-6 hover:bg-zinc-50 transition-colors">
-                                                {uploading.artist_image ? (
-                                                    <span className="text-[18px] text-zinc-400 animate-pulse">Uploading...</span>
-                                                ) : newArtist.image_url ? (
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="relative w-[40px] h-[40px] rounded-[6px] overflow-hidden">
-                                                            <Image src={newArtist.image_url} alt="Artist preview" fill className="object-cover" />
+                                    <div className="space-y-2 col-span-2">
+                                        <label className="text-[20px] font-medium text-[#686868]">Artist Image</label>
+                                        <div className="flex items-center gap-4">
+                                            <label htmlFor="upload-artist_image" className="cursor-pointer flex-1">
+                                                <div className="border border-[#AEAEAE] border-dashed rounded-[10px] h-[64px] flex items-center justify-center px-6 hover:bg-zinc-50 transition-colors">
+                                                    {uploading.artist_image ? (
+                                                        <span className="text-[18px] text-zinc-400 animate-pulse">Uploading...</span>
+                                                    ) : newArtist.image_url ? (
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="relative w-[40px] h-[40px] rounded-[6px] overflow-hidden">
+                                                                <Image src={newArtist.image_url} alt="Artist preview" fill className="object-cover" />
+                                                            </div>
+                                                            <span className="text-[18px] text-green-600 font-semibold uppercase italic">✓ Image Set</span>
                                                         </div>
-                                                        <span className="text-[18px] text-green-600 font-semibold uppercase italic">✓ Image Set</span>
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex items-center gap-2">
-                                                        <Upload size={20} className="text-[#AEAEAE]" />
-                                                        <span className="text-[18px] text-[#AEAEAE]">Upload</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </label>
+                                                    ) : (
+                                                        <div className="flex items-center gap-2">
+                                                            <Upload size={20} className="text-[#AEAEAE]" />
+                                                            <span className="text-[18px] text-[#AEAEAE]">Upload</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div className="flex justify-end mb-8">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        if (newArtist.name) {
-                                            setArtists([...artists, newArtist]);
-                                            setNewArtist({ name: '', description: '', image_url: '' });
-                                        }
-                                    }}
-                                    className="bg-black text-white rounded-[15px] h-[54px] px-8 flex items-center gap-2"
-                                >
-                                    <span className="text-[20px] font-medium uppercase">Add Artist</span>
-                                    <PlusCircle size={22} />
-                                </button>
-                            </div>
+                             )}
+                             {isEditMode && (
+                                <div className="flex justify-end mb-8">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (newArtist.name) {
+                                                setArtists([...artists, newArtist]);
+                                                setNewArtist({ name: '', description: '', image_url: '' });
+                                            }
+                                        }}
+                                        className="bg-black text-white rounded-[15px] h-[54px] px-8 flex items-center gap-2"
+                                    >
+                                        <span className="text-[20px] font-medium uppercase">Add Artist</span>
+                                        <PlusCircle size={22} />
+                                    </button>
+                                </div>
+                             )}
 
                             {artists.length > 0 && (
                                 <div className="space-y-4">
@@ -627,17 +637,19 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                                                             <p className="text-[22px] font-semibold text-black">{a.description || '—'}</p>
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-6">
-                                                        <button onClick={() => {
-                                                            setEditArtistIndex(i);
-                                                            setEditArtistData({
-                                                                name: a.name,
-                                                                description: a.description || '',
-                                                                image_url: a.image_url || ''
-                                                            });
-                                                         }} className="text-blue-500 font-bold uppercase tracking-tight text-[16px]">Edit</button>
-                                                        <button onClick={() => setArtists(artists.filter((_, idx) => idx !== i))} className="text-red-500 font-bold uppercase tracking-tight text-[16px]">Remove</button>
-                                                    </div>
+                                                     {isEditMode && (
+                                                        <div className="flex items-center gap-6">
+                                                            <button onClick={() => {
+                                                                setEditArtistIndex(i);
+                                                                setEditArtistData({
+                                                                    name: a.name,
+                                                                    description: a.description || '',
+                                                                    image_url: a.image_url || ''
+                                                                });
+                                                            }} className="text-blue-500 font-bold uppercase tracking-tight text-[16px]">Edit</button>
+                                                            <button onClick={() => setArtists(artists.filter((_, idx) => idx !== i))} className="text-red-500 font-bold uppercase tracking-tight text-[16px]">Remove</button>
+                                                        </div>
+                                                     )}
                                                 </div>
                                             )}
                                         </div>
@@ -652,65 +664,69 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                             <p className="text-[20px] font-medium text-[#AEAEAE] mb-6">List the specific tickets available.</p>
                             <div className="w-full h-[1px] bg-[#AEAEAE] mb-8"></div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-6">
-                                <div className="space-y-2">
-                                    <label className="text-[20px] font-medium text-[#686868]">Category Name</label>
-                                    <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
-                                        <input type="text" value={newTicket.name} onChange={e => setNewTicket({ ...newTicket, name: e.target.value })} placeholder="e.g. VIP Phase 1" className="w-full bg-transparent outline-none text-[22px] text-black placeholder-[#AEAEAE]" />
+                             {isEditMode && (
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-6">
+                                    <div className="space-y-2">
+                                        <label className="text-[20px] font-medium text-[#686868]">Category Name</label>
+                                        <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
+                                            <input type="text" value={newTicket.name} onChange={e => setNewTicket({ ...newTicket, name: e.target.value })} placeholder="e.g. VIP Phase 1" className="w-full bg-transparent outline-none text-[22px] text-black placeholder-[#AEAEAE]" />
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[20px] font-medium text-[#686868]">Price (₹)</label>
-                                    <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
-                                        <input type="number" value={newTicket.price} onChange={e => setNewTicket({ ...newTicket, price: e.target.value })} placeholder="e.g. 1500" className="w-full bg-transparent outline-none text-[22px] text-black placeholder-[#AEAEAE]" />
+                                    <div className="space-y-2">
+                                        <label className="text-[20px] font-medium text-[#686868]">Price (₹)</label>
+                                        <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
+                                            <input type="number" value={newTicket.price} onChange={e => setNewTicket({ ...newTicket, price: e.target.value })} placeholder="e.g. 1500" className="w-full bg-transparent outline-none text-[22px] text-black placeholder-[#AEAEAE]" />
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[20px] font-medium text-[#686868]">Capacity</label>
-                                    <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
-                                        <input type="number" value={newTicket.capacity} onChange={e => setNewTicket({ ...newTicket, capacity: e.target.value })} placeholder="e.g. 100" className="w-full bg-transparent outline-none text-[22px] text-black placeholder-[#AEAEAE]" />
+                                    <div className="space-y-2">
+                                        <label className="text-[20px] font-medium text-[#686868]">Capacity</label>
+                                        <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
+                                            <input type="number" value={newTicket.capacity} onChange={e => setNewTicket({ ...newTicket, capacity: e.target.value })} placeholder="e.g. 100" className="w-full bg-transparent outline-none text-[22px] text-black placeholder-[#AEAEAE]" />
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[20px] font-medium text-[#686868]">Ticket Image</label>
-                                    <div className="flex items-center gap-4">
-                                        <label htmlFor="upload-ticket_image" className="cursor-pointer flex-1">
-                                            <div className="border border-[#AEAEAE] border-dashed rounded-[10px] h-[64px] flex items-center justify-center px-6 hover:bg-zinc-50 transition-colors">
-                                                {uploading.ticket_image ? (
-                                                    <span className="text-[18px] text-zinc-400 animate-pulse">Uploading...</span>
-                                                ) : newTicket.image_url ? (
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="relative w-[40px] h-[40px] rounded-[6px] overflow-hidden">
-                                                            <Image src={newTicket.image_url} alt="preview" fill className="object-cover" />
+                                    <div className="space-y-2">
+                                        <label className="text-[20px] font-medium text-[#686868]">Ticket Image</label>
+                                        <div className="flex items-center gap-4">
+                                            <label htmlFor="upload-ticket_image" className="cursor-pointer flex-1">
+                                                <div className="border border-[#AEAEAE] border-dashed rounded-[10px] h-[64px] flex items-center justify-center px-6 hover:bg-zinc-50 transition-colors">
+                                                    {uploading.ticket_image ? (
+                                                        <span className="text-[18px] text-zinc-400 animate-pulse">Uploading...</span>
+                                                    ) : newTicket.image_url ? (
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="relative w-[40px] h-[40px] rounded-[6px] overflow-hidden">
+                                                                <Image src={newTicket.image_url} alt="preview" fill className="object-cover" />
+                                                            </div>
+                                                            <span className="text-[18px] text-green-600 font-semibold uppercase italic">✓ Image Set</span>
                                                         </div>
-                                                        <span className="text-[18px] text-green-600 font-semibold uppercase italic">✓ Image Set</span>
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex items-center gap-2">
-                                                        <Upload size={20} className="text-[#AEAEAE]" />
-                                                        <span className="text-[18px] text-[#AEAEAE]">Upload</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </label>
+                                                    ) : (
+                                                        <div className="flex items-center gap-2">
+                                                            <Upload size={20} className="text-[#AEAEAE]" />
+                                                            <span className="text-[18px] text-[#AEAEAE]">Upload</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div className="flex justify-end mb-8">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        if (newTicket.name && newTicket.price && newTicket.capacity) {
-                                            setTicketCategories([...ticketCategories, newTicket]);
-                                            setNewTicket({ name: '', price: '', capacity: '', image_url: '' });
-                                        }
-                                    }}
-                                    className="bg-black text-white rounded-[15px] h-[54px] px-8 flex items-center gap-2"
-                                >
-                                    <span className="text-[20px] font-medium uppercase">Add Ticket</span>
-                                    <PlusCircle size={22} />
-                                </button>
-                            </div>
+                             )}
+                             {isEditMode && (
+                                <div className="flex justify-end mb-8">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (newTicket.name && newTicket.price && newTicket.capacity) {
+                                                setTicketCategories([...ticketCategories, newTicket]);
+                                                setNewTicket({ name: '', price: '', capacity: '', image_url: '' });
+                                            }
+                                        }}
+                                        className="bg-black text-white rounded-[15px] h-[54px] px-8 flex items-center gap-2"
+                                    >
+                                        <span className="text-[20px] font-medium uppercase">Add Ticket</span>
+                                        <PlusCircle size={22} />
+                                    </button>
+                                </div>
+                             )}
 
                             {ticketCategories.length > 0 && (
                                 <div className="space-y-4">
@@ -762,10 +778,12 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                                                             <p className="text-[22px] font-semibold text-black">{t.capacity}</p>
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-6">
-                                                        <button onClick={() => { setEditTicketIndex(i); setEditTicketData(t); }} className="text-blue-500 font-bold uppercase tracking-tight text-[16px]">Edit</button>
-                                                        <button onClick={() => setTicketCategories(ticketCategories.filter((_, idx) => idx !== i))} className="text-red-500 font-bold uppercase tracking-tight text-[16px]">Remove</button>
-                                                    </div>
+                                                     {isEditMode && (
+                                                        <div className="flex items-center gap-6">
+                                                            <button onClick={() => { setEditTicketIndex(i); setEditTicketData(t); }} className="text-blue-500 font-bold uppercase tracking-tight text-[16px]">Edit</button>
+                                                            <button onClick={() => setTicketCategories(ticketCategories.filter((_, idx) => idx !== i))} className="text-red-500 font-bold uppercase tracking-tight text-[16px]">Remove</button>
+                                                        </div>
+                                                     )}
                                                 </div>
                                             )}
                                         </div>
@@ -790,12 +808,14 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                                                 <Image src={url} alt={label} fill className="object-cover" />
                                             </div>
                                         )}
-                                        <label htmlFor={`upload-${key}`} className="cursor-pointer">
-                                            <div className="flex items-center border border-[#686868] rounded-[5px] h-[35px] overflow-hidden bg-white">
-                                                <span className="px-5 text-[15px] font-medium text-black">{uploading[key] ? 'Uploading...' : url ? 'Replace' : 'Upload'}</span>
-                                                <div className="w-[41px] h-full flex items-center justify-center border-l border-[#686868]" style={{ background: accentColor }}><Upload size={20} className="text-white" /></div>
-                                            </div>
-                                        </label>
+                                         {isEditMode && (
+                                            <label htmlFor={`upload-${key}`} className="cursor-pointer">
+                                                <div className="flex items-center border border-[#686868] rounded-[5px] h-[35px] overflow-hidden bg-white">
+                                                    <span className="px-5 text-[15px] font-medium text-black">{uploading[key] ? 'Uploading...' : url ? 'Replace' : 'Upload'}</span>
+                                                    <div className="w-[41px] h-full flex items-center justify-center border-l border-[#686868]" style={{ background: accentColor }}><Upload size={20} className="text-white" /></div>
+                                                </div>
+                                            </label>
+                                        )}
                                     </div>
                                 ))}
                                 {/* Secondary Banner */}
@@ -809,12 +829,14 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                                             <Image src={secondaryBannerUrl} alt="Secondary Banner" fill className="object-cover" />
                                         </div>
                                     )}
-                                    <label htmlFor="upload-secondary_banner" className="cursor-pointer">
-                                        <div className="flex items-center border border-[#686868] rounded-[5px] h-[35px] overflow-hidden bg-white">
-                                            <span className="px-5 text-[15px] font-medium text-black">{uploading['secondary_banner'] ? 'Uploading...' : secondaryBannerUrl ? 'Replace' : 'Upload'}</span>
-                                            <div className="w-[41px] h-full flex items-center justify-center border-l border-[#686868]" style={{ background: accentColor }}><Upload size={20} className="text-white" /></div>
-                                        </div>
-                                    </label>
+                                     {isEditMode && (
+                                        <label htmlFor="upload-secondary_banner" className="cursor-pointer">
+                                            <div className="flex items-center border border-[#686868] rounded-[5px] h-[35px] overflow-hidden bg-white">
+                                                <span className="px-5 text-[15px] font-medium text-black">{uploading['secondary_banner'] ? 'Uploading...' : secondaryBannerUrl ? 'Replace' : 'Upload'}</span>
+                                                <div className="w-[41px] h-full flex items-center justify-center border-l border-[#686868]" style={{ background: accentColor }}><Upload size={20} className="text-white" /></div>
+                                            </div>
+                                        </label>
+                                    )}
                                 </div>
                             </div>
                         </section>
@@ -827,22 +849,26 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                                 <div className="bg-[#EBEBEB] rounded-[10px] py-3 px-6 flex items-center justify-between">
                                     <div><p className="text-[20px] font-semibold text-[#686868]">Card Video</p><p className="text-[18px] text-black">mp4 / mov · max 5MB</p></div>
                                     {videoUrl && <p className="text-[13px] text-green-600 font-medium">✓ Uploaded</p>}
-                                    <label htmlFor="upload-video" className="cursor-pointer">
-                                        <div className="flex items-center border border-[#686868] rounded-[5px] h-[35px] overflow-hidden bg-white">
-                                            <span className="px-5 text-[15px] font-medium text-black">{uploading.video ? 'Uploading...' : videoUrl ? 'Replace' : 'Upload'}</span>
-                                            <div className="w-[41px] h-full flex items-center justify-center border-l border-[#686868]" style={{ background: accentColor }}><Upload size={20} className="text-white" /></div>
-                                        </div>
-                                    </label>
+                                     {isEditMode && (
+                                        <label htmlFor="upload-video" className="cursor-pointer">
+                                            <div className="flex items-center border border-[#686868] rounded-[5px] h-[35px] overflow-hidden bg-white">
+                                                <span className="px-5 text-[15px] font-medium text-black">{uploading.video ? 'Uploading...' : videoUrl ? 'Replace' : 'Upload'}</span>
+                                                <div className="w-[41px] h-full flex items-center justify-center border-l border-[#686868]" style={{ background: accentColor }}><Upload size={20} className="text-white" /></div>
+                                            </div>
+                                        </label>
+                                    )}
                                 </div>
                                 <div>
                                     <div className="flex items-center justify-between mb-3">
                                         <p className="text-[20px] font-semibold text-[#686868]">Gallery ({galleryUrls.length}) <span className="text-[#5331EA] text-[16px]">* min 3</span></p>
-                                        <label htmlFor="upload-gallery" className="cursor-pointer inline-flex">
-                                            <div className="flex items-center border border-[#686868] rounded-[5px] h-[35px] overflow-hidden bg-[#EBEBEB]">
-                                                <span className="px-5 text-[15px] font-medium text-black">{uploading.gallery ? 'Uploading...' : '+ Add Image'}</span>
-                                                <div className="w-[41px] h-full flex items-center justify-center border-l border-[#686868]" style={{ background: accentColor }}><Upload size={20} className="text-white" /></div>
-                                            </div>
-                                        </label>
+                                         {isEditMode && (
+                                            <label htmlFor="upload-gallery" className="cursor-pointer inline-flex">
+                                                <div className="flex items-center border border-[#686868] rounded-[5px] h-[35px] overflow-hidden bg-[#EBEBEB]">
+                                                    <span className="px-5 text-[15px] font-medium text-black">{uploading.gallery ? 'Uploading...' : '+ Add Image'}</span>
+                                                    <div className="w-[41px] h-full flex items-center justify-center border-l border-[#686868]" style={{ background: accentColor }}><Upload size={20} className="text-white" /></div>
+                                                </div>
+                                            </label>
+                                        )}
                                     </div>
                                     {galleryUrls.length > 0 && (
                                         <div className="flex flex-wrap gap-3 mb-4">
@@ -851,7 +877,7 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                                                     <div className="relative w-[full] h-full rounded-[8px] overflow-hidden border border-[#AEAEAE]">
                                                         <Image src={u} alt="" fill className="object-cover" />
                                                     </div>
-                                                    <button onClick={() => setGalleryUrls(prev => prev.filter((_, idx) => idx !== i))} className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-[12px] flex items-center justify-center">×</button>
+                                                     {isEditMode && <button onClick={() => setGalleryUrls(prev => prev.filter((_, idx) => idx !== i))} className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-[12px] flex items-center justify-center">×</button>}
                                                 </div>
                                             ))}
                                         </div>
@@ -870,7 +896,7 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                                     { name: 'Prohibited Items', toggle: () => setShowProhibited(!showProhibited), active: showProhibited },
                                     { name: 'FAQs', toggle: () => setShowFaqs(!showFaqs), active: showFaqs },
                                 ].map((btn, idx) => (
-                                    <button key={idx} onClick={btn.toggle} className="flex items-center bg-white rounded-[6px] h-[42px] overflow-hidden">
+                                     <button key={idx} onClick={() => isEditMode && btn.toggle()} className={`flex items-center bg-white rounded-[6px] h-[42px] overflow-hidden ${!isEditMode ? 'cursor-default' : ''}`}>
                                         <span className="px-4 text-[19px] font-medium text-black">{btn.name}</span>
                                         <div className={`w-[42px] h-full flex items-center justify-center ${btn.active ? 'bg-black' : ''}`} style={!btn.active ? { background: accentColor } : {}}>
                                             <PlusCircle size={20} className={btn.active ? 'text-white' : 'text-white'} />
@@ -884,7 +910,7 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                             <section className="bg-white rounded-[15px] p-8 shadow-sm border border-zinc-100">
                                 <h2 className="text-[30px] font-medium text-black mb-4">Event Instructions</h2>
                                 <div className="border border-[#686868] rounded-[10px] p-4">
-                                    <textarea value={eventInstructions} onChange={e => setEventInstructions(e.target.value)} placeholder="Enter instructions..." className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE] min-h-[100px] resize-y" />
+                                     <textarea value={eventInstructions} onChange={e => setEventInstructions(e.target.value)} disabled={!isEditMode} placeholder="Enter instructions..." className={`w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE] min-h-[100px] resize-y ${!isEditMode ? 'cursor-default' : ''}`} />
                                 </div>
                             </section>
                         )}
@@ -892,23 +918,25 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                             <section className="bg-white rounded-[15px] p-8 shadow-sm border border-zinc-100">
                                 <h2 className="text-[30px] font-medium text-black mb-4">YouTube Video</h2>
                                 <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6">
-                                    <input type="text" placeholder="YouTube URL" value={youtubeVideoUrl} onChange={e => setYoutubeVideoUrl(e.target.value)} className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]" />
+                                     <input type="text" placeholder="YouTube URL" value={youtubeVideoUrl} onChange={e => setYoutubeVideoUrl(e.target.value)} disabled={!isEditMode} className={`w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE] ${!isEditMode ? 'cursor-default' : ''}`} />
                                 </div>
                             </section>
                         )}
                         {showProhibited && (
                             <section className="bg-white rounded-[15px] p-8 shadow-sm border border-zinc-100">
                                 <h2 className="text-[30px] font-medium text-black mb-4">Prohibited Items</h2>
-                                <div className="flex gap-4 mb-4">
-                                    <div className="border border-[#686868] rounded-[10px] h-[64px] flex-1 flex items-center px-6">
-                                        <input type="text" placeholder="Add item" value={newProhibitedItem} onChange={e => setNewProhibitedItem(e.target.value)} onKeyDown={e => e.key === 'Enter' && (() => { if(newProhibitedItem.trim()) { setProhibitedItems([...prohibitedItems, newProhibitedItem]); setNewProhibitedItem(''); } })()} className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]" />
+                                 {isEditMode && (
+                                    <div className="flex gap-4 mb-4">
+                                        <div className="border border-[#686868] rounded-[10px] h-[64px] flex-1 flex items-center px-6">
+                                            <input type="text" placeholder="Add item" value={newProhibitedItem} onChange={e => setNewProhibitedItem(e.target.value)} onKeyDown={e => e.key === 'Enter' && (() => { if(newProhibitedItem.trim()) { setProhibitedItems([...prohibitedItems, newProhibitedItem]); setNewProhibitedItem(''); } })()} className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]" />
+                                        </div>
+                                        <button onClick={() => { if(newProhibitedItem.trim()) { setProhibitedItems([...prohibitedItems, newProhibitedItem]); setNewProhibitedItem(''); } }} className="bg-black text-white px-8 rounded-[10px] font-medium text-[20px]">Add</button>
                                     </div>
-                                    <button onClick={() => { if(newProhibitedItem.trim()) { setProhibitedItems([...prohibitedItems, newProhibitedItem]); setNewProhibitedItem(''); } }} className="bg-black text-white px-8 rounded-[10px] font-medium text-[20px]">Add</button>
-                                </div>
+                                )}
                                 <div className="flex flex-wrap gap-3">
                                     {prohibitedItems.map((item, i) => (
                                         <div key={i} className="bg-zinc-100 px-4 py-2 rounded-lg flex items-center gap-2">
-                                            <span>{item}</span><button onClick={() => setProhibitedItems(prev => prev.filter((_, idx) => idx !== i))} className="text-red-500">×</button>
+                                             <span>{item}</span>{isEditMode && <button onClick={() => setProhibitedItems(prev => prev.filter((_, idx) => idx !== i))} className="text-red-500">×</button>}
                                         </div>
                                     ))}
                                 </div>
@@ -917,15 +945,17 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                         {showFaqs && (
                             <section className="bg-white rounded-[15px] p-8 shadow-sm border border-zinc-100">
                                 <h2 className="text-[30px] font-medium text-black mb-4">FAQs</h2>
-                                <div className="space-y-4 mb-4">
-                                    <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6">
-                                        <input type="text" placeholder="Question" value={newFaq.question} onChange={e => setNewFaq({ ...newFaq, question: e.target.value })} className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]" />
+                                 {isEditMode && (
+                                    <div className="space-y-4 mb-4">
+                                        <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6">
+                                            <input type="text" placeholder="Question" value={newFaq.question} onChange={e => setNewFaq({ ...newFaq, question: e.target.value })} className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]" />
+                                        </div>
+                                        <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6">
+                                            <input type="text" placeholder="Answer" value={newFaq.answer} onChange={e => setNewFaq({ ...newFaq, answer: e.target.value })} className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]" />
+                                        </div>
+                                        <button onClick={() => { if(newFaq.question && newFaq.answer) { setFaqs([...faqs, newFaq]); setNewFaq({ question: '', answer: '' }); } }} className="bg-black text-white w-full h-[64px] rounded-[10px] font-medium text-[20px]">Add FAQ</button>
                                     </div>
-                                    <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6">
-                                        <input type="text" placeholder="Answer" value={newFaq.answer} onChange={e => setNewFaq({ ...newFaq, answer: e.target.value })} className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]" />
-                                    </div>
-                                    <button onClick={() => { if(newFaq.question && newFaq.answer) { setFaqs([...faqs, newFaq]); setNewFaq({ question: '', answer: '' }); } }} className="bg-black text-white w-full h-[64px] rounded-[10px] font-medium text-[20px]">Add FAQ</button>
-                                </div>
+                                )}
                                 <div className="space-y-4 w-full">
                                     {faqs.map((faq, i) => (
                                         <div key={i} className="bg-[#F5F5F5] rounded-[10px] px-6 py-4 flex flex-col w-full relative">
@@ -947,10 +977,12 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                                                 <>
                                                     <p className="font-semibold text-[20px] pr-32">Q: {faq.question}</p>
                                                     <p className="text-[18px] text-zinc-600 pr-32">A: {faq.answer}</p>
-                                                    <div className="absolute top-4 right-6 flex items-center gap-6">
-                                                        <button onClick={() => { setEditFaqIndex(i); setEditFaqData(faq); }} className="text-blue-500 text-[16px] font-bold uppercase tracking-tight">Edit</button>
-                                                        <button onClick={() => setFaqs(prev => prev.filter((_, idx) => idx !== i))} className="text-red-500 text-[16px] font-bold uppercase tracking-tight">Remove</button>
-                                                    </div>
+                                                     {isEditMode && (
+                                                        <div className="absolute top-4 right-6 flex items-center gap-6">
+                                                            <button onClick={() => { setEditFaqIndex(i); setEditFaqData(faq); }} className="text-blue-500 text-[16px] font-bold uppercase tracking-tight">Edit</button>
+                                                            <button onClick={() => setFaqs(prev => prev.filter((_, idx) => idx !== i))} className="text-red-500 text-[16px] font-bold uppercase tracking-tight">Remove</button>
+                                                        </div>
+                                                     )}
                                                 </>
                                             )}
                                         </div>
@@ -966,32 +998,32 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                                 <div className="space-y-2">
                                     <label className="text-[20px] font-medium text-[#686868]">Organiser Name *</label>
                                     <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
-                                        <input type="text" placeholder="Organiser Name" value={payment.organizerName} onChange={e => setPayment({ ...payment, organizerName: e.target.value })} className="w-full bg-transparent outline-none text-[20px] placeholder-[#AEAEAE]" />
+                                         <input type="text" placeholder="Organiser Name" value={payment.organizerName} onChange={e => setPayment({ ...payment, organizerName: e.target.value })} disabled={!isEditMode} className={`w-full bg-transparent outline-none text-[20px] placeholder-[#AEAEAE] ${!isEditMode ? 'cursor-default' : ''}`} />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[20px] font-medium text-[#686868]">GSTIN / PAN:</label>
                                     <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
-                                        <input type="text" placeholder="GSTIN or PAN" value={payment.gstin} onChange={e => setPayment({ ...payment, gstin: e.target.value })} className="w-full bg-transparent outline-none text-[20px] placeholder-[#AEAEAE]" />
+                                         <input type="text" placeholder="GSTIN or PAN" value={payment.gstin} onChange={e => setPayment({ ...payment, gstin: e.target.value })} disabled={!isEditMode} className={`w-full bg-transparent outline-none text-[20px] placeholder-[#AEAEAE] ${!isEditMode ? 'cursor-default' : ''}`} />
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-3 gap-8">
                                     <div className="space-y-2">
                                         <label className="text-[20px] font-medium text-[#686868]">Account Number:</label>
                                         <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
-                                            <input type="text" placeholder="Account Number" value={payment.accountNumber} onChange={e => setPayment({ ...payment, accountNumber: e.target.value })} className="w-full bg-transparent outline-none text-[20px] placeholder-[#AEAEAE]" />
+                                             <input type="text" placeholder="Account Number" value={payment.accountNumber} onChange={e => setPayment({ ...payment, accountNumber: e.target.value })} disabled={!isEditMode} className={`w-full bg-transparent outline-none text-[20px] placeholder-[#AEAEAE] ${!isEditMode ? 'cursor-default' : ''}`} />
                                         </div>
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[20px] font-medium text-[#686868]">IFSC:</label>
                                         <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
-                                            <input type="text" placeholder="IFSC Code" value={payment.ifsc} onChange={e => setPayment({ ...payment, ifsc: e.target.value })} className="w-full bg-transparent outline-none text-[20px] placeholder-[#AEAEAE]" />
+                                             <input type="text" placeholder="IFSC Code" value={payment.ifsc} onChange={e => setPayment({ ...payment, ifsc: e.target.value })} disabled={!isEditMode} className={`w-full bg-transparent outline-none text-[20px] placeholder-[#AEAEAE] ${!isEditMode ? 'cursor-default' : ''}`} />
                                         </div>
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[20px] font-medium text-[#686868]">Account Type:</label>
                                         <div className="border border-[#686868] rounded-[10px] h-[64px] flex items-center px-6 mt-[10px]">
-                                            <select value={payment.accountType} onChange={e => setPayment({ ...payment, accountType: e.target.value })} className="w-full bg-transparent outline-none text-[20px]">
+                                             <select value={payment.accountType} onChange={e => setPayment({ ...payment, accountType: e.target.value })} disabled={!isEditMode} className={`w-full bg-transparent outline-none text-[20px] ${!isEditMode ? 'cursor-default' : ''}`}>
                                                 <option value="">Select type</option>
                                                 <option value="Savings">Savings</option>
                                                 <option value="Current">Current</option>
@@ -1012,16 +1044,18 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                                 {[['Name', 'name', 'Enter name'], ['Mail', 'email', 'Enter email'], ['Mobile', 'mobile', 'Enter mobile']].map(([label, key, ph]) => (
                                     <div key={key} className="space-y-3">
                                         <label className="text-[20px] font-medium text-[#686868]">{label}</label>
-                                        <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
-                                            <input type="text" placeholder={ph} value={newPoc[key as 'name' | 'email' | 'mobile']} onChange={e => setNewPoc({ ...newPoc, [key]: e.target.value })} className="w-full bg-transparent outline-none text-[25px] text-black placeholder-[#AEAEAE]" />
+                                         <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
+                                            <input type="text" placeholder={ph} value={newPoc[key as 'name' | 'email' | 'mobile']} onChange={e => setNewPoc({ ...newPoc, [key]: e.target.value })} disabled={!isEditMode} className={`w-full bg-transparent outline-none text-[25px] text-black placeholder-[#AEAEAE] ${!isEditMode ? 'cursor-default' : ''}`} />
                                         </div>
                                     </div>
                                 ))}
                             </div>
                             
-                            <div className="flex justify-end">
-                                <button onClick={() => { if(newPoc.name && newPoc.email) { setPocs([...pocs, newPoc]); setNewPoc({ name: '', email: '', mobile: '' }); } }} className="bg-black text-white rounded-[15px] h-[65px] px-6 flex items-center gap-3 text-[25px] font-medium"><PlusCircle size={24} /> ADD</button>
-                            </div>
+                             {isEditMode && (
+                                <div className="flex justify-end">
+                                    <button onClick={() => { if(newPoc.name && newPoc.email) { setPocs([...pocs, newPoc]); setNewPoc({ name: '', email: '', mobile: '' }); } }} className="bg-black text-white rounded-[15px] h-[65px] px-6 flex items-center gap-3 text-[25px] font-medium"><PlusCircle size={24} /> ADD</button>
+                                </div>
+                             )}
 
                             <div className="space-y-3 mt-4 w-full">
                                 {pocs.map((poc, i) => (
@@ -1044,10 +1078,12 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                                         ) : (
                                             <div className="flex items-center justify-between w-full">
                                                 <span className="text-[20px] text-black">{poc.name} — {poc.email} — {poc.mobile}</span>
-                                                <div className="flex items-center gap-6 ml-4">
-                                                    <button onClick={() => { setEditPocIndex(i); setEditPocData({ name: poc.name, email: poc.email, mobile: poc.mobile || poc.phone || '' }); }} className="text-blue-500 font-bold uppercase tracking-tight text-[16px]">Edit</button>
-                                                    <button onClick={() => setPocs(pocs.filter((_, idx) => idx !== i))} className="text-red-500 font-bold uppercase tracking-tight text-[16px]">Remove</button>
-                                                </div>
+                                                 {isEditMode && (
+                                                    <div className="flex items-center gap-6 ml-4">
+                                                        <button onClick={() => { setEditPocIndex(i); setEditPocData({ name: poc.name, email: poc.email, mobile: poc.mobile || poc.phone || '' }); }} className="text-blue-500 font-bold uppercase tracking-tight text-[16px]">Edit</button>
+                                                        <button onClick={() => setPocs(pocs.filter((_, idx) => idx !== i))} className="text-red-500 font-bold uppercase tracking-tight text-[16px]">Remove</button>
+                                                    </div>
+                                                 )}
                                             </div>
                                         )}
                                     </div>
@@ -1062,16 +1098,18 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                                 {[['Mail', 'email', 'Enter email'], ['Mobile', 'mobile', 'Enter mobile']].map(([label, key, ph]) => (
                                     <div key={key} className="space-y-3">
                                         <label className="text-[20px] font-medium text-[#686868]">{label}</label>
-                                        <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
-                                            <input type="text" placeholder={ph} value={newSales[key as 'email' | 'mobile']} onChange={e => setNewSales({ ...newSales, [key]: e.target.value })} className="w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE]" />
+                                         <div className="border border-[#AEAEAE] rounded-[10px] h-[64px] flex items-center px-6">
+                                            <input type="text" placeholder={ph} value={newSales[key as 'email' | 'mobile']} onChange={e => setNewSales({ ...newSales, [key]: e.target.value })} disabled={!isEditMode} className={`w-full bg-transparent outline-none text-[20px] text-black placeholder-[#AEAEAE] ${!isEditMode ? 'cursor-default' : ''}`} />
                                         </div>
                                     </div>
                                 ))}
                             </div>
 
-                            <div className="flex justify-end">
-                                <button onClick={() => { if(newSales.email) { setSalesNotifs([...salesNotifs, newSales]); setNewSales({ email: '', mobile: '' }); } }} className="bg-black text-white rounded-[15px] h-[65px] px-6 flex items-center gap-3 text-[25px] font-medium"><PlusCircle size={24} /> ADD</button>
-                            </div>
+                             {isEditMode && (
+                                <div className="flex justify-end">
+                                    <button onClick={() => { if(newSales.email) { setSalesNotifs([...salesNotifs, newSales]); setNewSales({ email: '', mobile: '' }); } }} className="bg-black text-white rounded-[15px] h-[65px] px-6 flex items-center gap-3 text-[25px] font-medium"><PlusCircle size={24} /> ADD</button>
+                                </div>
+                             )}
 
                             <div className="space-y-3 mt-4 w-full">
                                 {salesNotifs.map((s, i) => (
@@ -1093,10 +1131,12 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                                         ) : (
                                             <div className="flex items-center justify-between w-full">
                                                 <span className="text-[20px] text-black">{s.email} — {s.mobile}</span>
-                                                <div className="flex items-center gap-6 ml-4">
-                                                    <button onClick={() => { setEditSalesIndex(i); setEditSalesData(s); }} className="text-blue-500 font-bold uppercase tracking-tight text-[16px]">Edit</button>
-                                                    <button onClick={() => setSalesNotifs(salesNotifs.filter((_, idx) => idx !== i))} className="text-red-500 font-bold uppercase tracking-tight text-[16px]">Remove</button>
-                                                </div>
+                                                 {isEditMode && (
+                                                    <div className="flex items-center gap-6 ml-4">
+                                                        <button onClick={() => { setEditSalesIndex(i); setEditSalesData(s); }} className="text-blue-500 font-bold uppercase tracking-tight text-[16px]">Edit</button>
+                                                        <button onClick={() => setSalesNotifs(salesNotifs.filter((_, idx) => idx !== i))} className="text-red-500 font-bold uppercase tracking-tight text-[16px]">Remove</button>
+                                                    </div>
+                                                 )}
                                             </div>
                                         )}
                                     </div>
@@ -1108,7 +1148,7 @@ function AdminEventDetailView({ ev, onStatus, onUpdate, onDelete, onBack }: {
                     {/* Submit */}
                     <div className="flex flex-col items-center mt-8 mb-20 gap-4">
                         {submitMsg && <p className={`text-[20px] font-medium ${submitMsg.includes('✅') ? 'text-green-600' : 'text-red-600'}`}>{submitMsg}</p>}
-                        {hasChanges && (
+                         {isEditMode && hasChanges && (
                             <button onClick={handleSave} disabled={submitLoading} className="bg-black text-white rounded-[15px] w-full py-4 text-[25px] font-medium disabled:opacity-50 hover:bg-zinc-800 transition-colors">
                                 {submitLoading ? 'Saving...' : 'Save Changes'}
                             </button>

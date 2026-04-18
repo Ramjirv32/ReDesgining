@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import BottomBanner from '@/components/layout/BottomBanner';
 import Footer from '@/components/layout/Footer';
-import { ChevronDown, MapPin, Clock } from 'lucide-react';
+import { ChevronDown, MapPin, Clock, ParkingCircle, Bath, Shirt, Droplets, Wind, Wifi, X, Plus, ShowerHead, Utensils, Lock, HeartPulse, Armchair, Toilet } from 'lucide-react';
 import { useUserSession } from '@/lib/auth/user';
 import { useOrganizerSession, clearOrganizerSession } from '@/lib/auth/organizer';
 import dynamic from 'next/dynamic';
@@ -81,6 +81,7 @@ export default function PlayDetailClient({ venue, id }: { venue: RealPlay, id: s
     const [openAccordion, setOpenAccordion] = useState<string | null>(null);
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
     const [isOrgLogoutModalOpen, setIsOrgLogoutModalOpen] = useState(false);
+    const [isFacilitiesModalOpen, setIsFacilitiesModalOpen] = useState(false);
     const session = useUserSession();
     const organizerSession = useOrganizerSession();
 
@@ -141,9 +142,10 @@ export default function PlayDetailClient({ venue, id }: { venue: RealPlay, id: s
                         <section className="space-y-4">
                             <h2 className="text-3xl font-semibold text-black uppercase">About the Venue</h2>
                             <div className="relative">
-                                <p className={`text-[#686868] text-lg font-medium leading-relaxed ${!isAboutExpanded && 'line-clamp-3'}`}>
-                                    {venue.description || "Experience the finest sports infrastructure at our venue. Whether you're a professional athlete or a weekend warrior, we provide the perfect environment for your favorite sports."}
-                                </p>
+                                <div 
+                                    className={`text-[#686868] text-lg font-medium leading-relaxed prose prose-zinc max-w-none ${!isAboutExpanded && 'line-clamp-3'}`}
+                                    dangerouslySetInnerHTML={{ __html: venue.description || "Experience the finest sports infrastructure at our venue. Whether you're a professional athlete or a weekend warrior, we provide the perfect environment for your favorite sports." }}
+                                />
                                 <button
                                     onClick={() => setIsAboutExpanded(!isAboutExpanded)}
                                     className="flex items-center gap-1 mt-2 text-black font-bold"
@@ -153,17 +155,37 @@ export default function PlayDetailClient({ venue, id }: { venue: RealPlay, id: s
                             </div>
                         </section>
 
-                        {(venue.time || venue.guide) && (
-                            <section className="space-y-4">
+                        <section className="space-y-6">
+                            <div className="flex items-center justify-between">
                                 <h2 className="text-2xl font-semibold text-black uppercase">Venue Guide</h2>
+                                {(() => {
+                                    const facs = Array.isArray(venue.guide?.facilities)
+                                        ? venue.guide.facilities
+                                        : venue.guide?.facilities
+                                            ? String(venue.guide.facilities).split(',').map(f => f.trim()).filter(Boolean)
+                                            : [];
+                                    if (facs.length > 2) {
+                                        return (
+                                            <button 
+                                                onClick={() => setIsFacilitiesModalOpen(true)}
+                                                className="flex items-center gap-1 text-black font-semibold text-[15px] hover:opacity-70 transition-opacity"
+                                            >
+                                                See all <ChevronDown size={16} className="-rotate-90" />
+                                            </button>
+                                        );
+                                    }
+                                    return null;
+                                })()}
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                                 {venue.time && (
                                     <div className="flex items-center gap-4">
                                         <div className="w-12 h-12 bg-[#D9D9D9] rounded-[10px] flex items-center justify-center text-[#686868]">
                                             <Clock size={24} />
                                         </div>
                                         <div>
-                                            <p className="text-xs text-[#686868] font-medium uppercase tracking-wider">TIMINGS</p>
-                                            <p className="text-base font-medium text-black">
+                                            <p className="text-xs text-[#686868] font-medium uppercase tracking-wider mb-1">TIMINGS</p>
+                                            <p className="text-base font-semibold text-black">
                                                 {((venue.opening_time && venue.opening_time.trim().replace(/-/g, '') !== '') && (venue.closing_time && venue.closing_time.trim().replace(/-/g, '') !== ''))
                                                     ? `${toDisplayTime(venue.opening_time)} - ${toDisplayTime(venue.closing_time)}`
                                                     : (venue.time && venue.time.trim().replace(/-/g, '') !== '' ? toDisplayTime(venue.time) : 'N/A')}
@@ -177,19 +199,44 @@ export default function PlayDetailClient({ venue, id }: { venue: RealPlay, id: s
                                         : venue.guide.facilities
                                             ? String(venue.guide.facilities).split(',').map(f => f.trim()).filter(Boolean)
                                             : [];
-                                    return (facs.length > 0 || venue.guide.is_pet_friendly) ? (
-                                        <div className="flex flex-wrap gap-3 mt-2">
-                                            {facs.map((f) => (
-                                                <span key={f} className="px-3 py-1 bg-zinc-100 rounded-full text-sm font-medium text-black">{f}</span>
+                                    
+                                    const getIcon = (name: string) => {
+                                        const n = name.toLowerCase();
+                                        if (n.includes('park')) return <ParkingCircle size={24} />;
+                                        if (n.includes('chang')) return <Shirt size={24} />;
+                                        if (n.includes('shower')) return <ShowerHead size={24} />;
+                                        if (n.includes('wash') || n.includes('restroom') || n.includes('toilet')) return <Toilet size={24} />;
+                                        if (n.includes('water')) return <Droplets size={24} />;
+                                        if (n.includes('ac') || n.includes('air')) return <Wind size={24} />;
+                                        if (n.includes('wifi') || n.includes('internet')) return <Wifi size={24} />;
+                                        if (n.includes('cafe') || n.includes('food') || n.includes('cafeter')) return <Utensils size={24} />;
+                                        if (n.includes('locker')) return <Lock size={24} />;
+                                        if (n.includes('first aid') || n.includes('firstaid') || n.includes('medical')) return <HeartPulse size={24} />;
+                                        if (n.includes('seat')) return <Armchair size={24} />;
+                                        if (n.includes('equip') || n.includes('rental')) return <Armchair size={24} />;
+                                        return <Plus size={24} />;
+                                    };
+
+                                    const displayFacs = facs.slice(0, 2); // Show only 2 facilities to make total 3 with timings
+
+                                    return (
+                                        <>
+                                            {displayFacs.map((f) => (
+                                                <div key={f} className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 bg-[#D9D9D9] rounded-[10px] flex items-center justify-center text-[#686868]">
+                                                        {getIcon(f)}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-[#686868] font-medium uppercase tracking-wider mb-1">FACILITY</p>
+                                                        <p className="text-base font-semibold text-black uppercase">{f}</p>
+                                                    </div>
+                                                </div>
                                             ))}
-                                            {venue.guide.is_pet_friendly && (
-                                                <span className="px-3 py-1 bg-green-50 border border-green-200 rounded-full text-sm font-medium text-green-700">🐾 Pet Friendly</span>
-                                            )}
-                                        </div>
-                                    ) : null;
+                                        </>
+                                    );
                                 })()}
-                            </section>
-                        )}
+                            </div>
+                        </section>
 
                         {venue.courts && venue.courts.length > 0 && (
                             <section className="space-y-4">
@@ -366,6 +413,63 @@ export default function PlayDetailClient({ venue, id }: { venue: RealPlay, id: s
                 onConfirm={handleOrganizerLogout}
                 organizerName={organizerSession?.email}
             />
+
+            {/* Facilities Modal */}
+            {isFacilitiesModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-white rounded-[30px] w-full max-w-[600px] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="p-8 flex items-center justify-between border-b border-zinc-100">
+                            <h3 className="text-2xl font-bold text-black uppercase">All Facilities</h3>
+                            <button onClick={() => setIsFacilitiesModalOpen(false)} className="text-[#AEAEAE] hover:text-black transition-colors">
+                                <X size={32} />
+                            </button>
+                        </div>
+                        <div className="p-8 max-h-[60vh] overflow-y-auto">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                {(() => {
+                                    const facs = Array.isArray(venue.guide?.facilities)
+                                        ? venue.guide?.facilities
+                                        : venue.guide?.facilities
+                                            ? String(venue.guide.facilities).split(',').map(f => f.trim()).filter(Boolean)
+                                            : [];
+                                    
+                                    const getIcon = (name: string) => {
+                                        const n = name.toLowerCase();
+                                        if (n.includes('park')) return <ParkingCircle size={20} />;
+                                        if (n.includes('chang')) return <Shirt size={20} />;
+                                        if (n.includes('shower')) return <ShowerHead size={20} />;
+                                        if (n.includes('wash') || n.includes('restroom') || n.includes('toilet')) return <Toilet size={20} />;
+                                        if (n.includes('water')) return <Droplets size={20} />;
+                                        if (n.includes('ac') || n.includes('air')) return <Wind size={20} />;
+                                        if (n.includes('wifi') || n.includes('internet')) return <Wifi size={20} />;
+                                        if (n.includes('cafe') || n.includes('food') || n.includes('cafeter')) return <Utensils size={20} />;
+                                        if (n.includes('locker')) return <Lock size={20} />;
+                                        if (n.includes('first aid') || n.includes('firstaid') || n.includes('medical')) return <HeartPulse size={20} />;
+                                        if (n.includes('seat')) return <Armchair size={20} />;
+                                        if (n.includes('equip') || n.includes('rental')) return <Armchair size={20} />;
+                                        return <Plus size={20} />;
+                                    };
+
+                                    return facs.map((f) => (
+                                        <div key={f} className="flex items-center gap-3 p-4 bg-[#F5F5F5] rounded-[15px]">
+                                            <div className="text-[#686868]">{getIcon(f)}</div>
+                                            <span className="text-[17px] font-semibold text-black uppercase">{f}</span>
+                                        </div>
+                                    ));
+                                })()}
+                            </div>
+                        </div>
+                        <div className="p-8 bg-zinc-50 flex justify-center">
+                            <button 
+                                onClick={() => setIsFacilitiesModalOpen(false)}
+                                className="px-12 h-[50px] bg-black text-white rounded-[15px] text-[18px] font-bold uppercase"
+                            >
+                                CLOSE
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

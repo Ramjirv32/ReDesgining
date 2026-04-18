@@ -59,22 +59,27 @@ export default function BackupContactPage() {
     const handleSendOTP = async () => {
         if (showOtp && timeLeft > 0) return;
         setError('');
-        if (!email) { setError('Please enter an email address.'); return; }
+        
+        // Basic email regex validation
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            setError('Please enter a valid email address.');
+            return;
+        }
+        
         const session = getOrganizerSession();
         if (session?.email && email.toLowerCase() === session.email.toLowerCase()) {
             setError('Backup email must be different from your login email.');
             return;
         }
-        setLoading(true);
-        try {
-            await organizerApi.sendBackupOTP(session?.id ?? '', email, 'play');
-            setShowOtp(true);
-            setTimeLeft(180);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to send OTP');
-        } finally {
-            setLoading(false);
-        }
+        
+        // Instantly show the OTP fields
+        setShowOtp(true);
+        setTimeLeft(180);
+        
+        // Send OTP in the background
+        organizerApi.sendBackupOTP(session?.id ?? '', email, 'play').catch(err => {
+            console.error('Failed to send OTP:', err);
+        });
     };
 
     const handleOtpChange = (index: number, value: string) => {

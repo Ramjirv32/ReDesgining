@@ -61,20 +61,21 @@ export default function OrganizerSigninForm({ vertical, api, setupPath, otpPath,
     const handleSignup = async () => {
         if (!email || !password) { setError('Email and password are required'); return; }
         if (password.length < 8) { setError('Password must be at least 8 characters'); return; }
-        setLoading(true); setError('');
-        try {
-            await api.signin(email, password);
-            sessionStorage.setItem('otp_pending_email', email);
-            if (rememberMe) setRememberedEmail(email);
-            router.push(otpPath);
-        } catch (e: unknown) {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            setError('Please enter a valid email address');
+            return;
+        }
+
+        setError('');
+        // No loading state needed if we transition instantly
+        api.signin(email, password).catch(e => {
             const msg = e instanceof Error ? e.message : 'Signup failed';
-            if (msg.includes('email_exists')) {
-                setError('An account with this email already exists.');
-            } else {
-                setError(msg);
-            }
-        } finally { setLoading(false); }
+            console.error("Background signin failed:", msg);
+        });
+
+        sessionStorage.setItem('otp_pending_email', email);
+        if (rememberMe) setRememberedEmail(email);
+        router.push(otpPath);
     };
 
     const handleGoogleSignup = async () => {

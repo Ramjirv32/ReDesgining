@@ -61,7 +61,7 @@ function BookingsContent() {
         }
     }, [session, fetchBookings]);
 
-    const filteredBookings = bookings.filter(b => (b.category || b.type) === activeTab);
+    const filteredBookings = (bookings || []).filter(b => (b.category || b.type) === activeTab);
 
     if (!session && !loading) {
         return (

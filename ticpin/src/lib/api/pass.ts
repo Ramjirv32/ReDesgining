@@ -115,7 +115,7 @@ export const passApi = {
                 customer_id: userId,
                 customer_phone: phone,
                 type: 'pass',
-                amount: 1 // Updated from 799 to test price 1
+                amount: 799
             })
         });
         const data = await res.json();
