@@ -135,6 +135,7 @@ export default function PlayReviewPage() {
     const [showLogoutModal, setShowLogoutModal] = useState(false);
 
     const [bookingLoading, setBookingLoading] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
     const [bookingError, setBookingError] = useState('');
     const [bookingId, setBookingId] = useState('');
 
@@ -430,6 +431,7 @@ export default function PlayReviewPage() {
             setBookingError(err instanceof Error ? err.message : 'Booking failed. Please try again.');
         } finally {
             setBookingLoading(false);
+            setIsProcessing(false);
         }
     };
 
@@ -450,27 +452,68 @@ export default function PlayReviewPage() {
 
     const handlePayNow = async () => {
         if (!billing.name.trim()) { setBookingError('Please enter your full name'); return; }
-        if (!email.trim() || !email.includes('@')) { setBookingError('Please enter a valid email'); return; }
-        if (!billing.phone || billing.phone.length < 10) { setBookingError('Please enter a valid phone number'); return; }
+        
+        // Email format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!email.trim() || !emailRegex.test(email)) { setBookingError('Please enter a valid email address'); return; }
+        
+        // Phone number validation (10 digits)
+        const phoneRegex = /^[0-9]{10}$/;
+        if (!billing.phone || !phoneRegex.test(billing.phone.replace(/[^0-9]/g, ''))) { setBookingError('Please enter a valid 10-digit phone number'); return; }
+        
         if (!billing.address.trim()) { setBookingError('Please enter your address'); return; }
         if (!billing.city.trim()) { setBookingError('Please enter your city'); return; }
         if (!billing.pincode.trim() || billing.pincode.length < 6) { setBookingError('Please enter a valid PIN code'); return; }
+        
+        // State validation
+        if (!STATES.includes(billing.state)) { setBookingError('Please select a valid state'); return; }
+        
         if (!cart) return;
+        
+        // Double-click protection
+        if (isProcessing) { return; }
+        setIsProcessing(true);
+
+        // Check if email belongs to organizer before payment
+        try {
+            const orgCheck = await fetch(`/backend/api/organizer/check-email?email=${encodeURIComponent(email)}`);
+            if (!orgCheck.ok) {
+                setBookingError('Failed to validate email. Please try again.');
+                setIsProcessing(false);
+                return;
+            }
+            const orgData = await orgCheck.json();
+            if (orgData.exists && orgData.isOrganizer) {
+                setBookingError('This email is registered as an organizer. Please use a different email.');
+                setIsProcessing(false);
+                return;
+            }
+        } catch (err) {
+            console.error('Organizer check failed:', err);
+            setBookingError('Email validation failed. Please try again.');
+            setIsProcessing(false);
+            return;
+        }
 
         if (grandTotal === 0) {
             const freeId = isPassApplied ? `PASS_${cart.pass_id}_${Date.now()}` : `FREE_BOOKING_${Date.now()}`;
-            await completeBooking(
-                freeId,
-                freeId,
-                isPassApplied ? 'TICPASS' : 'FREE',
-                cart,
-                email,
-                session?.id || organizerSession?.id,
-                isPassApplied ? orderAmount : 0, // Order amount for pass is full but discount is 100%
-                0,
-                appliedCoupon || '',
-                appliedOffer?.id
-            );
+            try {
+                await completeBooking(
+                    freeId,
+                    freeId,
+                    isPassApplied ? 'TICPASS' : 'FREE',
+                    cart,
+                    email,
+                    session?.id || organizerSession?.id,
+                    isPassApplied ? orderAmount : 0, // Order amount for pass is full but discount is 100%
+                    0,
+                    appliedCoupon || '',
+                    appliedOffer?.id
+                );
+            } catch (err) {
+                setIsProcessing(false);
+                throw err;
+            }
             return;
         }
 
@@ -543,7 +586,15 @@ export default function PlayReviewPage() {
             });
 
             // Use Razorpay only
-            await loadScript('https://checkout.razorpay.com/v1/checkout.js');
+            try {
+                await loadScript('https://checkout.razorpay.com/v1/checkout.js');
+            } catch (scriptErr) {
+                console.error('Failed to load Razorpay script:', scriptErr);
+                setBookingLoading(false);
+                setIsProcessing(false);
+                setBookingError('Failed to load payment gateway. Please refresh the page and try again.');
+                return;
+            }
             const options = {
                 key: orderRes.razorpay_key,
                 amount: grandTotal * 100,
@@ -571,13 +622,23 @@ export default function PlayReviewPage() {
                     ondismiss: () => {
                         sessionStorage.removeItem('ticpin_pending_play');
                         setBookingLoading(false);
+                        setIsProcessing(false);
                         setBookingError('Payment was cancelled. You can resume it from your bookings.');
+                    },
+                    onerror: (response: any) => {
+                        console.error('Razorpay error:', response);
+                        sessionStorage.removeItem('ticpin_pending_play');
+                        setBookingLoading(false);
+                        setIsProcessing(false);
+                        setBookingError('Payment failed. Please try again.');
                     },
                 },
             };
             new (window as any).Razorpay(options).open();
         } catch (err: unknown) {
+            console.error('Payment initialization error:', err);
             setBookingLoading(false);
+            setIsProcessing(false);
             setBookingError(err instanceof Error ? err.message : 'Payment initiation failed. Please try again.');
         }
     };

@@ -7,6 +7,7 @@ import { useOrganizerSession, clearOrganizerSession } from '@/lib/auth/organizer
 import { toast } from '@/components/ui/Toast';
 import { passApi, type TicpinPass } from '@/lib/api/pass';
 import { Loader2, LogOut } from 'lucide-react';
+import AuthModal from '@/components/modals/AuthModal';
 import Link from 'next/link';
 
 /* ── small shared inline components ── */
@@ -183,6 +184,7 @@ export default function TicpinPass() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [hasCheckedSession, setHasCheckedSession] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [latestPass, setLatestPass] = useState<TicpinPass | null>(null);
 
   const price = 799;
@@ -206,8 +208,7 @@ export default function TicpinPass() {
   const handleBuy = () => {
     if (organizer) { setShowLogoutModal(true); return; }
     if (!user) {
-      toast.error('Please login to buy Ticpin Pass');
-      router.push(`/login?redirect=${encodeURIComponent('/pass/buy')}`);
+      setShowAuthModal(true);
       return;
     }
     router.push('/pass/buy');
@@ -244,6 +245,16 @@ export default function TicpinPass() {
           </div>
         </div>
       )}
+
+      {/* Auth Modal */}
+      <AuthModal 
+        isOpen={showAuthModal} 
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={() => {
+          setShowAuthModal(false);
+          router.push('/pass/buy');
+        }}
+      />
     </div>
   );
 

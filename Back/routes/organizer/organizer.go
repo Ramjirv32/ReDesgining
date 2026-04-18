@@ -1,12 +1,12 @@
 package organizer
 
 import (
+	morganalytics "ticpin-backend/controller/organizer/analytics"
 	orgauth "ticpin-backend/controller/organizer/auth"
 	orgmedia "ticpin-backend/controller/organizer/media"
+	morgpayouts "ticpin-backend/controller/organizer/payouts"
 	orgprofile "ticpin-backend/controller/organizer/profile"
 	orgver "ticpin-backend/controller/organizer/verification"
-	morganalytics "ticpin-backend/controller/organizer/analytics"
-	morgpayouts "ticpin-backend/controller/organizer/payouts"
 	orgotp "ticpin-backend/controller/otp"
 	"ticpin-backend/middleware"
 
@@ -16,6 +16,7 @@ import (
 func OrganizerRoutes(app *fiber.App) {
 	app.Post("/api/organizer/send-otp", orgotp.SendOTP)
 	app.Post("/api/organizer/verify-otp", orgotp.VerifyOTP)
+	app.Get("/api/organizer/check-email", orgauth.CheckEmailExists)
 	app.Get("/api/organizer/me", middleware.RequireAuth, orgmedia.GetOrganizerMe)
 
 	app.Get("/api/organizer/me/existing-setup", middleware.RequireAuth, orgver.GetMyExistingSetup)

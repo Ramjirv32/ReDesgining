@@ -112,7 +112,7 @@ func VerifyPassHandler(c *fiber.Ctx) error {
 
 	// 2. Store pass in DB immediately (payment already collected by Razorpay)
 	p, err := passservice.Apply(req.UserID, req.RazorpayPaymentID, req.Phone, req.RazorpayOrderID, models.TicpinPass{
-		Price: 799, // Updated from test price 1 to 799
+		Price: 1, // Changed from 799 back to 1 for testing as per user request
 	})
 	if err != nil {
 		fmt.Printf("DEBUG: Failed to activate pass for user %s: %v\n", req.UserID, err)
@@ -121,8 +121,20 @@ func VerifyPassHandler(c *fiber.Ctx) error {
 
 	// 3. Send confirmation email in background (non-blocking — payment already done)
 	emailTo := req.Email
+	userPhone := req.Phone
+	orderID := req.RazorpayOrderID
 	go func() {
-		if err := config.SendPassConfirmationEmail(emailTo); err != nil {
+		now := time.Now()
+		data := config.BookingEmailData{
+			Day:        now.Format("Monday"),
+			Date:       now.Format("02"),
+			Month:      now.Format("January"),
+			Time:       now.Format("03:04 PM"),
+			PassName:   "Ticpin Pass",
+			PurchaseID: orderID,
+			UserPhone:  userPhone,
+		}
+		if err := config.SendPassConfirmationEmail(emailTo, data); err != nil {
 			fmt.Printf("DEBUG: Pass confirmation email failed for %s: %v (pass already activated)\n", emailTo, err)
 		} else {
 			fmt.Printf("DEBUG: Pass confirmation email sent to %s\n", emailTo)

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Booking Cancelled</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Anek+Latin:wght@400;500;600;700;800;900&display=swap');
+    </style>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Anek Latin', 'Arial', sans-serif; background-color: #f5f5f5;">
+    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="padding: 10px 0;">
+        <tr>
+            <td align="center">
+                <!-- Wrapper Box -->
+                <table width="500" border="0" cellspacing="0" cellpadding="0" bgcolor="#0A0132" style="border-radius: 15px; border: 1px solid #ffffff; overflow: hidden; margin: 0 auto;">
+                    
+                    <!-- Inner Gray Container (With Yellow Header) -->
+                    <tr>
+                        <td align="center" style="padding: 20px 20px 0 20px;">
+                            <table width="100%" border="0" cellspacing="0" cellpadding="0" bgcolor="#EBEBEB" style="border-radius: 15px; overflow: hidden; display: block; margin: 0 auto;">
+                                
+                                <!-- Yellow Header inside grey block -->
+                                <tr>
+                                    <td align="left" bgcolor="#5331EA" style="padding: 12px 16px;">
+                                        <img src="https://raw.githubusercontent.com/ramji2311/tailwind-tsx-replica/main/ticpin-logo-black.png" alt="TICPIN" height="20" style="display: block; margin: 0; outline: none; text-decoration: none;" oncontextmenu="return false;" ondragstart="return false;" />
+                                    </td>
+                                </tr>
+
+                                <!-- Gray Content Body -->
+                                <tr>
+                                    <td align="left" style="padding: 16px;">
+                                        
+                                        <!-- Heading -->
+                                        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 6px;">
+                                            <tr>
+                                                <td style="font-size: 20px; font-weight: 600; font-family: 'Anek Latin'; color: #000000; vertical-align: middle; line-height: 24px;">
+                                                    Booking Cancelled
+                                                    <span style="display: inline-block; width: 18px; height: 18px; background: #FF4444; border-radius: 50%; color: #fff; text-align: center; line-height: 18px; font-size: 12px; margin-left: 8px; vertical-align: middle;">×</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        
+                                        <p style="margin: 0 0 12px 0; font-family: 'Anek Latin'; font-size: 14px; font-weight: 500; color: #686868; line-height: 20px;">Hello, your booking has been successfully cancelled and the refund has been processed.</p>
+
+                                        <!-- Details Card Box -->
+                                        <table width="100%" border="0" cellspacing="0" cellpadding="14" bgcolor="#ffffff" style="border-radius: 10px; margin-bottom: 12px;">
+                                            <tr>
+                                                <td align="left">
+                                                    <!-- Booking ID -->
+                                                    <p style="margin: 0 0 2px 0; font-family: 'Anek Latin'; font-size: 11px; font-weight: 500; color: #686868; line-height: 14px;">Booking ID</p>
+                                                    <p style="margin: 0 0 8px 0; font-family: 'Anek Latin'; font-size: 13px; font-weight: 500; color: #000000; line-height: 16px;">#{{.BookingID}}</p>
+                                                    
+                                                    <div style="border-top: 1px solid #D9D9D9; margin: 8px 0 12px 0;"></div>
+                                                    
+                                                    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                                        <!-- Category -->
+                                                        <tr>
+                                                            <td style="padding-bottom: 10px;">
+                                                                <p style="margin: 0 0 2px 0; font-family: 'Anek Latin'; font-size: 11px; font-weight: 500; color: #686868; line-height: 14px;">Category</p>
+                                                                <p style="margin: 0; font-family: 'Anek Latin'; font-size: 13px; font-weight: 500; color: #000000; line-height: 16px;">{{.CategoryLabel}}</p>
+                                                            </td>
+                                                        </tr>
+
+                                                        <!-- Venue/Event -->
+                                                        <tr>
+                                                            <td style="padding-bottom: 10px;">
+                                                                <p style="margin: 0 0 2px 0; font-family: 'Anek Latin'; font-size: 11px; font-weight: 500; color: #686868; line-height: 14px;">Venue/Event</p>
+                                                                <p style="margin: 0; font-family: 'Anek Latin'; font-size: 13px; font-weight: 500; color: #000000; line-height: 16px;">{{.VenueName}}</p>
+                                                            </td>
+                                                        </tr>
+
+                                                        <!-- Date -->
+                                                        <tr>
+                                                            <td style="padding-bottom: 10px;">
+                                                                <p style="margin: 0 0 2px 0; font-family: 'Anek Latin'; font-size: 11px; font-weight: 500; color: #686868; line-height: 14px;">Date</p>
+                                                                <p style="margin: 0; font-family: 'Anek Latin'; font-size: 13px; font-weight: 500; color: #000000; line-height: 16px;">{{.Date}}</p>
+                                                            </td>
+                                                        </tr>
+                                                        
+                                                        <!-- Refund Amount -->
+                                                        <tr>
+                                                            <td>
+                                                                <p style="margin: 0 0 2px 0; font-family: 'Anek Latin'; font-size: 11px; font-weight: 500; color: #686868; line-height: 14px;">Refund Amount</p>
+                                                                <p style="margin: 0; font-family: 'Anek Latin'; font-size: 14px; font-weight: 600; color: #2E7D32; line-height: 18px;">₹{{.RefundAmount}}</p>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </table>
+
+                                        <p style="font-family: 'Anek Latin'; font-size: 11px; font-weight: 500; color: #686868; margin: 12px 0 12px 0; line-height: 16px;">
+                                            If you have any questions about your cancellation, please contact our support team.
+                                        </p>
+
+                                        <p style="margin: 12px 0 0 0; font-family: 'Anek Latin'; font-size: 11px; font-weight: 500; color: #686868; line-height: 14px;">
+                                            See you again soon!<br />
+                                            Team <span style="color: #5331EA; font-weight: 600;">Ticpin</span>
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Help Section -->
+                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="padding: 20px 0 15px 0;">
+                        <tr>
+                            <td align="center">
+                                <p style="font-family: 'Anek Latin'; color: #ffffff; font-weight: 600; font-size: 16px; margin: 0 0 8px 0; line-height: 20px;">LOOKING FOR HELP?</p>
+                                <p style="font-family: 'Anek Latin'; color: #ffffff; font-weight: 500; font-size: 11px; line-height: 14px; margin: 0 0 12px 0;">
+                                    Mail us at <a href="mailto:support@ticpin.in" style="color: #4DA3FF; text-decoration: none;">support@ticpin.in</a> (10AM-5PM), and we'll help you out.
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

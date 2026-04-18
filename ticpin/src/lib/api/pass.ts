@@ -38,9 +38,19 @@ export const passApi = {
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include'
             });
-            if (!res.ok) return null;
-            const data = await res.json();
-            return data;
+            if (!res.ok) {
+                console.error(`getActivePass status: ${res.status}`);
+                return null;
+            }
+            const contentType = res.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                const data = await res.json();
+                return data;
+            } else {
+                const text = await res.text();
+                console.error('getActivePass received non-JSON response:', text.substring(0, 50));
+                return null;
+            }
         } catch (err) {
             console.error('Failed to fetch active pass:', err);
             return null;
@@ -55,12 +65,19 @@ export const passApi = {
                 credentials: 'include'
             });
             if (!res.ok) {
-                console.log('Latest pass response not OK:', res.status);
+                console.error(`getLatestPass status: ${res.status}`);
                 return null;
             }
-            const data = await res.json();
-            console.log('Latest pass data:', data);
-            return data;
+            const contentType = res.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                const data = await res.json();
+                console.log('Latest pass data:', data);
+                return data;
+            } else {
+                const text = await res.text();
+                console.error('getLatestPass received non-JSON response:', text.substring(0, 50));
+                return null;
+            }
         } catch (err) {
             console.error('Failed to fetch latest pass:', err);
             return null;
@@ -98,7 +115,7 @@ export const passApi = {
                 customer_id: userId,
                 customer_phone: phone,
                 type: 'pass',
-                amount: 799 // Updated from test price 1 to 799
+                amount: 1 // Updated from 799 to test price 1
             })
         });
         const data = await res.json();

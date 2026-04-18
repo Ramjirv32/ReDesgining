@@ -170,3 +170,16 @@ func UpdatePhoto(userID, photoURL string) error {
 	_, err = collection.UpdateOne(ctx, bson.M{"userId": objID}, bson.M{"$set": bson.M{"profilePhoto": photoURL, "updatedAt": time.Now()}})
 	return err
 }
+
+func GetByEmail(email string) (*models.Profile, error) {
+	collection := config.GetDB().Collection("profiles")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var p models.Profile
+	err := collection.FindOne(ctx, bson.M{"email": email}).Decode(&p)
+	if err != nil {
+		return nil, err
+	}
+	return &p, nil
+}

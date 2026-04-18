@@ -40,6 +40,14 @@ type BookingEmailData struct {
 	PurchaseID        string
 }
 
+type CancellationEmailData struct {
+	BookingID     string
+	CategoryLabel string
+	VenueName     string
+	Date          string
+	RefundAmount  string
+}
+
 func sendOTP(from, pass, to, subject, body string) error {
 	cleanPass := strings.ReplaceAll(pass, " ", "")
 
@@ -110,7 +118,6 @@ func renderOTPTemplate(category, otp string) (string, error) {
 	paths := []string{
 		filepath.Join("templates", "otp.html"),
 		filepath.Join("Back", "templates", "otp.html"),
-		"/home/ramji/Desktop/FinalTickpinDesgin/Back/templates/otp.html",
 	}
 
 	var tmplPath string
@@ -147,9 +154,21 @@ func renderOTPTemplate(category, otp string) (string, error) {
 }
 
 func renderBookingTemplate(templateName string, data BookingEmailData) (string, error) {
-	tmplPath := filepath.Join("templates", templateName)
-	if _, err := os.Stat(tmplPath); os.IsNotExist(err) {
-		tmplPath = filepath.Join("Back", "templates", templateName)
+	paths := []string{
+		filepath.Join("templates", templateName),
+		filepath.Join("Back", "templates", templateName),
+	}
+
+	var tmplPath string
+	for _, p := range paths {
+		if _, err := os.Stat(p); err == nil {
+			tmplPath = p
+			break
+		}
+	}
+
+	if tmplPath == "" {
+		return "", fmt.Errorf("booking template %s not found", templateName)
 	}
 
 	tmpl, err := template.ParseFiles(tmplPath)
@@ -162,6 +181,36 @@ func renderBookingTemplate(templateName string, data BookingEmailData) (string, 
 		return "", err
 	}
 
+	return body.String(), nil
+}
+
+func renderCancellationTemplate(data CancellationEmailData) (string, error) {
+	paths := []string{
+		filepath.Join("templates", "cancellation.html"),
+		filepath.Join("Back", "templates", "cancellation.html"),
+	}
+
+	var tmplPath string
+	for _, p := range paths {
+		if _, err := os.Stat(p); err == nil {
+			tmplPath = p
+			break
+		}
+	}
+
+	if tmplPath == "" {
+		return "", fmt.Errorf("cancellation template not found")
+	}
+
+	tmpl, err := template.ParseFiles(tmplPath)
+	if err != nil {
+		return "", err
+	}
+
+	var body bytes.Buffer
+	if err := tmpl.Execute(&body, data); err != nil {
+		return "", err
+	}
 	return body.String(), nil
 }
 
@@ -378,43 +427,42 @@ func SendCancellationEmail(toEmail, bookingID, category, venueName, date, grandT
 		categoryLabel = "Booking"
 	}
 
-	body := fmt.Sprintf(`
-<html><body style="font-family:sans-serif;color:#222;max-width:600px;margin:auto;">
-  <div style="background:#FF4444;color:white;padding:20px;text-align:center;border-radius:12px 12px 0 0;">
-    <h2 style="margin:0;">Booking Cancelled</h2>
-  </div>
-  <div style="background:#f9f9f9;padding:24px;border-radius:0 0 12px 12px;">
-    <p style="font-size:16px;line-height:1.6;">Hello,</p>
-    <p style="font-size:16px;line-height:1.6;">Your %s booking has been successfully cancelled.</p>
-    
-    <table style="width:100%%;background:white;border-radius:8px;margin:20px 0;border-collapse:collapse;">
-      <tr><td style="padding:12px;border-bottom:1px solid #eee;color:#666;">Booking ID</td><td style="padding:12px;border-bottom:1px solid #eee;font-weight:600;">#%s</td></tr>
-      <tr><td style="padding:12px;border-bottom:1px solid #eee;color:#666;">Category</td><td style="padding:12px;border-bottom:1px solid #eee;font-weight:600;">%s</td></tr>
-      <tr><td style="padding:12px;border-bottom:1px solid #eee;color:#666;">Venue/Event</td><td style="padding:12px;border-bottom:1px solid #eee;font-weight:600;">%s</td></tr>
-      <tr><td style="padding:12px;border-bottom:1px solid #eee;color:#666;">Date</td><td style="padding:12px;border-bottom:1px solid #eee;font-weight:600;">%s</td></tr>
-      <tr><td style="padding:12px;color:#666;">Refund Amount</td><td style="padding:12px;font-weight:600;color:#2E7D32;">₹%s</td></tr>
-    </table>
-    
-    <p style="font-size:14px;line-height:1.6;color:#666;margin-top:24px;">
-      If you have any questions about your cancellation or refund, please contact our support team.
-    </p>
-    
-    <p style="font-size:14px;line-height:1.6;color:#999;margin-top:30px;">
-      This is an automated message from Ticpin. Please do not reply to this email.
-    </p>
-  </div>
-</body></html>`, categoryLabel, bookingID, categoryLabel, venueName, date, grandTotal)
+	data := CancellationEmailData{
+		BookingID:     bookingID,
+		CategoryLabel: categoryLabel,
+		VenueName:     venueName,
+		Date:          date,
+		RefundAmount:  grandTotal,
+	}
+
+	body, err := renderCancellationTemplate(data)
+	if err != nil {
+		// Fallback to simple HTML if template fails
+		body = fmt.Sprintf("<h2>Booking Cancelled</h2><p>Your %s booking #%s has been cancelled. Refund: ₹%s</p>", categoryLabel, bookingID, grandTotal)
+	}
 
 	return sendOTP(from, pass, toEmail, subject, body)
 }
-func SendPassConfirmationEmail(toEmail string) error {
+func SendPassConfirmationEmail(toEmail string, data BookingEmailData) error {
 	from := os.Getenv("ADMIN_EMAIL")
 	pass := os.Getenv("ADMIN_APP_PASSWORD")
 	subject := "Welcome to Ticpin Pass!"
 
-	tmplPath := filepath.Join("templates", "pass_confirmation.html")
-	if _, err := os.Stat(tmplPath); os.IsNotExist(err) {
-		tmplPath = filepath.Join("Back", "templates", "pass_confirmation.html")
+	paths := []string{
+		filepath.Join("templates", "pass_confirmation.html"),
+		filepath.Join("Back", "templates", "pass_confirmation.html"),
+	}
+
+	var tmplPath string
+	for _, p := range paths {
+		if _, err := os.Stat(p); err == nil {
+			tmplPath = p
+			break
+		}
+	}
+
+	if tmplPath == "" {
+		return fmt.Errorf("pass confirmation template not found")
 	}
 
 	tmpl, err := template.ParseFiles(tmplPath)
@@ -423,7 +471,7 @@ func SendPassConfirmationEmail(toEmail string) error {
 	}
 
 	var body bytes.Buffer
-	if err := tmpl.Execute(&body, nil); err != nil {
+	if err := tmpl.Execute(&body, data); err != nil {
 		return fmt.Errorf("failed to render pass template: %v", err)
 	}
 

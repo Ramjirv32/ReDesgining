@@ -37,6 +37,7 @@ export default function BuyPassPage() {
     const organizer = useOrganizerSession();
 
     const [loading, setLoading] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
     const [checkingEmail, setCheckingEmail] = useState(false);
     const [agreeTerms, setAgreeTerms] = useState(false);
@@ -115,26 +116,37 @@ export default function BuyPassPage() {
     }, [user, user?.id]);
 
     const handleEmailBlur = async () => {
-        if (!formData.email || !formData.email.includes('@')) return;
-        
+        if (!formData.email || !formData.email.includes('@') || !formData.email.includes('.')) return;
+
         setCheckingEmail(true);
         try {
-            // Check if email belongs to an organizer first
+            // Step 1: Check if email belongs to an organizer
             const orgCheck = await fetch(`/backend/api/organizer/check-email?email=${encodeURIComponent(formData.email)}`);
             const orgData = await orgCheck.json();
-            
+
             if (orgData.exists && orgData.isOrganizer) {
-                toast.error('This email is registered as an organizer. Organizers cannot purchase a Ticpin Pass.');
-                setFormData(prev => ({ ...prev, email: '' }));
+                toast.error('This email already exists. Please enter a different email.');
                 setCheckingEmail(false);
                 return;
             }
 
-            // Look up existing profile by email
-            const res = await fetch(`/backend/api/profiles/lookup?email=${encodeURIComponent(formData.email)}`);
-            if (res.ok) {
-                const profile = await res.json();
-                if (profile) {
+            // Step 2: Check if email exists in user profiles
+            const userCheck = await fetch(`/backend/api/profiles/check-email?email=${encodeURIComponent(formData.email)}`);
+            const userData = await userCheck.json();
+
+            if (userData.exists && userData.isUser) {
+                // Email exists in user profiles
+                if (user?.id && userData.userId !== user.id) {
+                    toast.error('This email is already associated with another user account.');
+                    setFormData(prev => ({ ...prev, email: '' }));
+                    setCheckingEmail(false);
+                    return;
+                }
+
+                // Email belongs to current user or no user logged in, fetch profile details
+                const profileRes = await fetch(`/backend/api/profiles/lookup-public?email=${encodeURIComponent(formData.email)}`);
+                if (profileRes.ok) {
+                    const profile = await profileRes.json();
                     setFormData(prev => ({
                         ...prev,
                         name: profile.name || prev.name,
@@ -143,8 +155,11 @@ export default function BuyPassPage() {
                     }));
                     if (profile.state) setStateSearch(profile.state);
                     setHasExistingProfile(true);
-                    toast.info('Profile details found and updated.');
+                    toast.info('Profile details found and populated.');
                 }
+            } else {
+                // Email is new, no profile exists
+                setHasExistingProfile(false);
             }
         } catch (err) {
             console.error('Email lookup failed:', err);
@@ -213,8 +228,55 @@ export default function BuyPassPage() {
             return;
         }
 
+        // Email format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email)) {
+            toast.error('Please enter a valid email address');
+            return;
+        }
+
+        // Phone number validation (10 digits)
+        const phoneRegex = /^[0-9]{10}$/;
+        if (!phoneRegex.test(formData.phone.replace(/[^0-9]/g, ''))) {
+            toast.error('Please enter a valid 10-digit phone number');
+            return;
+        }
+
+        // State validation
+        if (!INDIAN_STATES.includes(formData.state)) {
+            toast.error('Please select a valid state from the dropdown');
+            return;
+        }
+
+        // Double-click protection
+        if (isProcessing) {
+            return;
+        }
+
         if (!agreeTerms) {
             toast.error('Please agree to the Terms & Conditions');
+            return;
+        }
+        setIsProcessing(true);
+
+        // Check if email belongs to organizer before payment
+        try {
+            const orgCheck = await fetch(`/backend/api/organizer/check-email?email=${encodeURIComponent(formData.email)}`);
+            if (!orgCheck.ok) {
+                toast.error('Failed to validate email. Please try again.');
+                setIsProcessing(false);
+                return;
+            }
+            const orgData = await orgCheck.json();
+            if (orgData.exists && orgData.isOrganizer) {
+                toast.error('This email already exists. Please enter a different email.');
+                setIsProcessing(false);
+                return;
+            }
+        } catch (err) {
+            console.error('Organizer check failed:', err);
+            toast.error('Email validation failed. Please try again.');
+            setIsProcessing(false);
             return;
         }
 
@@ -226,13 +288,14 @@ export default function BuyPassPage() {
                 toast.error('You already have an active Ticpin Pass!');
                 router.push('/pass');
                 setLoading(false);
+                setIsProcessing(false);
                 return;
             }
 
             const order = await passApi.createPassOrder(user.id, formData.phone);
             const options = {
                 key: RAZORPAY_KEY_ID,
-                amount: 79900,
+                amount: 100, // Changed from 79900 to 100 for testing
                 currency: "INR",
                 name: "Ticpin Pass",
                 description: "3 Months Ticpin Pass Subscription",
@@ -249,7 +312,7 @@ export default function BuyPassPage() {
                             email: formData.email,
                             phone: formData.phone
                         };
-                        
+
                         const result = await passApi.verifyPassPayment(verificationData);
 
                         if (result.success) {
@@ -265,6 +328,19 @@ export default function BuyPassPage() {
                         toast.error(err.message || 'Action failed after payment. Please contact support.');
                     } finally {
                         setLoading(false);
+                        setIsProcessing(false);
+                    }
+                },
+                modal: {
+                    ondismiss: function() {
+                        setLoading(false);
+                        setIsProcessing(false);
+                    },
+                    onerror: function(response: any) {
+                        console.error('Razorpay error:', response);
+                        setLoading(false);
+                        setIsProcessing(false);
+                        toast.error('Payment failed. Please try again.');
                     }
                 },
                 prefill: {
@@ -279,8 +355,10 @@ export default function BuyPassPage() {
             rzp.open();
 
         } catch (err: any) {
+            console.error('Payment initialization error:', err);
             toast.error('Failed to initialize payment: ' + (err.message || 'Unknown error'));
             setLoading(false);
+            setIsProcessing(false);
         }
     };
 
@@ -300,7 +378,7 @@ export default function BuyPassPage() {
 
     return (
         <div className="min-h-screen bg-white text-black font-['Anek_Latin']" style={{ height: '100vh' }}>
-            <Script src="https://checkout.razorpay.com/v1/checkout.js" onLoad={() => setIsRazorpayLoaded(true)} />
+            <Script src="https://checkout.razorpay.com/v1/checkout.js" onLoad={() => setIsRazorpayLoaded(true)} onError={() => toast.error('Failed to load payment gateway. Please refresh.')} />
 
             <header className="fixed top-0 left-0 right-0 z-[100] bg-white border-b border-gray-200 px-10 py-6">
                 <div className="max-w-[1440px] mx-auto flex items-center justify-between">
@@ -314,8 +392,8 @@ export default function BuyPassPage() {
                             className="object-contain" 
                         />
                     </div>
-                    <h1 className="text-[28px] font-semibold text-black absolute left-1/2 -translate-x-1/2">Review your Ticpin Pass</h1>
-                    <div className="w-12 h-12 rounded-full bg-gray-100 flex-shrink-0 border border-gray-200" />
+                    <h1 className="text-[28px] font-semibold text-black">Review your Ticpin Pass</h1>
+                    <div className="w-[120px]" />
                 </div>
             </header>
 
@@ -412,15 +490,17 @@ export default function BuyPassPage() {
 
                         <button 
                             onClick={handlePayment}
-                            disabled={loading || !agreeTerms}
+                            disabled={loading || !agreeTerms || !isRazorpayLoaded}
                             className="w-[280px] h-[72px] bg-black rounded-[10px] flex items-center active:scale-95 disabled:opacity-40 transition-all overflow-hidden"
                         >
                             <div className="flex-1 px-6 border-r border-white/20 text-left">
-                                <div className="text-white font-bold text-[24px]">₹799</div>
+                                <div className="text-white font-bold text-[24px]">₹1</div>
                                 <div className="text-white/40 text-[10px] font-bold">TOTAL</div>
                             </div>
                             <div className="w-[100px] flex items-center justify-center gap-2">
-                                {loading ? <Loader2 className="animate-spin text-white" /> : (
+                                {loading ? <Loader2 className="animate-spin text-white" /> : !isRazorpayLoaded ? (
+                                    <Loader2 className="animate-spin text-white w-5 h-5" />
+                                ) : (
                                     <>
                                         <span className="text-white font-bold text-[20px]">Buy</span>
                                         <ArrowRight className="w-5 h-5 text-white" />
