@@ -433,7 +433,7 @@ export default function BuyPassPage() {
             </main>
 
             {showLogoutModal && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60">
                     <div className="bg-white border border-gray-200 rounded-[32px] p-8 max-w-md w-full shadow-2xl text-center">
                         <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
                             <LogOut size={40} className="text-black" />
