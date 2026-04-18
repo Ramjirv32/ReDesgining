@@ -14,9 +14,10 @@ import { clearOrganizerSession, getOrganizerSession } from '@/lib/auth/organizer
 interface ProfileSidebarProps {
     isOpen: boolean;
     onClose: () => void;
+    firstItemLabel?: string;
 }
 
-export default function ProfileSidebar({ isOpen, onClose }: ProfileSidebarProps) {
+export default function ProfileSidebar({ isOpen, onClose, firstItemLabel }: ProfileSidebarProps) {
     const router = useRouter();
     const session = getOrganizerSession();
 
@@ -27,7 +28,7 @@ export default function ProfileSidebar({ isOpen, onClose }: ProfileSidebarProps)
 
     const menuItems = [
         { 
-            label: 'All Events', 
+            label: firstItemLabel || 'All Events', 
             icon: LayoutGrid, 
             path: '/organizer/dashboard?category=events',
             onClick: () => {
@@ -53,24 +54,10 @@ export default function ProfileSidebar({ isOpen, onClose }: ProfileSidebarProps)
                 onClose();
             }
         },
-        { 
-            label: 'Log Out', 
-            icon: LogOut, 
-            path: '#',
-            onClick: handleLogout,
-            isLogout: true
-        }
     ];
 
     return (
         <>
-            {/* Backdrop overlay */}
-            {isOpen && (
-                <div
-                    onClick={onClose}
-                    className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[90] transition-opacity duration-300 ease-in-out"
-                />
-            )}
 
             {/* Sidebar */}
             <div
@@ -97,7 +84,7 @@ export default function ProfileSidebar({ isOpen, onClose }: ProfileSidebarProps)
                                     <span className="text-[25px] font-medium text-zinc-900 group-hover:translate-x-1 transition-transform" style={{ fontFamily: 'Anek Latin' }}>
                                         {item.label}
                                     </span>
-                                    <item.icon size={23} className={`${item.isLogout ? 'text-zinc-900' : 'text-zinc-900'}`} />
+                                    <item.icon size={23} className="text-zinc-900" />
                                 </button>
                                 {index < menuItems.length - 1 && (
                                     <div className="mx-10 border-b border-zinc-200" />
@@ -106,17 +93,6 @@ export default function ProfileSidebar({ isOpen, onClose }: ProfileSidebarProps)
                         ))}
                     </div>
 
-                    {/* Footer */}
-                    <div className="p-10 border-t border-zinc-100 bg-zinc-50/50">
-                        <div className="flex flex-col gap-1">
-                            <span className="text-[15px] font-medium text-zinc-500" style={{ fontFamily: 'Anek Latin' }}>
-                                Signed in with
-                            </span>
-                            <span className="text-[15px] font-bold text-zinc-800 break-all" style={{ fontFamily: 'Anek Latin' }}>
-                                {session?.email || 'Organizer Account'}
-                            </span>
-                        </div>
-                    </div>
                 </div>
             </div>
         </>

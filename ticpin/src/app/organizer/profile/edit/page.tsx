@@ -243,14 +243,7 @@ function EditProfileContent() {
         <div className="min-h-screen bg-[#F8F9FA] font-[family-name:var(--font-anek-latin)] py-8 px-4 md:px-8 pb-24">
             <div className="max-w-4xl mx-auto">
                 {/* Navigation Header */}
-                <div className="mb-8 flex items-center justify-between">
-                    <button 
-                        onClick={() => router.back()}
-                        className="flex items-center gap-2 text-zinc-500 hover:text-zinc-800 transition-colors font-semibold"
-                    >
-                        <ChevronLeft size={20} />
-                        Back to Profile
-                    </button>
+                <div className="mb-8 flex items-center justify-center">
                     <h1 className="text-2xl font-bold text-zinc-900">Edit Profile</h1>
                 </div>
 

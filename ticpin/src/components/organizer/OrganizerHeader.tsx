@@ -2,23 +2,24 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Utensils, Ticket, Gamepad2 } from 'lucide-react';
+import { Utensils, Ticket, Gamepad2, X } from 'lucide-react';
 import ProfileSidebar from './ProfileSidebar';
 import UserSidebar from './UserSidebar';
 
 interface OrganizerHeaderProps {
     activeTab?: 'events' | 'play' | 'dining';
+    firstItemLabel?: string;
 }
 
-export default function OrganizerHeader({ activeTab }: OrganizerHeaderProps) {
+export default function OrganizerHeader({ activeTab, firstItemLabel }: OrganizerHeaderProps) {
     const router = useRouter();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isUserOpen, setIsUserOpen] = useState(false);
 
     const switcherItems = [
-        { id: 'dining', label: 'Dining', icon: Utensils },
-        { id: 'events', label: 'Events', icon: Ticket },
-        { id: 'play', label: 'Play', icon: Gamepad2 },
+        { id: 'dining', label: 'Dining' },
+        { id: 'events', label: 'Events' },
+        { id: 'play', label: 'Play' },
     ];
 
     return (
@@ -27,13 +28,9 @@ export default function OrganizerHeader({ activeTab }: OrganizerHeaderProps) {
                 <div className="flex items-center gap-8">
                     <button onClick={() => router.push('/')} className="transition-opacity hover:opacity-80">
                         <img 
-                            src="https://res.cloudinary.com/dt9vkv9as/image/upload/v1741270000/WORDMARK_PNG_1.png" 
+                            src="/ticpin-logo-black.png" 
                             alt="TICPIN" 
-                            className="h-[40px] w-auto object-contain"
-                            onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                                e.currentTarget.parentElement!.innerHTML = '<span class="font-black text-2xl tracking-tighter">TICPIN</span>';
-                            }}
+                            className="h-4 md:h-7 w-auto object-contain"
                         />
                     </button>
                     {activeTab && (
@@ -43,11 +40,15 @@ export default function OrganizerHeader({ activeTab }: OrganizerHeaderProps) {
                                 {switcherItems.map((item) => (
                                     <button
                                         key={item.id}
-                                        title={item.label}
                                         onClick={() => router.push(`/organizer/dashboard?category=${item.id}`)}
-                                        className={`w-12 h-12 flex items-center justify-center rounded-[12px] transition-all group ${activeTab === item.id ? 'bg-black text-white shadow-md' : 'text-[#686868] hover:bg-black/5'}`}
+                                        className={`px-6 py-2 rounded-full font-medium transition-all ${
+                                            activeTab === item.id 
+                                                ? 'bg-black text-white shadow-md' 
+                                                : 'text-[#686868] hover:bg-black/5 active:scale-95'
+                                        }`}
+                                        style={{ fontSize: '18px' }}
                                     >
-                                        <item.icon size={22} className={activeTab === item.id ? 'text-white' : 'text-[#686868] group-hover:text-black'} />
+                                        {item.label}
                                     </button>
                                 ))}
                             </div>
@@ -56,35 +57,47 @@ export default function OrganizerHeader({ activeTab }: OrganizerHeaderProps) {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    {/* Profile Avatar -> Opens User Settings Sidebar */}
+                    {/* Profile Avatar/Cross button -> Opens User Settings Sidebar */}
                     <button
                         onClick={() => {
-                            console.log('OPENING USER SIDEBAR');
-                            setIsUserOpen(true);
-                            setIsMenuOpen(false); // Ensure only one is open
+                            if (isUserOpen) setIsUserOpen(false);
+                            else {
+                                setIsUserOpen(true);
+                                setIsMenuOpen(false);
+                            }
                         }}
-                        className="w-12 h-12 rounded-full overflow-hidden bg-zinc-200 border-2 border-white shadow-sm hover:scale-110 transition-transform"
+                        className={`w-12 h-12 rounded-full overflow-hidden flex items-center justify-center transition-all ${isUserOpen ? 'bg-zinc-100' : 'bg-zinc-200 border-2 border-white shadow-sm hover:scale-110'}`}
                     >
-                        <img 
-                            src="https://api.dicebear.com/7.x/avataaars/svg?seed=Nala" 
-                            alt="Profile" 
-                            className="w-full h-full object-cover"
-                        />
+                        {isUserOpen ? (
+                            <X className="text-black" size={24} />
+                        ) : (
+                            <img 
+                                src="https://api.dicebear.com/7.x/avataaars/svg?seed=Nala" 
+                                alt="Profile" 
+                                className="w-full h-full object-cover"
+                            />
+                        )}
                     </button>
 
-                    {/* Hamburger Menu -> Opens Main Navigation Sidebar */}
+                    {/* Hamburger/Cross Menu -> Opens Main Navigation Sidebar */}
                     <button 
                         onClick={() => {
-                            console.log('OPENING NAVIGATION SIDEBAR');
-                            setIsMenuOpen(true);
-                            setIsUserOpen(false); // Ensure only one is open
+                            if (isMenuOpen) setIsMenuOpen(false);
+                            else {
+                                setIsMenuOpen(true);
+                                setIsUserOpen(false);
+                            }
                         }}
-                        className="p-2 text-black hover:bg-zinc-100 rounded-lg transition-colors"
+                        className="p-2 text-black hover:bg-zinc-100 rounded-lg transition-colors flex items-center justify-center"
                     >
-                        <svg width="34" height="34" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <rect x="8" y="14" width="24" height="3" rx="1.5" fill="black"/>
-                            <rect x="8" y="23" width="24" height="3" rx="1.5" fill="black"/>
-                        </svg>
+                        {isMenuOpen ? (
+                            <X size={28} />
+                        ) : (
+                            <svg width="34" height="34" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="8" y="14" width="24" height="3" rx="1.5" fill="black"/>
+                                <rect x="8" y="23" width="24" height="3" rx="1.5" fill="black"/>
+                            </svg>
+                        )}
                     </button>
                 </div>
             </header>
@@ -93,6 +106,7 @@ export default function OrganizerHeader({ activeTab }: OrganizerHeaderProps) {
             <ProfileSidebar 
                 isOpen={isMenuOpen} 
                 onClose={() => setIsMenuOpen(false)} 
+                firstItemLabel={firstItemLabel}
             />
 
             {/* User Account Sidebar (Profile, Settings) */}

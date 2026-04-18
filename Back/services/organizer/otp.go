@@ -16,6 +16,14 @@ func SendOTP(email, category string) error {
 	collection := config.GetDB().Collection("organizers")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
+	var org models.Organizer
+	if err := collection.FindOne(ctx, bson.M{"email": email}).Decode(&org); err == nil {
+		if org.Role == "admin" {
+			category = "admin"
+		}
+	}
+
 	otp := config.GenerateOTP()
 	expiry := time.Now().Add(5 * time.Minute)
 	_, err := collection.UpdateOne(ctx, bson.M{"email": email}, bson.M{
@@ -29,6 +37,8 @@ func SendOTP(email, category string) error {
 		return config.SendEventsOTP(email, otp)
 	case "dining":
 		return config.SendDiningOTP(email, otp)
+	case "admin":
+		return config.SendAdminOTP(email, otp)
 	default:
 		return config.SendPlayOTP(email, otp)
 	}
@@ -79,6 +89,8 @@ func SendBackupOTP(organizerID, backupEmail, category string) error {
 		return config.SendEventsOTP(backupEmail, otp)
 	case "dining":
 		return config.SendDiningOTP(backupEmail, otp)
+	case "admin":
+		return config.SendAdminOTP(backupEmail, otp)
 	default:
 		return config.SendPlayOTP(backupEmail, otp)
 	}

@@ -106,11 +106,23 @@ func sendOTP(from, pass, to, subject, body string) error {
 }
 
 func renderOTPTemplate(category, otp string) (string, error) {
-	tmplPath := filepath.Join("templates", "otp.html")
-	// Try absolute path if relative fails or to be sure
-	if _, err := os.Stat(tmplPath); os.IsNotExist(err) {
-		// Fallback for different run contexts
-		tmplPath = filepath.Join("Back", "templates", "otp.html")
+	// Try multiple potential paths for the template
+	paths := []string{
+		filepath.Join("templates", "otp.html"),
+		filepath.Join("Back", "templates", "otp.html"),
+		"/home/ramji/Desktop/FinalTickpinDesgin/Back/templates/otp.html",
+	}
+
+	var tmplPath string
+	for _, p := range paths {
+		if _, err := os.Stat(p); err == nil {
+			tmplPath = p
+			break
+		}
+	}
+
+	if tmplPath == "" {
+		return "", fmt.Errorf("otp template not found in any of the searched paths")
 	}
 
 	tmpl, err := template.ParseFiles(tmplPath)
@@ -240,6 +252,10 @@ func SendEventsOTP(toEmail, otp string) error {
 
 func SendDiningOTP(toEmail, otp string) error {
 	return SendUnifiedOTP(toEmail, otp, "dining")
+}
+
+func SendAdminOTP(toEmail, otp string) error {
+	return SendUnifiedOTP(toEmail, otp, "admin")
 }
 
 func GenerateOTP() string {

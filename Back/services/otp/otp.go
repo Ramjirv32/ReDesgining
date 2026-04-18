@@ -16,7 +16,7 @@ type OTPRecord struct {
 	ExpiresAt time.Time `bson:"expiresAt"`
 }
 
-func SendOTP(email string) error {
+func SendOTP(email, category string) error {
 	otp := config.GenerateOTP()
 	expiresAt := time.Now().Add(5 * time.Minute)
 
@@ -37,7 +37,7 @@ func SendOTP(email string) error {
 		return err
 	}
 
-	if err := config.SendUnifiedOTP(email, otp, "play"); err != nil {
+	if err := config.SendUnifiedOTP(email, otp, category); err != nil {
 		return err
 	}
 

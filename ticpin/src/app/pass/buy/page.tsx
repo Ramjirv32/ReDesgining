@@ -14,7 +14,6 @@ import {
     LogOut,
     ChevronDown,
     ArrowRight,
-    CheckCircle2,
     Search
 } from 'lucide-react';
 import Script from 'next/script';
@@ -39,6 +38,7 @@ export default function BuyPassPage() {
 
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
+    const [checkingEmail, setCheckingEmail] = useState(false);
     const [agreeTerms, setAgreeTerms] = useState(false);
     const [isRazorpayLoaded, setIsRazorpayLoaded] = useState(false);
     const [latestPass, setLatestPass] = useState<TicpinPass | null>(null);
@@ -62,9 +62,10 @@ export default function BuyPassPage() {
             const savedData = sessionStorage.getItem('ticpin_pass_buy_form');
             if (savedData) {
                 try {
-                    setFormData(JSON.parse(savedData));
+                    const parsed = JSON.parse(savedData);
+                    setFormData(parsed);
+                    setStateSearch(parsed.state || '');
                     setInitialLoading(false);
-                    // Still fetch latest pass in background
                     passApi.getLatestPass(user.id).then(setLatestPass);
                     return;
                 } catch { /* ignore */ }
@@ -77,7 +78,6 @@ export default function BuyPassPage() {
             ]).then(([pass, prof, history]) => {
                 setLatestPass(pass);
                 
-                // Find latest booking for fallback data
                 const latestBooking = (Array.isArray(history) ? [...history] : [])
                     ?.filter((b: any) => getBookingStatus(b) === 'booked' || getBookingStatus(b) === 'confirmed')
                     ?.sort((a: any, b: any) => new Date(b.booked_at).getTime() - new Date(a.booked_at).getTime())[0];
@@ -114,7 +114,45 @@ export default function BuyPassPage() {
         }
     }, [user, user?.id]);
 
-    // Close dropdown on click outside
+    const handleEmailBlur = async () => {
+        if (!formData.email || !formData.email.includes('@')) return;
+        
+        setCheckingEmail(true);
+        try {
+            // Check if email belongs to an organizer first
+            const orgCheck = await fetch(`/backend/api/organizer/check-email?email=${encodeURIComponent(formData.email)}`);
+            const orgData = await orgCheck.json();
+            
+            if (orgData.exists && orgData.isOrganizer) {
+                toast.error('This email is registered as an organizer. Organizers cannot purchase a Ticpin Pass.');
+                setFormData(prev => ({ ...prev, email: '' }));
+                setCheckingEmail(false);
+                return;
+            }
+
+            // Look up existing profile by email
+            const res = await fetch(`/backend/api/profiles/lookup?email=${encodeURIComponent(formData.email)}`);
+            if (res.ok) {
+                const profile = await res.json();
+                if (profile) {
+                    setFormData(prev => ({
+                        ...prev,
+                        name: profile.name || prev.name,
+                        phone: profile.phone || prev.phone,
+                        state: profile.state || prev.state
+                    }));
+                    if (profile.state) setStateSearch(profile.state);
+                    setHasExistingProfile(true);
+                    toast.info('Profile details found and updated.');
+                }
+            }
+        } catch (err) {
+            console.error('Email lookup failed:', err);
+        } finally {
+            setCheckingEmail(false);
+        }
+    };
+
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -125,12 +163,12 @@ export default function BuyPassPage() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Persist form data to sessionStorage
     useEffect(() => {
         if (formData.name || formData.email || formData.state || formData.phone) {
             sessionStorage.setItem('ticpin_pass_buy_form', JSON.stringify(formData));
         }
     }, [formData]);
+
     const filteredStates = INDIAN_STATES.filter(s => 
         s.toLowerCase().includes(stateSearch.toLowerCase())
     );
@@ -154,14 +192,7 @@ export default function BuyPassPage() {
             }
         } catch (err: any) {
             console.error('Profile sync failed:', err);
-            const msg = err.message || '';
-            
-            if (msg.toLowerCase().includes('already registered as an organizer')) {
-                toast.error('This email is already registered as an organizer. Please use a different email.');
-            } else {
-                toast.error(msg || 'Profile synchronization failed');
-            }
-            throw err; // Re-throw to stop handlePayment
+            throw err;
         }
     };
 
@@ -188,15 +219,8 @@ export default function BuyPassPage() {
         }
 
         setLoading(true);
-        try {
-            await syncProfile();
-        } catch (err) {
-            setLoading(false);
-            return;
-        }
 
         try {
-            // Pre-check: ensure no active pass before opening payment modal
             const activePass = await passApi.getActivePass(user.id);
             if (activePass && activePass.status === 'active') {
                 toast.error('You already have an active Ticpin Pass!');
@@ -208,7 +232,7 @@ export default function BuyPassPage() {
             const order = await passApi.createPassOrder(user.id, formData.phone);
             const options = {
                 key: RAZORPAY_KEY_ID,
-                amount: 100,
+                amount: 79900,
                 currency: "INR",
                 name: "Ticpin Pass",
                 description: "3 Months Ticpin Pass Subscription",
@@ -217,31 +241,28 @@ export default function BuyPassPage() {
                 handler: async function (response: any) {
                     setLoading(true);
                     try {
-                        console.log('Razorpay response:', response);
-                        
-                        // Ensure we have the correct order_id from the order creation
                         const verificationData = {
                             razorpay_payment_id: response.razorpay_payment_id,
-                            razorpay_order_id: order.order_id, // Use the order_id from backend response
+                            razorpay_order_id: order.order_id,
                             razorpay_signature: response.razorpay_signature,
                             user_id: user.id,
                             email: formData.email,
                             phone: formData.phone
                         };
                         
-                        console.log('Verification data:', verificationData);
-                        
                         const result = await passApi.verifyPassPayment(verificationData);
 
                         if (result.success) {
+                            // SYNC PROFILE ONLY AFTER PAYMENT SUCCESS
+                            await syncProfile();
                             toast.success('Your Ticpin Pass is now active!');
                             router.push('/pass');
                         } else {
                             toast.error('Payment verification failed.');
                         }
                     } catch (err: any) {
-                        console.error('Verification error:', err);
-                        toast.error(err.message || 'Verification failed');
+                        console.error('Verification/Sync error:', err);
+                        toast.error(err.message || 'Action failed after payment. Please contact support.');
                     } finally {
                         setLoading(false);
                     }
@@ -262,6 +283,7 @@ export default function BuyPassPage() {
             setLoading(false);
         }
     };
+
     const handleLogout = () => {
         clearOrganizerSession();
         setShowLogoutModal(false);
@@ -280,7 +302,6 @@ export default function BuyPassPage() {
         <div className="min-h-screen bg-white text-black font-['Anek_Latin']" style={{ height: '100vh' }}>
             <Script src="https://checkout.razorpay.com/v1/checkout.js" onLoad={() => setIsRazorpayLoaded(true)} />
 
-            {/* Header */}
             <header className="fixed top-0 left-0 right-0 z-[100] bg-white border-b border-gray-200 px-10 py-6">
                 <div className="max-w-[1440px] mx-auto flex items-center justify-between">
                     <div className="flex-shrink-0 cursor-pointer" onClick={() => router.push('/')}>
@@ -298,7 +319,7 @@ export default function BuyPassPage() {
                 </div>
             </header>
 
-            <main className="pt-32 pb-12 px-10 flex flex-col items-center justify-center min-h-[calc(100vh-80px)]">
+            <main className="pt-32 pb-12 px-10 flex flex-col items-center justify-center min-h-[calc(100vh-80px)] overflow-y-auto">
                 <div className="w-full max-w-[1200px] bg-white border-[0.5px] border-gray-300 rounded-[20px] shadow-sm p-12 relative overflow-visible">
                     <h2 className="text-[32px] font-bold mb-6">Billing Details</h2>
                     <div className="w-full h-[0.5px] bg-gray-300 mb-8" />
@@ -306,6 +327,18 @@ export default function BuyPassPage() {
                     <div className="space-y-6">
                         <p className="text-[18px] text-gray-500 mb-6">These details will be shown on your invoice *</p>
                         
+                        <div className="relative">
+                            <input 
+                                type="email"
+                                value={formData.email}
+                                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                                onBlur={handleEmailBlur}
+                                placeholder="Enter your email"
+                                className="w-full h-[60px] border border-gray-200 rounded-[12px] px-6 text-[18px] focus:border-black outline-none transition-colors"
+                            />
+                            {checkingEmail && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 animate-spin text-gray-400" />}
+                        </div>
+
                         <input 
                             type="text"
                             value={formData.name}
@@ -317,13 +350,13 @@ export default function BuyPassPage() {
                         <input 
                             type="tel"
                             value={formData.phone}
+                            readOnly={hasExistingProfile}
                             onChange={(e) => setFormData({...formData, phone: e.target.value})}
                             placeholder="Enter contact number"
-                            className="w-full h-[60px] border border-gray-200 rounded-[12px] px-6 text-[18px] bg-[#F2F2F2] focus:border-black outline-none transition-colors"
+                            className={`w-full h-[60px] border border-gray-200 rounded-[12px] px-6 text-[18px] focus:border-black outline-none transition-colors ${hasExistingProfile ? 'bg-gray-50 cursor-not-allowed opacity-70' : 'bg-[#F2F2F2]'}`}
                         />
 
-                        {/* Searchable State Selector */}
-                        <div className="space-y-2 relative" ref={dropdownRef}>
+                        <div className="space-y-2 relative" ref={dropdownRef} style={{ zIndex: 110 }}>
                             <label className="text-[20px] text-black/60 font-medium ml-1">Select State</label>
                             <div className="relative">
                                 <input 
@@ -341,7 +374,7 @@ export default function BuyPassPage() {
                             </div>
 
                             {showStateDropdown && (
-                                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-[15px] shadow-2xl z-[110] max-h-[250px] overflow-y-auto">
+                                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-[15px] shadow-2xl z-[120] max-h-[250px] overflow-y-auto">
                                     {filteredStates.length > 0 ? filteredStates.map(st => (
                                         <div 
                                             key={st}
@@ -360,14 +393,6 @@ export default function BuyPassPage() {
                                 </div>
                             )}
                         </div>
-
-                        <input 
-                            type="email"
-                            value={formData.email}
-                            onChange={(e) => setFormData({...formData, email: e.target.value})}
-                            placeholder="Enter your email"
-                            className="w-full h-[60px] border border-gray-200 rounded-[12px] px-6 text-[18px] focus:border-black outline-none transition-colors"
-                        />
 
                         <p className="text-[18px] text-gray-500 mt-4">We'll mail you pass confirmation and invoices</p>
                     </div>

@@ -273,14 +273,6 @@ export default function TicpassPage() {
             <ChevronRight className="w-8 h-8 text-white/40 group-hover:text-white transition-all transform group-hover:translate-x-2" />
           </Link>
           <div className="h-[1px] bg-white/10 mx-6" />
-          <Link href="/faq" className="flex items-center justify-between group hover:bg-white/5 px-6 py-4 rounded-2xl transition-all">
-            <div className="flex items-center gap-6">
-              <HelpCircle className="w-10 h-10 text-white" />
-              <span className="font-[family-name:var(--font-anek-latin)] font-medium text-[34px] text-white">Frequently Asked Questions</span>
-            </div>
-            <ChevronRight className="w-8 h-8 text-white/40 group-hover:text-white transition-all transform group-hover:translate-x-2" />
-          </Link>
-          <div className="h-[1px] bg-white/10 mx-6" />
           <Link href="/terms" className="flex items-center justify-between group hover:bg-white/5 px-6 py-4 rounded-2xl transition-all">
             <div className="flex items-center gap-6">
               <FileText className="w-10 h-10 text-white" />

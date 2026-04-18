@@ -34,15 +34,6 @@ export default function UserSidebar({ isOpen, onClose }: UserSidebarProps) {
                 router.push('/organizer/profile');
                 onClose();
             }
-        },
-        { 
-            label: 'Settings', 
-            icon: Settings, 
-            path: '/organizer/profile/edit',
-            onClick: () => {
-                router.push('/organizer/profile/edit');
-                onClose();
-            }
         }
     ];
 
@@ -75,15 +66,24 @@ export default function UserSidebar({ isOpen, onClose }: UserSidebarProps) {
                         ))}
                     </div>
 
-                    {/* Quick Logout for convenient access */}
-                    <div className="p-8 border-t border-zinc-100 bg-zinc-50/30">
+                    {/* Footer with Logout and Session Info */}
+                    <div className="p-8 border-t border-zinc-100 bg-zinc-50/30 space-y-4">
                         <button 
                             onClick={handleLogout}
-                            className="w-full flex items-center justify-between text-zinc-400 hover:text-red-500 transition-colors"
+                            className="w-full flex items-center justify-between text-zinc-900 font-bold hover:text-red-500 transition-colors"
                         >
-                            <span className="text-[16px] font-medium">Log Out</span>
-                            <LogOut size={16} />
+                            <span className="text-[18px]">Log Out</span>
+                            <LogOut size={20} />
                         </button>
+                        
+                        <div className="flex flex-col gap-1 pt-4 border-t border-zinc-200/50">
+                            <span className="text-[13px] font-medium text-zinc-500">
+                                Signed in with
+                            </span>
+                            <span className="text-[14px] font-bold text-zinc-900 break-all">
+                                {session?.email || 'Organizer Account'}
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>

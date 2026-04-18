@@ -80,15 +80,6 @@ function AnalyticsContent() {
                     {/* Header Section */}
                     <div className="flex items-center justify-between">
                         <div>
-                            <button
-                                onClick={() => router.push('/organizer/dashboard?category=play')}
-                                className="flex items-center gap-2 text-[#686868] hover:text-black transition-colors group mb-6 flex-shrink-0"
-                            >
-                                <div className="w-10 h-10 rounded-full bg-white border border-[#AEAEAE] flex items-center justify-center group-hover:bg-black group-hover:text-white group-hover:border-black transition-all">
-                                    <ArrowLeft size={20} />
-                                </div>
-                                <span className="text-[18px] font-medium">Back</span>
-                            </button>
                             <h1 className="text-[40px] font-bold text-black leading-tight">
                                 Performance Analytics
                             </h1>

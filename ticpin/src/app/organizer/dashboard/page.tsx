@@ -138,7 +138,7 @@ function DashboardContent() {
             <OrganizerHeader activeTab={activeTab} />
 
             {/* Main Content Area */}
-            <main className="flex-1 px-8 md:px-14 lg:px-20 pb-16 flex flex-col justify-start">
+            <main className="flex-1 px-8 md:px-14 lg:px-20 pb-16 pt-10 flex flex-col justify-start">
                 <div className="max-w-[1228px] mx-auto w-full">
 
                     <div className="flex flex-col md:flex-row md:items-end justify-between items-start mb-8">

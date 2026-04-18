@@ -75,6 +75,9 @@ func getSessions(c *fiber.Ctx) error {
 		if userID != "" {
 			filter["user_id"] = userID
 		}
+		if category != "" {
+			filter["category"] = category
+		}
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

@@ -460,7 +460,7 @@ export default function ChatSupportClient() {
 
                     {/* Confirmation Modal */}
                     {confirmingCategory && (
-                        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                        <div className="fixed inset-0 bg-black/40 z-[100] flex items-center justify-center p-4">
                             <div className="bg-white rounded-[30px] p-8 max-w-[400px] w-full shadow-2xl animate-in zoom-in-95 duration-200">
                                 <div className="w-16 h-16 bg-[#5331EA10] rounded-full flex items-center justify-center mx-auto mb-4">
                                     <Image src={confirmingCategory.icon} alt={confirmingCategory.title} width={32} height={32} />

@@ -120,24 +120,18 @@ function PayoutsContent() {
         .filter(b => selectedBookings.has(b._id))
         .reduce((sum, b) => sum + (b.grand_total || 0), 0);
 
+    const category = session?.vertical || 'events';
+    const firstItemLabel = category === 'play' ? 'All Plays' : category === 'dining' ? 'All Dining' : 'All Events';
+
     return (
         <div className="flex flex-col min-h-screen font-[family-name:var(--font-anek-latin)] bg-[#F8F9FA]">
-            <OrganizerHeader />
+            <OrganizerHeader firstItemLabel={firstItemLabel} />
 
             <main className="flex-1 px-8 md:px-14 lg:px-20 py-16">
                 <div className="max-w-[1228px] mx-auto w-full space-y-12">
                     {/* Header */}
                     <div className="flex items-center justify-between">
                         <div>
-                            <button
-                                onClick={() => router.push('/organizer/dashboard?category=play')}
-                                className="flex items-center gap-2 text-[#686868] hover:text-black transition-colors group mb-6 flex-shrink-0"
-                            >
-                                <div className="w-10 h-10 rounded-full bg-white border border-[#AEAEAE] flex items-center justify-center group-hover:bg-black group-hover:text-white group-hover:border-black transition-all">
-                                    <ArrowLeft size={20} />
-                                </div>
-                                <span className="text-[18px] font-medium">Back</span>
-                            </button>
                             <h1 className="text-[40px] font-bold text-black leading-tight">
                                 Payout Management
                             </h1>

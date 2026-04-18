@@ -57,11 +57,6 @@ const MenuGrid: React.FC<MenuGridProps> = ({
                 }
             },
             { 
-                label: 'Frequently asked questions', 
-                icon: HelpCircle,
-                action: () => { router.push('/faq'); onClose(); }
-            },
-            { 
                 label: 'Chat with us', 
                 icon: MessageCircle,
                 action: () => { router.push('/chat-support'); onClose(); }
@@ -86,11 +81,6 @@ const MenuGrid: React.FC<MenuGridProps> = ({
                 label: 'View bookings', 
                 icon: Ticket,
                 action: () => { router.push('/bookings?type=play'); onClose(); }
-            },
-            { 
-                label: 'Frequently asked questions', 
-                icon: HelpCircle,
-                action: () => { router.push('/faq'); onClose(); }
             },
             { 
                 label: 'Chat with us', 
