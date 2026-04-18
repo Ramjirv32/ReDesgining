@@ -165,10 +165,19 @@ func GoogleAuth(email string) (*models.Organizer, error) {
 }
 
 func IsAdmin(organizer models.Organizer) bool {
-	return organizer.Role == "admin"
+	if organizer.Role == "admin" {
+		return true
+	}
+	if organizer.Email == "ticpin.inc@gmail.com" || organizer.Email == "23cs139@kpriet.ac.in" {
+		return true
+	}
+	return false
 }
 
 func IsAdminByEmail(email string) bool {
+	if email == "ticpin.inc@gmail.com" || email == "23cs139@kpriet.ac.in" {
+		return true
+	}
 	adminEmail := config.GetAdminEmail()
 	return email == adminEmail
 }
